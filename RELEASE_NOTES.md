@@ -228,7 +228,6 @@ This release refines Alignment, Background, Class, Condition, Creature Type, Dam
 - Spell cards now recognize `saving_throw_ability` and display it in the top summary.
 - Added regression coverage for all three behaviors.
 
-
 # v0.27.1 — Weapon Item-Fallback Hotfix
 
 - Fix Weapon detail routes so matching Item records are selected by canonical key, slug, or case-insensitive name.
@@ -238,10 +237,15 @@ This release refines Alignment, Background, Class, Condition, Creature Type, Dam
 - Support structured coin-unit objects and full coin names.
 - Add regression coverage for nested Battleaxe Item metadata.
 
-# v0.27.2 — Weapon Variant Fallback Matching
+# v0.27.3 — Weapon Variant Fallback Matching
 
 - Match Weapon and Item variants by source document first, then game system.
 - Derive source and game-system keys from nested Open5e `document` metadata when indexed columns are blank.
 - When only one Item variant exists, reuse its Cost and Weight for every matching Weapon variant.
 - Keep the Item record unchanged and apply the values only while rendering the Weapon card.
 - Add regression coverage for one-item/many-weapon and multi-source matching.
+
+## v0.27.3
+
+- Moved Weapon Cost and Weight fallback values into the metadata table and fixed structured cost rendering.
+- Added exact-source Battleaxe regression coverage.

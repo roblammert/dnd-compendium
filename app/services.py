@@ -1099,16 +1099,23 @@ def build_weapon_card(entity: Entity, fallback_item: Entity | None = None) -> di
     primary_stats = [
         {"label": "Damage", "value": damage or "—", "kind": "damage"},
     ]
+    cost_display = format_cost(cost, present=True) if cost_present else None
+    weight_display = format_weight(weight, present=True) if weight_present else None
+    # Retain the compact primary bands while also placing equipment metadata in
+    # the summary table, as requested. This makes Item-derived values visible in
+    # both the quick-glance area and the structured metadata area.
     if cost_present:
-        primary_stats.append({"label": "Cost", **format_cost(cost, present=True), "kind": "cost"})
+        primary_stats.append({"label": "Cost", **cost_display, "kind": "cost"})
     if weight_present:
-        primary_stats.append({"label": "Weight", "value": format_weight(weight, present=True), "tooltip": "", "kind": "weight"})
+        primary_stats.append({"label": "Weight", "value": weight_display, "tooltip": "", "kind": "weight"})
     summary_rows = _summary_rows(
         ("Category", category.title()),
         ("Range Type", weapon_range.title() if weapon_range else None),
         ("Damage Type", {"text": damage_type.title(), "url": f"/compendium/damagetype/{_slugify_link(damage_type)}"} if damage_type else None),
         ("Range", range_text or None),
         ("Reach", reach_text or None),
+        ("Cost", cost_display),
+        ("Weight", weight_display),
         ("Versatile Damage", {"text": damage_type.title(), "url": f"/compendium/damagetype/{_slugify_link(damage_type)}"} if versatile and damage_type else versatile or None),
         ("Mastery", mastery.title() if mastery else None),
         ("Ammunition", ammunition or None),
