@@ -729,6 +729,11 @@ def _truth_label(value: Any) -> str:
 def _summary_rows(*pairs: tuple[str, Any]) -> list[dict[str, str]]:
     rows=[]
     for label, value in pairs:
+        if isinstance(value, dict) and "text" in value:
+            rendered=str(value.get("text", ""))
+            if rendered:
+                rows.append({"label": label, "value": {"text": rendered, "url": str(value.get("url", ""))}, "tooltip": str(value.get("tooltip", ""))})
+            continue
         if isinstance(value, dict) and "value" in value:
             rendered=str(value.get("value", ""))
             if rendered:
@@ -789,23 +794,34 @@ def format_weight(value: Any, *, present: bool = True) -> str:
     if numeric is None: return "Unknown"
     return f"{numeric:.1f} lb."
 
+def _slugify_link(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", value.casefold()).strip("-")
+
 def _normalize_weapon_properties(value: Any) -> list[dict[str, str]]:
     if isinstance(value, dict):
-        for wrapper in ("data","results","items","properties"):
-            if isinstance(value.get(wrapper), list): return _normalize_weapon_properties(value[wrapper])
-        value=[value]
+        for wrapper in ("data", "results", "items", "properties"):
+            if isinstance(value.get(wrapper), list):
+                return _normalize_weapon_properties(value[wrapper])
+        value = [value]
     if not isinstance(value, list):
-        return [{"name":name.title(),"description":"","range":"","url":""} for name in _normalize_named_values(value)]
-    rows=[]
+        value = [{"name": name} for name in _normalize_named_values(value)]
+    rows = []
     for item in value:
         if isinstance(item, str):
-            rows.append({"name":item.title(),"description":"","range":"","url":""}); continue
-        if not isinstance(item, dict): continue
-        name=_display_name(item.get("name") or item.get("property") or item.get("key"))
-        description=_rich_text(item.get("desc") or item.get("description") or item.get("text"))
-        range_text=_format_weapon_range(item.get("range") or item.get("normal_range"), item.get("long_range"))
-        url=str(item.get("permalink") or item.get("url") or item.get("link") or "")
-        if name: rows.append({"name":name.title(),"description":description,"range":range_text,"url":url})
+            item = {"name": item}
+        if not isinstance(item, dict):
+            continue
+        nested = item.get("property") if isinstance(item.get("property"), dict) else {}
+        name = _display_name(nested.get("name") or item.get("name") or item.get("property") or nested.get("key") or item.get("key"))
+        description = _rich_text(nested.get("desc") or nested.get("description") or nested.get("text") or item.get("desc") or item.get("description") or item.get("text"))
+        detail = _rich_text(item.get("detail") or item.get("value") or item.get("damage"))
+        range_text = _format_weapon_range(item.get("range") or item.get("normal_range"), item.get("long_range"))
+        if not range_text and name.casefold() == "thrown":
+            range_text = _format_weapon_range(item.get("short_range"), item.get("long_range"))
+        external = str(nested.get("permalink") or nested.get("url") or item.get("permalink") or item.get("url") or item.get("link") or "")
+        local_url = f"/compendium/weaponpropertie/{_slugify_link(name)}" if name else ""
+        if name:
+            rows.append({"name": name.title(), "description": description, "detail": detail, "range": range_text, "url": local_url, "external_url": external})
     return rows
 
 def build_magic_item_card(entity: Entity) -> dict[str, Any]:
@@ -1061,10 +1077,10 @@ def build_weapon_card(entity: Entity) -> dict[str, Any]:
     summary_rows = _summary_rows(
         ("Category", category.title()),
         ("Range Type", weapon_range.title() if weapon_range else None),
-        ("Damage Type", damage_type.title() if damage_type else None),
+        ("Damage Type", {"text": damage_type.title(), "url": f"/compendium/damagetype/{_slugify_link(damage_type)}"} if damage_type else None),
         ("Range", range_text or None),
         ("Reach", reach_text or None),
-        ("Versatile Damage", versatile or None),
+        ("Versatile Damage", {"text": damage_type.title(), "url": f"/compendium/damagetype/{_slugify_link(damage_type)}"} if versatile and damage_type else versatile or None),
         ("Mastery", mastery.title() if mastery else None),
         ("Ammunition", ammunition or None),
         ("Loading", _truth_label(loading) if loading not in (None, "", False) else None),

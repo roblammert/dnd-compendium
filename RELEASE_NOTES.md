@@ -88,16 +88,7 @@ Cumulative release history for D&D Compendium. New patch installers append their
 
 ## v0.21.0
 
-- Replaced the README with a GitHub-style project introduction, quick start, role matrix, architecture highlights, and operational guidance.
-- Added cumulative `RELEASE_NOTES.md`; future patch installers append their patch notes to the end.
-- Patch installers no longer create backup copies because Git is the source of rollback history.
-- Patch installers print the exact suggested `git add` and `git commit` commands, including commit title and body.
-- Authenticated users can see all lists, including other members' private lists, with owner attribution and read-only access.
-- Only list owners can edit, reorder, remove items from, or delete their lists.
-- Added Settings → View Management with per-endpoint visibility levels: Users, Editors, Administrators, and INVISIBLE.
-- Endpoint visibility applies to home tiles, recent entities, Browse results and filters, direct entity pages, and list contents.
-- Site Lexicon remains complete for administrators, and Open5e synchronization is unaffected.
-- New endpoint types default to Users visibility.
+- Added role-based endpoint View Management, authenticated read-only access to all member lists, a GitHub-style README, cumulative release notes, and Git-native no-backup patch installers.
 
 ## v0.22.0
 
@@ -110,3 +101,11 @@ Cumulative release history for D&D Compendium. New patch installers append their
 - Added a shared D&D coin formatter for visible Cost fields, selecting the simplest exact coin denomination and exposing PP/GP/SP/CP conversions in a hover tooltip.
 - Added explicit `Unknown` rendering for present-but-empty Cost and Weight fields.
 
+
+
+## v0.23.0
+
+- Seed new databases with curated endpoint display labels and Users visibility defaults.
+- Correct nested Open5e weapon property rendering, including details, descriptions, and local compendium links.
+- Link weapon damage types and versatile damage types to Damage Type entries.
+- Restrict private lists to their owners; other authenticated members see public lists only.

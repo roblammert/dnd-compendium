@@ -123,7 +123,7 @@ def delete_user(public_id: str, admin: User = Depends(require_admin), db: Sessio
 def my_lists(request: Request, user: User = Depends(require_user), db: Session = Depends(get_db)):
     all_lists=list(db.scalars(select(UserEntityList).options(selectinload(UserEntityList.items), selectinload(UserEntityList.owner)).order_by(UserEntityList.updated_at.desc())).all())
     own_lists=[row for row in all_lists if row.owner_id==user.id]
-    shared_lists=[row for row in all_lists if row.owner_id!=user.id]
+    shared_lists=[row for row in all_lists if row.owner_id!=user.id and row.is_public]
     return templates.TemplateResponse(request,"lists.html",{"lists":own_lists,"shared_lists":shared_lists})
 
 
@@ -136,7 +136,7 @@ def create_list(name: str=Form(...), description: str=Form(""), is_public: str|N
 def _list_access(db: Session, public_id: str, user: User | None):
     row=db.scalar(select(UserEntityList).where(UserEntityList.public_id==public_id).options(selectinload(UserEntityList.items).selectinload(UserEntityListItem.entity), selectinload(UserEntityList.owner)))
     if not row: raise HTTPException(404,"List not found")
-    if not row.is_public and not user: raise HTTPException(403,"Sign in to view this private list")
+    if not row.is_public and (not user or row.owner_id != user.id): raise HTTPException(404,"List not found")
     return row
 
 

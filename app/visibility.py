@@ -2,7 +2,8 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from app.auth import ROLE_RANK
-from app.models import Entity, EntityTypeVisibility, User
+from app.models import Entity, EntityTypeVisibility, LexiconTerm, User
+from app.endpoint_defaults import endpoint_default
 
 VIEW_LEVELS = {"user": 0, "editor": 20, "administrator": 30, "invisible": 999}
 VIEW_LABELS = {"user": "Users", "editor": "Editors", "administrator": "Administrators", "invisible": "INVISIBLE"}
@@ -15,8 +16,11 @@ def ensure_visibility_rows(db: Session) -> None:
     types = db.scalars(select(Entity.entity_type).distinct()).all()
     changed = False
     for entity_type in types:
+        default = endpoint_default(entity_type)
         if entity_type not in existing:
-            db.add(EntityTypeVisibility(entity_type=entity_type, minimum_role="user")); changed = True
+            db.add(EntityTypeVisibility(entity_type=entity_type, minimum_role=default["minimum_role"])); changed = True
+        if not db.scalar(select(LexiconTerm).where(LexiconTerm.original_term == entity_type)):
+            db.add(LexiconTerm(original_term=entity_type, display_term=default["display"])); changed = True
     if changed: db.commit()
 
 def can_view_type(user: User | None, entity_type: str, mapping: dict[str,str]) -> bool:

@@ -24,10 +24,11 @@ from app.assets import save_upload, save_url
 from app.auth import UserContextMiddleware, can, ensure_default_admin, require_admin, require_editor, require_user
 from app.user_routes import router as user_router, templates as user_templates
 from app.visibility import VIEW_LABELS, can_view_type, ensure_visibility_rows, visibility_map, visible_types
+from app.endpoint_defaults import endpoint_default
 
 settings=get_settings(); base=Path(__file__).parent
 settings.asset_root.mkdir(parents=True, exist_ok=True)
-APP_VERSION = "0.22.0"
+APP_VERSION = "0.23.0"
 app=FastAPI(title=settings.app_name, version=APP_VERSION)
 app.add_middleware(UserContextMiddleware)
 app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, session_cookie=settings.session_cookie_name, max_age=settings.session_max_age, same_site="lax", https_only=settings.session_https_only)
@@ -436,8 +437,8 @@ def endpoint_management(request: Request, _=Depends(require_admin), db: Session 
     rows=[]
     for term in sorted(x for x in known if x):
         if term not in existing_vis:
-            row=EntityTypeVisibility(entity_type=term, minimum_role="user"); db.add(row); db.flush(); existing_vis[term]=row
-        rows.append({"original":term,"display":existing_lex.get(term).display_term if term in existing_lex else _display_term(term,{}),"minimum_role":existing_vis[term].minimum_role})
+            default=endpoint_default(term); row=EntityTypeVisibility(entity_type=term, minimum_role=default["minimum_role"]); db.add(row); db.flush(); existing_vis[term]=row
+        rows.append({"original":term,"display":existing_lex.get(term).display_term if term in existing_lex else endpoint_default(term)["display"],"minimum_role":existing_vis[term].minimum_role})
     db.commit()
     return templates.TemplateResponse(request,"settings_endpoint_management.html",{"settings_section":"endpoint-management","rows":rows,"view_labels":VIEW_LABELS})
 

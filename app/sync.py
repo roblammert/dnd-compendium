@@ -457,6 +457,9 @@ async def run_open5e_sync(run_id: int, endpoints: list[str] | None = None) -> No
             run.error_message = "; ".join(failures) if failures else None
             run.completed_at = utc_now()
             db.commit()
+            # Seed presentation/access defaults for endpoint types discovered by this run.
+            from app.visibility import ensure_visibility_rows
+            ensure_visibility_rows(db)
         except Exception as exc:
             db.rollback()
             run = db.get(SyncRun, run_id)
