@@ -1,1 +1,11 @@
-{% extends "base.html" %}{% block content %}<h1>Administration</h1><section class="form-panel"><h2>Open5e synchronization</h2><p>Only records owned by the <code>open5e</code> source are inserted or updated. Homebrew records remain untouched.</p><form method="post" action="/admin/sync/open5e"><button>Run Open5e sync</button></form></section><section><h2>Recent runs</h2><table><thead><tr><th>ID</th><th>Status</th><th>Seen</th><th>Created</th><th>Updated</th><th>Started</th></tr></thead><tbody>{% for run in runs %}<tr><td>{{run.id}}</td><td>{{run.status}}</td><td>{{run.records_seen}}</td><td>{{run.records_created}}</td><td>{{run.records_updated}}</td><td>{{run.started_at}}</td></tr>{% endfor %}</tbody></table></section>{% endblock %}
+{% extends "base.html" %}
+{% block content %}
+<header class="admin-header">
+  <div>
+    <p class="eyebrow">Administration</p>
+    <h1>Open5e synchronization</h1>
+    <p>Open5e endpoints are processed sequentially. Progress is persisted in SQLite and refreshed automatically.</p>
+  </div>
+</header>
+{% include "fragments/sync_status.html" %}
+{% endblock %}

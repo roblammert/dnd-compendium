@@ -22,6 +22,9 @@ class EntityOut(BaseModel):
     slug: str
     source_kind: str
     source_document: str | None
+    source_display_name: str | None = None
+    game_system_key: str | None = None
+    game_system_name: str | None = None
     is_homebrew: bool
     is_active: bool
     summary: str | None

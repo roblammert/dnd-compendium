@@ -1,5 +1,14 @@
-{% extends "base.html" %}{% block title %}Browse · D&D Compendium{% endblock %}{% block content %}<h1>Compendium</h1>
-<form id="filters" class="filters" hx-get="/compendium" hx-target="#results" hx-push-url="true" hx-trigger="input changed delay:250ms, change">
-<input name="q" value="{{q}}" placeholder="Search names and rules text"><select name="entity_type"><option value="">All types</option>{% for t in types %}<option value="{{t}}" {% if t==entity_type %}selected{% endif %}>{{t|title}}</option>{% endfor %}</select>
-<select name="source_kind"><option value="">All sources</option><option value="open5e" {% if source_kind=='open5e' %}selected{% endif %}>Open5e</option><option value="homebrew" {% if source_kind=='homebrew' %}selected{% endif %}>Homebrew</option></select></form>
-<div id="results">{% include "fragments/results.html" %}</div>{% endblock %}
+{% extends "base.html" %}
+{% block title %}Browse · D&D Compendium{% endblock %}
+{% block content %}
+<header class="browse-header"><div><p class="eyebrow">Library</p><h1>Compendium</h1></div></header>
+<form id="filters" class="filters browse-filters" method="get" action="/compendium" data-auto-submit="true">
+  <label class="search-field"><span>Search</span><input name="q" value="{{ q }}" placeholder="Search names and rules text"></label>
+  <label><span>Entity type</span><select name="entity_type"><option value="">All types</option>{% for option in type_options %}<option value="{{option.value}}" {% if option.value==entity_type %}selected{% endif %}>{{option.label}}</option>{% endfor %}</select></label>
+  <label><span>Ownership</span><select name="source_kind"><option value="">Open5e and homebrew</option><option value="open5e" {% if source_kind=='open5e' %}selected{% endif %}>Open5e</option><option value="homebrew" {% if source_kind=='homebrew' %}selected{% endif %}>Homebrew</option></select></label>
+  <label><span>Source</span><select name="source_display_name"><option value="">All source books</option>{% for source in source_names %}<option value="{{source}}" {% if source==source_display_name %}selected{% endif %}>{{source}}</option>{% endfor %}</select></label>
+  <label><span>Game system</span><select name="game_system_name"><option value="">All systems</option>{% for system in game_systems %}<option value="{{system}}" {% if system==game_system_name %}selected{% endif %}>{{system}}</option>{% endfor %}</select></label>
+  <label><span>Rows per page</span><select name="page_size">{% for size in page_sizes %}<option value="{{size}}" {% if size==page_size %}selected{% endif %}>{{size}}</option>{% endfor %}</select></label>
+</form>
+<div id="results">{% include "fragments/results.html" %}</div>
+{% endblock %}

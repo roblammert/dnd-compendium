@@ -1,2 +1,54 @@
-<div class="card-grid">{% for entity in entities %}{% include "components/card.html" %}{% else %}<p class="empty">No matching entities.</p>{% endfor %}</div>
-<nav class="pagination">{% if page>1 %}<a hx-get="/compendium?q={{q}}&entity_type={{entity_type or ''}}&source_kind={{source_kind or ''}}&page={{page-1}}" hx-target="#results">Previous</a>{% endif %}<span>Page {{page}} of {{pages}}</span>{% if page<pages %}<a hx-get="/compendium?q={{q}}&entity_type={{entity_type or ''}}&source_kind={{source_kind or ''}}&page={{page+1}}" hx-target="#results">Next</a>{% endif %}</nav>
+<div class="browse-result-heading">
+  <p><strong>{{ total }}</strong> unique entities</p>
+  <p class="muted">Multiple Open5e sources are grouped into one row.</p>
+</div>
+<div class="table-wrap compendium-table-wrap">
+<table class="compendium-table">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Sources</th>
+      <th>Systems</th>
+      <th>Ownership</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for group in groups %}
+    {% set entity = group.entity %}
+    <tr>
+      <td>
+        <a class="entity-name-link" href="/compendium/{{ entity.entity_type }}/{{ group.canonical_key }}?return_to={{ browse_return_url|urlencode }}">{{ entity.name }}</a>
+        {% if entity.summary %}<small class="row-summary">{{ entity.summary|truncate(150) }}</small>{% endif %}
+      </td>
+      <td><span class="badge">{{ group.type_label }}</span></td>
+      <td>
+        {% if group.source_count > 1 %}
+          <span class="source-count-pill">{{ group.source_count }} sources</span>
+        {% elif group.source_badges %}
+          {% set badge = group.source_badges[0] %}<span class="descriptor-pill descriptor-pill-source value-{{ badge.class_name }}" style="{{ badge.style }}">{{ badge.value }}</span>
+        {% else %}—{% endif %}
+      </td>
+      <td>
+        {% if group.system_count > 1 %}
+          <span class="system-count-pill">{{ group.system_count }} systems</span>
+        {% elif group.system_badges %}
+          {% set badge = group.system_badges[0] %}<span class="descriptor-pill descriptor-pill-system value-{{ badge.class_name }}" style="{{ badge.style }}">{{ badge.value }}</span>
+        {% else %}—{% endif %}
+      </td>
+      <td><span class="source {{ entity.source_kind }}">{{ entity.source_kind }}</span></td>
+      <td><a class="table-action" href="/compendium/{{ entity.entity_type }}/{{ group.canonical_key }}?return_to={{ browse_return_url|urlencode }}">Open card</a></td>
+    </tr>
+  {% else %}
+    <tr><td colspan="6" class="empty">No matching entities.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+<nav class="pagination">
+  {% set base_query = 'q=' ~ (q|urlencode) ~ '&entity_type=' ~ (entity_type or '') ~ '&source_kind=' ~ (source_kind or '') ~ '&source_display_name=' ~ ((source_display_name or '')|urlencode) ~ '&game_system_name=' ~ ((game_system_name or '')|urlencode) ~ '&page_size=' ~ page_size %}
+  {% if page>1 %}<a href="/compendium?{{base_query}}&page={{page-1}}">Previous</a>{% endif %}
+  <span>Page {{page}} of {{pages}}</span>
+  {% if page<pages %}<a href="/compendium?{{base_query}}&page={{page+1}}">Next</a>{% endif %}
+</nav>

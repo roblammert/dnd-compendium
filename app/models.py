@@ -19,8 +19,12 @@ class Entity(Base):
     entity_type: Mapped[str] = mapped_column(String(50), index=True)
     name: Mapped[str] = mapped_column(String(255), index=True)
     slug: Mapped[str] = mapped_column(String(255), index=True)
+    canonical_key: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     source_kind: Mapped[str] = mapped_column(String(40), index=True)
     source_document: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    source_display_name: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    game_system_key: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    game_system_name: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     upstream_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     upstream_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     upstream_checksum: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -62,6 +66,13 @@ class EntityAsset(Base):
     entity: Mapped[Entity] = relationship(back_populates="assets")
     asset: Mapped[Asset] = relationship()
 
+class LexiconTerm(Base):
+    __tablename__ = "lexicon_terms"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    original_term: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    display_term: Mapped[str] = mapped_column(String(255))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
 class SyncRun(Base):
     __tablename__ = "sync_runs"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -72,5 +83,29 @@ class SyncRun(Base):
     records_seen: Mapped[int] = mapped_column(Integer, default=0)
     records_created: Mapped[int] = mapped_column(Integer, default=0)
     records_updated: Mapped[int] = mapped_column(Integer, default=0)
+    records_unchanged: Mapped[int] = mapped_column(Integer, default=0)
     records_archived: Mapped[int] = mapped_column(Integer, default=0)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    endpoints: Mapped[list["SyncEndpoint"]] = relationship(
+        back_populates="run", cascade="all, delete-orphan", order_by="SyncEndpoint.id"
+    )
+
+class SyncEndpoint(Base):
+    __tablename__ = "sync_endpoints"
+    __table_args__ = (
+        UniqueConstraint("sync_run_id", "endpoint", name="uq_sync_run_endpoint"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    sync_run_id: Mapped[int] = mapped_column(ForeignKey("sync_runs.id", ondelete="CASCADE"), index=True)
+    endpoint: Mapped[str] = mapped_column(String(120), index=True)
+    entity_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    source_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(30), default="pending", index=True)
+    records_seen: Mapped[int] = mapped_column(Integer, default=0)
+    records_created: Mapped[int] = mapped_column(Integer, default=0)
+    records_updated: Mapped[int] = mapped_column(Integer, default=0)
+    records_unchanged: Mapped[int] = mapped_column(Integer, default=0)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    run: Mapped[SyncRun] = relationship(back_populates="endpoints")

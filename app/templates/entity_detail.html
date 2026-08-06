@@ -1,1 +1,241 @@
-{% extends "base.html" %}{% block title %}{{entity.name}} · D&D Compendium{% endblock %}{% block content %}<article class="detail-card" data-entity-type="{{entity.entity_type}}"><header class="detail-header">{% set primary = entity.assets|selectattr('is_primary')|first %}{% if primary %}<img class="hero-image" src="/assets/originals/{{primary.asset.storage_name}}" alt="{{primary.alt_text or entity.name}}">{% endif %}<div><span class="badge">{{entity.entity_type}}</span><span class="source {{entity.source_kind}}">{{entity.source_kind}}</span><h1>{{entity.name}}</h1><p>{{entity.summary or ''}}</p></div></header><section class="rule-body"><h2>Compendium entry</h2><dl>{% for key,value in entity.data_json.items() if key not in ['name','slug','desc','description'] %}<div><dt>{{key.replace('_',' ')|title}}</dt><dd>{% if value is mapping or (value is sequence and value is not string) %}<pre>{{value|tojson(indent=2)}}</pre>{% else %}{{value}}{% endif %}</dd></div>{% endfor %}</dl>{% if entity.data_json.get('description') %}<p>{{entity.data_json.description}}</p>{% endif %}</section><section class="asset-tools"><h2>Local artwork</h2><div class="asset-forms"><form method="post" enctype="multipart/form-data" action="/entities/{{entity.public_id}}/assets/upload"><label>Upload image<input type="file" name="image" accept="image/jpeg,image/png,image/webp,image/gif" required></label><label>Attribution<input name="attribution"></label><label>License<input name="license_name"></label><button>Upload and use</button></form><form method="post" action="/entities/{{entity.public_id}}/assets/download"><label>Download public image URL<input type="url" name="image_url" required></label><label>Attribution<input name="attribution"></label><label>License<input name="license_name"></label><button>Download and use</button></form></div></section><footer>{{entity.source_document or 'Unknown source'}}</footer></article>{% endblock %}
+{% extends "base.html" %}
+{% block title %}{{entity.name}} · D&D Compendium{% endblock %}
+{% block content %}
+<section class="entity-page-shell">
+  <div class="entity-page-toolbar">
+    <a href="{{ return_to }}">← Back to Browse</a>
+    {% if variants|length > 1 %}
+    <form method="get" class="variant-picker" id="variant-picker">
+      <input type="hidden" name="return_to" value="{{ return_to }}">
+      <label for="source-variant">Source version</label>
+      <select name="source" id="source-variant">
+        {% for variant in variants %}
+        <option value="{{ variant.public_id }}" {% if variant.id == entity.id %}selected{% endif %}>
+          {{ variant.source_display_name or variant.source_document or variant.source_kind }}{% if variant.game_system_name %} — {{ variant.game_system_name }}{% endif %}
+        </option>
+        {% endfor %}
+      </select>
+      <noscript><button>Load source</button></noscript>
+    </form>
+    {% endif %}
+  </div>
+
+  {% if entity.entity_type == 'monster' %}
+  <article class="monster-stat-card">
+    {% if primary_asset %}
+      <div class="monster-art-frame"><img src="/assets/originals/{{ primary_asset.asset.storage_name }}" alt="{{ primary_asset.alt_text or entity.name }}"></div>
+    {% endif %}
+    <div class="monster-card-body">
+      <header class="monster-title-block">
+        <h1>{{ entity.name }}</h1>
+        <div class="descriptor-pill-row" aria-label="Creature and source descriptors">
+          {% for badge in descriptor_badges %}
+          <span class="descriptor-pill descriptor-pill-{{ badge.kind }} value-{{ badge.class_name }}" style="{{ badge.style }}">
+            {% if badge.kind == 'versions' %}Versions {{ badge.value }}{% else %}{{ badge.value }}{% endif %}
+          </span>
+          {% endfor %}
+        </div>
+      </header>
+
+      <div class="monster-rule"></div>
+      <section class="monster-stat-summary" aria-label="Monster statistics">
+        <div class="monster-primary-stats">
+          <div class="primary-stat primary-stat-hp"><span>HP</span><strong>{{ monster.hit_points }}</strong></div>
+          <div class="primary-stat primary-stat-ac"><span>AC</span><strong>{{ monster.armor_class }}</strong>{% if monster.armor_desc %}<small>{{ monster.armor_desc }}</small>{% endif %}</div>
+          <div class="primary-stat primary-stat-xp"><span>XP</span><strong>{{ monster.xp if monster.xp != '—' else '—' }}</strong></div>
+        </div>
+        <dl class="monster-stat-column">
+          <div><dt>Speed</dt><dd>{{ monster.speed }}</dd></div>
+          <div><dt>Challenge</dt><dd>{{ monster.challenge_rating }}</dd></div>
+          <div><dt>Initiative</dt><dd>{{ monster.initiative_bonus }}</dd></div>
+          {% if monster.proficiency_bonus != '—' %}<div><dt>Proficiency</dt><dd>{{ monster.proficiency_bonus }}</dd></div>{% endif %}
+        </dl>
+        <dl class="monster-stat-column">
+          <div><dt>Type</dt><dd>{{ monster.creature_type }}{% if monster.subtype %} ({{ monster.subtype }}){% endif %}</dd></div>
+          <div><dt>Size</dt><dd>{{ monster.size }}</dd></div>
+          <div><dt>Alignment</dt><dd>{{ monster.alignment }}</dd></div>
+          {% if monster.passive_perception != '—' %}<div><dt>Passive Perception</dt><dd>{{ monster.passive_perception }}</dd></div>{% endif %}
+        </dl>
+      </section>
+      <div class="monster-rule"></div>
+
+      <h2 class="monster-grid-title">Ability Scores</h2>
+      <div class="ability-grid">
+        {% for ability in monster.abilities %}
+        <div><b>{{ability.label}}</b><span>{{ability.score}} ({{ability.modifier}})</span></div>
+        {% endfor %}
+      </div>
+      <div class="monster-rule"></div>
+
+      <h2 class="monster-grid-title saving-title">Saving Throw Modifiers</h2>
+      <div class="ability-grid saving-throw-grid">
+        {% for save in monster.saving_throw_modifiers %}
+        <div><b>{{save.label}}</b><span>{{save.modifier}}</span></div>
+        {% endfor %}
+      </div>
+      <div class="monster-rule"></div>
+
+      {% if monster.languages %}
+      <div class="monster-languages">
+        <b>Languages</b>
+        <ul>
+        {% for language in monster.languages %}
+          <li><strong>{{ language.name }}</strong>{% if language.description %}: {{ language.description }}{% endif %}</li>
+        {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      {% if monster.description %}<div class="monster-description rich-markdown">{{ monster.description|render_markdown }}</div>{% endif %}
+      {% if monster.traits %}<h2 class="monster-section-title">Traits</h2>{% endif %}
+      {% for trait in monster.traits %}<div class="monster-feature"><b><i>{{trait.name}}.</i></b> <span>{{ trait.text|render_markdown }}</span></div>{% endfor %}
+
+      {% if monster.actions %}<h2 class="monster-section-title">Actions</h2>{% endif %}
+      {% for action in monster.actions %}<div class="monster-feature"><b><i>{{action.name}}.</i></b> <span>{{ action.text|render_markdown }}</span></div>{% endfor %}
+      {% if monster.bonus_actions %}<h2 class="monster-section-title">Bonus Actions</h2>{% endif %}
+      {% for action in monster.bonus_actions %}<div class="monster-feature"><b><i>{{action.name}}.</i></b> <span>{{ action.text|render_markdown }}</span></div>{% endfor %}
+      {% if monster.reactions %}<h2 class="monster-section-title">Reactions</h2>{% endif %}
+      {% for action in monster.reactions %}<div class="monster-feature"><b><i>{{action.name}}.</i></b> <span>{{ action.text|render_markdown }}</span></div>{% endfor %}
+      {% if monster.legendary_actions %}<h2 class="monster-section-title">Legendary Actions</h2>{% endif %}
+      {% for action in monster.legendary_actions %}<div class="monster-feature"><b><i>{{action.name}}.</i></b> <span>{{ action.text|render_markdown }}</span></div>{% endfor %}
+
+      {% if monster.skill_bonuses %}
+      <h2 class="monster-section-title">Skill Bonuses</h2>
+      <div class="skill-bonus-table-wrap">
+        <table class="skill-bonus-table">
+          <thead><tr><th>Skill</th><th>Modifier</th></tr></thead>
+          <tbody>{% for skill in monster.skill_bonuses %}<tr><td>{{ skill.name }}</td><td>{{ skill.modifier }}</td></tr>{% endfor %}</tbody>
+        </table>
+      </div>
+      {% endif %}
+
+      {% if monster.resistance_rows %}
+      <h2 class="monster-section-title">Resistances and Immunities</h2>
+      <div class="resistance-table-wrap">
+        <table class="resistance-table">
+          <thead><tr><th>Category</th><th>Damage Types or Conditions</th></tr></thead>
+          <tbody>
+          {% for row in monster.resistance_rows %}
+            <tr><th scope="row">{{ row["category"] }}</th><td><div class="resistance-chip-list">{% for item in row["items"] %}<span>{{ item }}</span>{% endfor %}</div></td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+
+    </div>
+  </article>
+  {% elif magic_item %}
+  <article class="compendium-stat-card magic-item-stat-card">
+    {% if primary_asset %}<div class="compendium-art-frame"><img src="/assets/originals/{{ primary_asset.asset.storage_name }}" alt="{{ primary_asset.alt_text or entity.name }}"></div>{% endif %}
+    <div class="compendium-card-body">
+      <header class="compendium-title-block"><h1>{{ entity.name }}</h1><div class="descriptor-pill-row">{% for badge in descriptor_badges %}<span class="descriptor-pill descriptor-pill-{{ badge.kind }} value-{{ badge.class_name }}" style="{{ badge.style }}">{% if badge.kind == 'versions' %}Versions {{ badge.value }}{% else %}{{ badge.value }}{% endif %}</span>{% endfor %}</div></header>
+      <div class="magic-rule"></div>
+      <section class="item-summary-grid" aria-label="Magic item details">
+        {% for row in magic_item.summary_rows %}<div class="item-summary-cell"><span>{{ row.label }}</span><strong>{{ row.value }}</strong></div>{% endfor %}
+      </section>
+      {% if magic_item.description %}<section class="entry-prose rich-markdown">{{ magic_item.description|render_markdown }}</section>{% endif %}
+      {% if magic_item.properties %}<h2 class="compendium-section-title">Properties</h2>{% endif %}
+      {% for block in magic_item.properties %}<div class="compendium-feature"><b><i>{{ block.name }}.</i></b> <div class="rich-markdown inline-rich">{{ block.text|render_markdown }}</div></div>{% endfor %}
+      {% if magic_item.curses %}<h2 class="compendium-section-title curse-title">Curses</h2>{% endif %}
+      {% for block in magic_item.curses %}<div class="compendium-feature"><b><i>{{ block.name }}.</i></b> <div class="rich-markdown inline-rich">{{ block.text|render_markdown }}</div></div>{% endfor %}
+      {% if magic_item.variants %}<h2 class="compendium-section-title">Variants and Options</h2>{% endif %}
+      {% for block in magic_item.variants %}<div class="compendium-feature"><b><i>{{ block.name }}.</i></b> <div class="rich-markdown inline-rich">{{ block.text|render_markdown }}</div></div>{% endfor %}
+    </div>
+  </article>
+  {% elif species %}
+  <article class="compendium-stat-card species-stat-card">
+    {% if primary_asset %}<div class="compendium-art-frame"><img src="/assets/originals/{{ primary_asset.asset.storage_name }}" alt="{{ primary_asset.alt_text or entity.name }}"></div>{% endif %}
+    <div class="compendium-card-body">
+      <header class="compendium-title-block"><h1>{{ entity.name }}</h1><div class="descriptor-pill-row">{% for badge in descriptor_badges %}<span class="descriptor-pill descriptor-pill-{{ badge.kind }} value-{{ badge.class_name }}" style="{{ badge.style }}">{% if badge.kind == 'versions' %}Versions {{ badge.value }}{% else %}{{ badge.value }}{% endif %}</span>{% endfor %}</div></header>
+      <div class="species-rule"></div>
+      <section class="species-summary-grid" aria-label="Species details">{% for row in species.summary_rows %}<div><span>{{ row.label }}</span><strong>{{ row.value }}</strong></div>{% endfor %}</section>
+      {% if species.ability_bonuses %}<h2 class="compendium-grid-title">Ability Score Increases</h2><div class="species-bonus-grid">{% for bonus in species.ability_bonuses %}<div><b>{{ bonus.name }}</b><span>{{ bonus.value }}</span></div>{% endfor %}</div>{% endif %}
+      {% if species.languages %}<h2 class="compendium-section-title">Languages</h2><ul class="clean-list">{% for language in species.languages %}<li><strong>{{ language.name }}</strong>{% if language.description %}: {{ language.description }}{% endif %}</li>{% endfor %}</ul>{% endif %}
+      {% if species.description %}<section class="entry-prose rich-markdown">{{ species.description|render_markdown }}</section>{% endif %}
+      {% if species.age or species.alignment or species.names %}<h2 class="compendium-section-title">Culture and Life</h2><dl class="species-lore-list">{% if species.age %}<div><dt>Age</dt><dd>{{ species.age }}</dd></div>{% endif %}{% if species.alignment %}<div><dt>Alignment</dt><dd>{{ species.alignment }}</dd></div>{% endif %}{% if species.names %}<div><dt>Names</dt><dd>{{ species.names }}</dd></div>{% endif %}</dl>{% endif %}
+      {% if species.traits %}<h2 class="compendium-section-title">Species Traits</h2>{% endif %}{% for block in species.traits %}<div class="compendium-feature"><b><i>{{ block.name }}.</i></b> <div class="rich-markdown inline-rich">{{ block.text|render_markdown }}</div></div>{% endfor %}
+      {% if species.lineages %}<h2 class="compendium-section-title">Lineages and Variants</h2>{% endif %}{% for block in species.lineages %}<div class="compendium-feature"><b><i>{{ block.name }}.</i></b> <div class="rich-markdown inline-rich">{{ block.text|render_markdown }}</div></div>{% endfor %}
+    </div>
+  </article>
+  {% elif weapon %}
+  <article class="compendium-stat-card weapon-stat-card">
+    {% if primary_asset %}<div class="compendium-art-frame weapon-art-frame"><img src="/assets/originals/{{ primary_asset.asset.storage_name }}" alt="{{ primary_asset.alt_text or entity.name }}"></div>{% endif %}
+    <div class="compendium-card-body">
+      <header class="compendium-title-block weapon-title-block">
+        <h1>{{ entity.name }}</h1>
+        <div class="descriptor-pill-row" aria-label="Weapon and source descriptors">
+          {% for badge in descriptor_badges %}<span class="descriptor-pill descriptor-pill-{{ badge.kind }} value-{{ badge.class_name }}" style="{{ badge.style }}">{% if badge.kind == 'versions' %}Versions {{ badge.value }}{% else %}{{ badge.value }}{% endif %}</span>{% endfor %}
+        </div>
+      </header>
+      <div class="weapon-rule"></div>
+
+      <section class="weapon-stat-summary" aria-label="Weapon statistics">
+        <div class="weapon-primary-stats">
+          {% for stat in weapon.primary_stats %}
+          <div class="weapon-primary-stat weapon-primary-stat-{{ stat.kind }}"><span>{{ stat.label }}</span><strong>{{ stat.value }}</strong></div>
+          {% endfor %}
+        </div>
+        <div class="weapon-secondary-stats">
+          {% for row in weapon.summary_rows %}
+          <div><span>{{ row.label }}</span><strong>{{ row.value }}</strong></div>
+          {% endfor %}
+        </div>
+      </section>
+
+      {% if weapon.properties %}
+      <h2 class="compendium-section-title weapon-section-title">Properties</h2>
+      <div class="descriptor-pill-row weapon-property-row">
+        {% for prop in weapon.properties %}<span class="descriptor-pill descriptor-pill-property">{{ prop }}</span>{% endfor %}
+      </div>
+      {% endif %}
+
+      {% if weapon.description %}<section class="entry-prose rich-markdown">{{ weapon.description|render_markdown }}</section>{% endif %}
+
+      {% if weapon.special %}<h2 class="compendium-section-title weapon-section-title">Special Rules</h2>{% endif %}
+      {% for block in weapon.special %}<div class="compendium-feature"><b><i>{{ block.name }}.</i></b> <div class="rich-markdown inline-rich">{{ block.text|render_markdown }}</div></div>{% endfor %}
+    </div>
+  </article>
+  {% elif item_card %}
+  <article class="compendium-stat-card item-stat-card">
+    {% if primary_asset %}<div class="compendium-art-frame"><img src="/assets/originals/{{ primary_asset.asset.storage_name }}" alt="{{ primary_asset.alt_text or entity.name }}"></div>{% endif %}
+    <div class="compendium-card-body">
+      <header class="compendium-title-block"><h1>{{ entity.name }}</h1><div class="descriptor-pill-row">{% for badge in descriptor_badges %}<span class="descriptor-pill descriptor-pill-{{ badge.kind }} value-{{ badge.class_name }}" style="{{ badge.style }}">{% if badge.kind == 'versions' %}Versions {{ badge.value }}{% else %}{{ badge.value }}{% endif %}</span>{% endfor %}</div></header>
+      <div class="item-rule"></div>
+      <section class="item-summary-grid" aria-label="Item details">{% for row in item_card.summary_rows %}<div class="item-summary-cell"><span>{{ row.label }}</span><strong>{{ row.value }}</strong></div>{% endfor %}</section>
+      {% if item_card.properties %}<h2 class="compendium-section-title">Properties</h2><div class="descriptor-pill-row">{% for prop in item_card.properties %}<span class="descriptor-pill descriptor-pill-property">{{ prop }}</span>{% endfor %}</div>{% endif %}
+      {% if item_card.description %}<section class="entry-prose rich-markdown">{{ item_card.description|render_markdown }}</section>{% endif %}
+      {% if item_card.details %}<h2 class="compendium-section-title">Details</h2>{% endif %}
+      {% for block in item_card.details %}<div class="compendium-feature"><b><i>{{ block.name }}.</i></b><div class="rich-markdown inline-rich">{{ block.text|render_markdown }}</div></div>{% endfor %}
+    </div>
+  </article>
+  {% else %}
+  <article class="detail-card" data-entity-type="{{entity.entity_type}}">
+    <header class="detail-header">
+      {% if primary_asset %}<img class="hero-image" src="/assets/originals/{{primary_asset.asset.storage_name}}" alt="{{primary_asset.alt_text or entity.name}}">{% endif %}
+      <div><span class="badge">{{entity.entity_type}}</span><span class="source {{entity.source_kind}}">{{entity.source_kind}}</span><h1>{{entity.name}}</h1>
+      <div class="descriptor-pill-row">{% for badge in descriptor_badges %}<span class="descriptor-pill descriptor-pill-{{ badge.kind }} value-{{ badge.class_name }}" style="{{ badge.style }}">{% if badge.kind == 'versions' %}Versions {{ badge.value }}{% else %}{{ badge.value }}{% endif %}</span>{% endfor %}</div>{% if entity.summary %}<div class="rich-markdown">{{ entity.summary|render_markdown }}</div>{% endif %}</div>
+    </header>
+    <section class="rule-body"><h2>Compendium entry</h2><dl>{% for key,value in entity.data_json.items() if key not in ['name','slug','desc','description','document'] %}<div><dt>{{key.replace('_',' ')|title}}</dt><dd>{% if value is mapping or (value is sequence and value is not string) %}<pre>{{value|tojson(indent=2)}}</pre>{% else %}{{ value|render_markdown }}{% endif %}</dd></div>{% endfor %}</dl></section>
+  </article>
+  {% endif %}
+
+
+  <details class="raw-json-panel">
+    <summary>View complete entity JSON</summary>
+    <div class="raw-json-content">
+      <p class="muted">Raw data for the selected source version.</p>
+      <pre>{{ entity.data_json|tojson(indent=2) }}</pre>
+    </div>
+  </details>
+
+  <section class="asset-tools shared-assets-panel">
+    <h2>Shared artwork</h2>
+    <p>This artwork is shared by every source version of <b>{{entity.name}}</b>.</p>
+    <div class="asset-forms">
+      <form method="post" enctype="multipart/form-data" action="/entities/{{entity.public_id}}/assets/upload"><label>Upload image<input type="file" name="image" accept="image/jpeg,image/png,image/webp,image/gif" required></label><label>Attribution<input name="attribution"></label><label>License<input name="license_name"></label><button>Upload and use</button></form>
+      <form method="post" action="/entities/{{entity.public_id}}/assets/download"><label>Download public image URL<input type="url" name="image_url" required></label><label>Attribution<input name="attribution"></label><label>License<input name="license_name"></label><button>Download and use</button></form>
+    </div>
+  </section>
+</section>
+{% endblock %}

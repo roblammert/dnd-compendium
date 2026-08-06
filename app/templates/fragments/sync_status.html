@@ -1,0 +1,125 @@
+<div id="sync-status" data-sync-active="{{ 'true' if active_run else 'false' }}"
+     {% if active_run %}
+     hx-get="/admin/sync/status"
+     hx-trigger="every 2s"
+     hx-swap="outerHTML"
+     {% endif %}>
+  {% set current = namespace(item=None) %}
+  {% if active_run %}
+    {% for item in active_run.endpoints %}
+      {% if item.status == "running" and current.item is none %}{% set current.item = item %}{% endif %}
+    {% endfor %}
+    {% set completed_count = active_run.endpoints|selectattr("status", "equalto", "completed")|list|length %}
+    {% set failed_count = active_run.endpoints|selectattr("status", "equalto", "failed")|list|length %}
+    {% set pending_count = active_run.endpoints|selectattr("status", "equalto", "pending")|list|length %}
+    {% set total_count = active_run.endpoints|length %}
+    {% set finished_count = completed_count + failed_count %}
+    {% set percent = ((finished_count * 100 / total_count)|round|int) if total_count else 0 %}
+  {% endif %}
+
+  <section class="sync-dashboard" aria-live="polite">
+    <div class="sync-toolbar">
+      <div>
+        <h2>{% if active_run %}Sync run #{{ active_run.id }}{% else %}Synchronization{% endif %}</h2>
+        <p class="muted">The page refreshes automatically while a job is active.</p>
+      </div>
+      <form method="post" action="/admin/sync/open5e">
+        <button {% if active_run %}disabled{% endif %}>
+          {% if active_run %}Sync in progress{% else %}Run Open5e sync{% endif %}
+        </button>
+      </form>
+    </div>
+
+    {% if active_run %}
+    <div class="sync-metrics">
+      <div class="metric"><span>Progress</span><strong>{{ finished_count }}/{{ total_count }}</strong></div>
+      <div class="metric"><span>Seen</span><strong>{{ active_run.records_seen }}</strong></div>
+      <div class="metric"><span>Created</span><strong>{{ active_run.records_created }}</strong></div>
+      <div class="metric"><span>Updated</span><strong>{{ active_run.records_updated }}</strong></div>
+      <div class="metric"><span>Unchanged / duplicate</span><strong>{{ active_run.records_unchanged }}</strong></div>
+    </div>
+
+    <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ percent }}">
+      <span style="width: {{ percent }}%"></span>
+    </div>
+
+    <article class="current-endpoint">
+      {% if current.item %}
+      <div>
+        <p class="eyebrow">Currently syncing</p>
+        <h3>{{ endpoint_labels.get(current.item.endpoint, current.item.endpoint) }}</h3>
+        <p>{{ current.item.entity_type or "Unknown type" }}</p>
+      </div>
+      <div class="current-counts">
+        <strong>{{ current.item.records_seen }}</strong><span>seen</span>
+        <strong>{{ current.item.records_created }}</strong><span>new</span>
+        <strong>{{ current.item.records_updated }}</strong><span>updated</span>
+        <strong>{{ current.item.records_unchanged }}</strong><span>unchanged</span>
+      </div>
+      {% else %}
+      <div>
+        <p class="eyebrow">Preparing</p>
+        <h3>Discovering endpoints…</h3>
+      </div>
+      {% endif %}
+    </article>
+
+    <div class="status-summary">
+      <span><b>{{ completed_count }}</b> completed</span>
+      <span><b>{{ pending_count }}</b> pending</span>
+      <span><b>{{ failed_count }}</b> failed</span>
+      <span><b>{{ percent }}%</b> finished</span>
+    </div>
+
+    <details class="endpoint-details">
+      <summary>Show all endpoint details ({{ total_count }})</summary>
+      <div class="endpoint-compact-grid">
+      {% for item in active_run.endpoints %}
+        <div class="endpoint-compact status-card-{{ item.status }}">
+          <div><strong>{{ endpoint_labels.get(item.endpoint, item.endpoint) }}</strong><small>{{ item.entity_type or "—" }}</small></div>
+          <span class="status-badge status-{{ item.status }}">{{ item.status }}</span>
+          <small>{{ item.records_seen }} seen · {{ item.records_created }} new · {{ item.records_updated }} updated · {{ item.records_unchanged }} unchanged</small>
+          {% if item.error_message %}<p class="error-text">{{ item.error_message }}</p>{% endif %}
+        </div>
+      {% endfor %}
+      </div>
+    </details>
+    {% else %}
+    <p>No synchronization is currently running.</p>
+    {% endif %}
+  </section>
+
+  <section class="recent-runs">
+    <div class="section-heading"><h2>Recent runs</h2><span>{{ runs|length }} shown</span></div>
+    <div class="recent-run-list">
+    {% for run in runs %}
+      <details class="recent-run" {% if loop.first and not active_run %}open{% endif %}>
+        <summary>
+          <span>#{{ run.id }}</span>
+          <span class="status-badge status-{{ run.status }}">{{ run.status }}</span>
+          <span>{{ run.records_seen }} seen</span>
+          <span>{{ run.records_created }} created</span>
+          <span>{{ run.records_updated }} updated</span><span>{{ run.records_unchanged }} unchanged</span>
+        </summary>
+        <div class="run-body">
+          <p><b>Started:</b> {{ run.started_at or "—" }}{% if run.completed_at %} · <b>Completed:</b> {{ run.completed_at }}{% endif %}</p>
+          {% if run.error_message %}<p class="error-text">{{ run.error_message }}</p>{% endif %}
+          {% if run.endpoints %}
+          <div class="endpoint-compact-grid">
+          {% for item in run.endpoints %}
+            <div class="endpoint-compact status-card-{{ item.status }}">
+              <div><strong>{{ endpoint_labels.get(item.endpoint, item.endpoint) }}</strong><small>{{ item.entity_type or "—" }}</small></div>
+              <span class="status-badge status-{{ item.status }}">{{ item.status }}</span>
+              <small>{{ item.records_seen }} seen · {{ item.records_created }} new · {{ item.records_updated }} updated · {{ item.records_unchanged }} unchanged</small>
+            </div>
+          {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </details>
+    {% else %}
+      <p>No sync runs yet.</p>
+    {% endfor %}
+    </div>
+  </section>
+</div>

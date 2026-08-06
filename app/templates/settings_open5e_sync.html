@@ -1,0 +1,3 @@
+{% extends "settings_layout.html" %}{% block settings_content %}
+<header class="admin-header"><div><p class="eyebrow">Data Provider</p><h1>Open5e Sync</h1><p>Open5e endpoints are processed sequentially. Progress is persisted in SQLite and refreshed automatically.</p></div></header>
+{% include "fragments/sync_status.html" %}{% endblock %}

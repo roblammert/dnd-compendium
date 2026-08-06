@@ -1,3 +1,3 @@
 {% extends "base.html" %}{% block content %}<section class="hero"><p class="eyebrow">YOUR LOCAL RULES LIBRARY</p><h1>Find the rule, creature, spell, or treasure before initiative moves on.</h1><form action="/compendium"><input name="q" placeholder="Search everything…"><button>Search</button></form></section>
-<section><h2>Library</h2><div class="stats">{% for type,count in counts.items() %}<a href="/compendium?entity_type={{type}}"><strong>{{count}}</strong><span>{{type|title}}</span></a>{% endfor %}</div></section>
+<section><h2>Library</h2><div class="stats">{% for row in count_rows %}<a href="/compendium?entity_type={{row.entity_type}}"><strong>{{row.count}}</strong><span>{{row.label}}</span></a>{% endfor %}</div></section>
 <section><h2>Recently updated</h2><div class="card-grid">{% for entity in entities %}{% include "components/card.html" %}{% endfor %}</div></section>{% endblock %}

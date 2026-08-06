@@ -1,1 +1,20 @@
-<article class="entity-card" data-entity-type="{{entity.entity_type}}"><div class="card-top"><span class="badge">{{entity.entity_type}}</span><span class="source {{entity.source_kind}}">{{entity.source_kind}}</span></div><h3><a href="/compendium/{{entity.entity_type}}/{{entity.slug}}">{{entity.name}}</a></h3><p>{{entity.summary or entity.data_json.get('desc') or entity.data_json.get('description') or 'No summary available.'}}</p><footer>{{entity.source_document or 'Unknown source'}}</footer></article>
+<article class="entity-card" data-entity-type="{{ entity_type_labels.get(entity.entity_type, entity.entity_type|replace("_", " ")|title) if entity_type_labels is defined else entity.entity_type|replace("_", " ")|title }}">
+  <div class="card-top">
+    <span class="badge">{{ entity_type_labels.get(entity.entity_type, entity.entity_type|replace("_", " ")|title) if entity_type_labels is defined else entity.entity_type|replace("_", " ")|title }}</span>
+    <span class="source {{entity.source_kind}}">{{entity.source_kind}}</span>
+  </div>
+  <h3><a href="/compendium/{{ entity.entity_type }}/{{ entity.slug }}">{{entity.name}}</a></h3>
+  <div class="card-summary rich-markdown">{{ card_summary(entity)|render_markdown }}</div>
+  <footer class="entity-card-footer">
+    <div class="descriptor-pill-row card-footer-badges">
+      {% if entity.source_display_name %}
+        {% set source_badge = descriptor_badge(entity.source_display_name, 'source') %}
+        <span class="descriptor-pill descriptor-pill-source value-{{ source_badge.class_name }}" style="{{ source_badge.style }}">{{ source_badge.value }}</span>
+      {% endif %}
+      {% if entity.game_system_name %}
+        {% set system_badge = descriptor_badge(entity.game_system_name, 'system') %}
+        <span class="descriptor-pill descriptor-pill-system value-{{ system_badge.class_name }}" style="{{ system_badge.style }}">{{ system_badge.value }}</span>
+      {% endif %}
+    </div>
+  </footer>
+</article>
