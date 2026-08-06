@@ -1,1 +1,32 @@
-{% extends "base.html" %}{% block title %}Profile · D&D Compendium{% endblock %}{% block content %}<section class="profile-shell"><h1>Your profile</h1>{% if request.query_params.get('saved') %}<p class="success-callout">Profile saved.</p>{% endif %}<div class="profile-grid"><div>{% if profile_user.token_asset %}<img class="profile-token" src="/assets/tokens/{{ profile_user.token_asset.storage_name }}" alt="{{ profile_user.display_name }} token">{% else %}<div class="profile-token profile-token-placeholder">{{ profile_user.display_name[:1]|upper }}</div>{% endif %}<form method="post" action="/profile/token" enctype="multipart/form-data"><label>Token image<input type="file" name="image" accept="image/*" required></label><button>Upload token</button></form></div><form method="post"><label>Username<input value="{{ profile_user.username }}" disabled></label><label>Name<input name="display_name" value="{{ profile_user.display_name }}" required></label><label>Email<input type="email" name="email" value="{{ profile_user.email or '' }}"></label><label>New password<input type="password" name="password" minlength="10" placeholder="Leave blank to keep current"></label><button>Save profile</button></form></div></section>{% endblock %}
+{% extends "base.html" %}
+{% block title %}Profile · D&D Compendium{% endblock %}
+{% block content %}
+<section class="account-page">
+  <header class="account-header">
+    <div><p class="eyebrow">Account</p><h1>Your Profile</h1><p>Manage your public identity, contact information, token image, and password.</p></div>
+    <span class="role-chip role-{{ profile_user.role }}">{{ profile_user.role|title }}</span>
+  </header>
+  {% if request.query_params.get('saved') %}<div class="success-callout" role="status">Your profile changes were saved.</div>{% endif %}
+  <div class="profile-layout">
+    <aside class="profile-identity-card">
+      {% if profile_user.token_asset %}<img class="profile-token" src="/assets/tokens/{{ profile_user.token_asset.storage_name }}" alt="{{ profile_user.display_name }} token">{% else %}<div class="profile-token profile-token-placeholder">{{ profile_user.display_name[:1]|upper }}</div>{% endif %}
+      <h2>{{ profile_user.display_name }}</h2><p class="profile-username">@{{ profile_user.username }}</p>
+      <form class="token-upload-form" method="post" action="/profile/token" enctype="multipart/form-data">
+        <label for="token-image">Replace token image</label><input id="token-image" type="file" name="image" accept="image/*" required>
+        <small>PNG, JPEG, GIF, or WebP. Maximum 5 MB.</small><button type="submit">Upload image</button>
+      </form>
+    </aside>
+    <form class="profile-form settings-card" method="post">
+      <div class="form-section-heading"><div><p class="eyebrow">Profile details</p><h2>Personal information</h2></div></div>
+      <div class="form-grid-two">
+        <label>Username<input value="{{ profile_user.username }}" disabled><small>Usernames are managed by an administrator.</small></label>
+        <label>Display name<input name="display_name" value="{{ profile_user.display_name }}" required></label>
+        <label class="full-span">Email address<input type="email" name="email" value="{{ profile_user.email or '' }}" placeholder="name@example.com"></label>
+      </div>
+      <div class="form-section-heading password-heading"><div><p class="eyebrow">Security</p><h2>Change password</h2></div></div>
+      <label>New password<input type="password" name="password" minlength="10" autocomplete="new-password" placeholder="Leave blank to keep your current password"><small>Use at least 10 characters.</small></label>
+      <div class="form-actions"><button type="submit">Save profile</button></div>
+    </form>
+  </div>
+</section>
+{% endblock %}

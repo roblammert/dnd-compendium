@@ -1,1 +1,31 @@
-{% extends "base.html" %}{% block title %}{{entity_list.name}} · D&D Compendium{% endblock %}{% block content %}<section><header class="page-heading"><div><p class="eyebrow">{{'Public' if entity_list.is_public else 'Private'}} list by {{entity_list.owner.display_name}}</p><h1>{{entity_list.name}}</h1>{% if entity_list.description %}<p>{{entity_list.description}}</p>{% endif %}</div><a href="/lists">My Lists</a></header>{% if can_edit %}<details class="list-settings"><summary>Edit list settings</summary><form method="post" action="/lists/{{entity_list.public_id}}/settings"><label>Name<input name="name" value="{{entity_list.name}}" required></label><label>Description<textarea name="description">{{entity_list.description or ''}}</textarea></label><label>Sort<select name="sort_mode"><option value="manual" {% if entity_list.sort_mode=='manual' %}selected{% endif %}>Manual</option><option value="name" {% if entity_list.sort_mode=='name' %}selected{% endif %}>Name</option></select></label><label class="checkbox-label"><input type="checkbox" name="is_public" value="1" {% if entity_list.is_public %}checked{% endif %}> Public list</label><button>Save</button></form><form method="post" action="/lists/{{entity_list.public_id}}/delete" onsubmit="return confirm('Delete this list?')"><button class="danger-button">Delete list</button></form></details>{% endif %}<form method="post" action="/lists/{{entity_list.public_id}}/reorder"><div class="table-wrap"><table class="compendium-table"><thead><tr><th>Order</th><th>Name</th><th>Type</th><th></th></tr></thead><tbody>{% for item in items %}<tr><td>{% if can_edit %}<input class="order-input" type="number" name="position_{{item.id}}" value="{{item.position}}">{% else %}{{item.position}}{% endif %}</td><td><a href="/compendium/{{item.entity_type}}/{{item.canonical_key}}">{{item.entity.name}}</a></td><td>{{item.entity_type|replace('_',' ')|title}}</td><td>{% if can_edit %}<button formaction="/lists/{{entity_list.public_id}}/items/{{item.id}}/remove">Remove</button>{% endif %}</td></tr>{% else %}<tr><td colspan="4">This list is empty.</td></tr>{% endfor %}</tbody></table></div>{% if can_edit and items %}<button>Save order</button>{% endif %}</form></section>{% endblock %}
+{% extends "base.html" %}
+{% block title %}{{entity_list.name}} · D&D Compendium{% endblock %}
+{% block content %}
+<section class="list-page">
+  <header class="page-heading list-page-heading"><div><p class="eyebrow">{{'Public' if entity_list.is_public else 'Private'}} list · Owned by {{entity_list.owner.display_name}} · {{items|length}} {{'entity' if items|length == 1 else 'entities'}}</p><h1>{{entity_list.name}}</h1>{% if entity_list.description %}<p>{{entity_list.description}}</p>{% endif %}</div><a class="secondary-button" href="/lists">Back to Lists</a></header>
+  {% if request.query_params.get('ordered') %}<div class="success-callout">List order saved.</div>{% endif %}
+  {% if can_edit %}
+  <details class="list-settings settings-card">
+    <summary><span>Edit list settings</span><small>Name, description, visibility, and sorting</small></summary>
+    <div class="list-settings-body">
+      <form method="post" action="/lists/{{entity_list.public_id}}/settings" class="list-settings-form">
+        <div class="form-grid-two"><label>Name<input name="name" value="{{entity_list.name}}" required></label><label>Sort mode<select name="sort_mode"><option value="manual" {% if entity_list.sort_mode=='manual' %}selected{% endif %}>Manual</option><option value="name" {% if entity_list.sort_mode=='name' %}selected{% endif %}>Name</option></select></label><label class="full-span">Description<textarea name="description" rows="4">{{entity_list.description or ''}}</textarea></label></div>
+        <label class="checkbox-label"><input type="checkbox" name="is_public" value="1" {% if entity_list.is_public %}checked{% endif %}> Make this list public</label><div class="form-actions"><button>Save settings</button></div>
+      </form>
+      <form method="post" action="/lists/{{entity_list.public_id}}/delete" onsubmit="return confirm('Delete this list permanently?')"><button class="danger-button">Delete list</button></form>
+    </div>
+  </details>
+  {% endif %}
+  <section class="list-items-panel">
+    <div class="section-heading"><div><p class="eyebrow">Collection</p><h2>Entities</h2></div>{% if can_edit and items and entity_list.sort_mode == 'manual' %}<p class="drag-help">Drag rows by the handle, then save the order.</p>{% endif %}</div>
+    <form method="post" action="/lists/{{entity_list.public_id}}/reorder" data-sortable-list-form>
+      <input type="hidden" name="item_order" value="{% for item in items %}{{item.id}}{% if not loop.last %},{% endif %}{% endfor %}" data-item-order>
+      <div class="table-wrap"><table class="compendium-table list-items-table"><thead><tr>{% if can_edit and entity_list.sort_mode == 'manual' %}<th class="drag-column"><span class="sr-only">Reorder</span></th>{% endif %}<th>Name</th><th>Type</th><th class="list-action-column"></th></tr></thead>
+      <tbody data-sortable-list>
+      {% for item in items %}<tr data-item-id="{{item.id}}" {% if can_edit and entity_list.sort_mode == 'manual' %}draggable="true"{% endif %}>{% if can_edit and entity_list.sort_mode == 'manual' %}<td class="drag-column"><button type="button" class="drag-handle" aria-label="Drag {{item.entity.name}} to reorder" title="Drag to reorder">⋮⋮</button></td>{% endif %}<td><a class="list-entity-link" href="/compendium/{{item.entity_type}}/{{item.canonical_key}}">{{item.entity.name}}</a></td><td><span class="type-chip">{{item.entity_type|replace('_',' ')|title}}</span></td><td>{% if can_edit %}<button class="danger-button compact-button" formaction="/lists/{{entity_list.public_id}}/items/{{item.id}}/remove">Remove</button>{% endif %}</td></tr>{% else %}<tr><td colspan="4" class="empty-table-state">This list is empty. Add entities from any card or Browse result.</td></tr>{% endfor %}
+      </tbody></table></div>
+      {% if can_edit and items and entity_list.sort_mode == 'manual' %}<div class="form-actions"><button type="submit">Save order</button></div>{% endif %}
+    </form>
+  </section>
+</section>
+{% endblock %}

@@ -7,7 +7,7 @@
   {% set current = namespace(item=None) %}
   {% if active_run %}
     {% for item in active_run.endpoints %}
-      {% if item.status == "running" and current.item is none %}{% set current.item = item %}{% endif %}
+      {% if item.entity_type not in invisible_types and item.status == "running" and current.item is none %}{% set current.item = item %}{% endif %}
     {% endfor %}
     {% set completed_count = active_run.endpoints|selectattr("status", "equalto", "completed")|list|length %}
     {% set failed_count = active_run.endpoints|selectattr("status", "equalto", "failed")|list|length %}
@@ -74,13 +74,13 @@
     <details class="endpoint-details">
       <summary>Show all endpoint details ({{ total_count }})</summary>
       <div class="endpoint-compact-grid">
-      {% for item in active_run.endpoints %}
+      {% for item in active_run.endpoints %}{% if item.entity_type not in invisible_types %}
         <div class="endpoint-compact status-card-{{ item.status }}">
           <div><strong>{{ endpoint_labels.get(item.endpoint, item.endpoint) }}</strong><small>{{ item.entity_type or "—" }}</small></div>
           <span class="status-badge status-{{ item.status }}">{{ item.status }}</span>
           <small>{{ item.records_seen }} seen · {{ item.records_created }} new · {{ item.records_updated }} updated · {{ item.records_unchanged }} unchanged</small>
           {% if item.error_message %}<p class="error-text">{{ item.error_message }}</p>{% endif %}
-        </div>
+        </div>{% endif %}
       {% endfor %}
       </div>
     </details>
@@ -106,12 +106,12 @@
           {% if run.error_message %}<p class="error-text">{{ run.error_message }}</p>{% endif %}
           {% if run.endpoints %}
           <div class="endpoint-compact-grid">
-          {% for item in run.endpoints %}
+          {% for item in run.endpoints %}{% if item.entity_type not in invisible_types %}
             <div class="endpoint-compact status-card-{{ item.status }}">
               <div><strong>{{ endpoint_labels.get(item.endpoint, item.endpoint) }}</strong><small>{{ item.entity_type or "—" }}</small></div>
               <span class="status-badge status-{{ item.status }}">{{ item.status }}</span>
               <small>{{ item.records_seen }} seen · {{ item.records_created }} new · {{ item.records_updated }} updated · {{ item.records_unchanged }} unchanged</small>
-            </div>
+            </div>{% endif %}
           {% endfor %}
           </div>
           {% endif %}

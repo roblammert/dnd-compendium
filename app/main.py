@@ -16,17 +16,18 @@ from sqlalchemy import func, select, text, tuple_
 from sqlalchemy.orm import Session, selectinload
 from app.config import get_settings
 from app.db import Base, engine, ensure_schema_columns, get_db
-from app.models import Entity, LexiconTerm, SyncEndpoint, SyncRun, UserEntityList
+from app.models import Entity, EntityTypeVisibility, LexiconTerm, SyncEndpoint, SyncRun, UserEntityList
 from app.schemas import EntityCreate, EntityOut, EntityUpdate
 from app.services import backfill_canonical_keys, build_item_card, build_magic_item_card, build_monster_card, build_species_card, build_weapon_card, canonical_entity_key, create_homebrew, descriptor_badge, ensure_unique_slug, init_search, rebuild_search_row
 from app.sync import ACTIVE_SYNC_STATUSES, create_sync_run, recover_interrupted_syncs, run_open5e_sync
 from app.assets import save_upload, save_url
 from app.auth import UserContextMiddleware, can, ensure_default_admin, require_admin, require_editor, require_user
 from app.user_routes import router as user_router
+from app.visibility import VIEW_LABELS, can_view_type, ensure_visibility_rows, visibility_map, visible_types
 
 settings=get_settings(); base=Path(__file__).parent
 settings.asset_root.mkdir(parents=True, exist_ok=True)
-APP_VERSION = "0.19.0"
+APP_VERSION = "0.21.0"
 app=FastAPI(title=settings.app_name, version=APP_VERSION)
 app.add_middleware(UserContextMiddleware)
 app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, session_cookie=settings.session_cookie_name, max_age=settings.session_max_age, same_site="lax", https_only=settings.session_https_only)
@@ -114,14 +115,16 @@ def startup():
         backfill_canonical_keys(db)
         recover_interrupted_syncs(db)
         ensure_default_admin(db)
+        ensure_visibility_rows(db)
 
 @app.get("/health")
 def health(): return {"status":"ok"}
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request, db: Session=Depends(get_db)):
-    counts=dict(db.execute(select(Entity.entity_type, func.count()).where(Entity.is_active==True).group_by(Entity.entity_type)).all())
-    recent=db.scalars(select(Entity).where(Entity.is_active==True).order_by(Entity.updated_at.desc()).limit(12)).all()
+    allowed_types = visible_types(db, request.state.user)
+    counts=dict(db.execute(select(Entity.entity_type, func.count()).where(Entity.is_active==True, Entity.entity_type.in_(allowed_types or {"__none__"})).group_by(Entity.entity_type)).all())
+    recent=db.scalars(select(Entity).where(Entity.is_active==True, Entity.entity_type.in_(allowed_types or {"__none__"})).order_by(Entity.updated_at.desc()).limit(12)).all()
     lexicon = _lexicon_map(db)
     count_rows = [
         {"entity_type": entity_type, "count": count, "label": _display_term(entity_type, lexicon)}
@@ -165,11 +168,14 @@ def compendium(
         ).all()
         ids = [int(row[0]) for row in rows] or [-1]
 
+    allowed_types = visible_types(db, request.state.user)
+    if entity_type and entity_type not in allowed_types:
+        raise HTTPException(404, "Entity type not found")
     filtered = select(
         Entity.id.label("entity_id"),
         Entity.entity_type.label("entity_type"),
         Entity.canonical_key.label("canonical_key"),
-    ).where(Entity.is_active == True)
+    ).where(Entity.is_active == True, Entity.entity_type.in_(allowed_types or {"__none__"}))
     if ids is not None:
         filtered = filtered.where(Entity.id.in_(ids))
     if entity_type:
@@ -210,6 +216,9 @@ def compendium(
     } if representative_ids else {}
 
     group_keys = [(row.entity_type, row.canonical_key) for row in page_groups]
+    visibility = visibility_map(db)
+    if not can_view_type(request.state.user, entity_type, visibility):
+        raise HTTPException(404, "Entity not found")
     variants = list(db.scalars(
         select(Entity)
         .where(Entity.is_active == True, tuple_(Entity.entity_type, Entity.canonical_key).in_(group_keys))
@@ -244,7 +253,7 @@ def compendium(
         })
 
     types = db.scalars(
-        select(Entity.entity_type).where(Entity.is_active == True).distinct().order_by(Entity.entity_type)
+        select(Entity.entity_type).where(Entity.is_active == True, Entity.entity_type.in_(allowed_types or {"__none__"})).distinct().order_by(Entity.entity_type)
     ).all()
     lexicon = _lexicon_map(db)
     type_options = [{"value": value, "label": _display_term(value, lexicon)} for value in types]
@@ -252,12 +261,12 @@ def compendium(
         group["type_label"] = _display_term(group["entity"].entity_type, lexicon)
     source_names = db.scalars(
         select(Entity.source_display_name)
-        .where(Entity.is_active == True, Entity.source_display_name.is_not(None))
+        .where(Entity.is_active == True, Entity.entity_type.in_(allowed_types or {"__none__"}), Entity.source_display_name.is_not(None))
         .distinct().order_by(Entity.source_display_name)
     ).all()
     game_systems = db.scalars(
         select(Entity.game_system_name)
-        .where(Entity.is_active == True, Entity.game_system_name.is_not(None))
+        .where(Entity.is_active == True, Entity.entity_type.in_(allowed_types or {"__none__"}), Entity.game_system_name.is_not(None))
         .distinct().order_by(Entity.game_system_name)
     ).all()
     browse_params = {
@@ -359,10 +368,10 @@ def entity_detail(
 
 
 @app.get("/homebrew/new", response_class=HTMLResponse)
-def new_homebrew(request:Request, _=Depends(require_user)): return templates.TemplateResponse(request,"homebrew_form.html",{})
+def new_homebrew(request:Request, _=Depends(require_editor)): return templates.TemplateResponse(request,"homebrew_form.html",{})
 
 @app.post("/homebrew/new")
-def create_homebrew_form(entity_type:str=Form(...),name:str=Form(...),summary:str=Form(""),description:str=Form(""),_=Depends(require_user),db:Session=Depends(get_db)):
+def create_homebrew_form(entity_type:str=Form(...),name:str=Form(...),summary:str=Form(""),description:str=Form(""),_=Depends(require_editor),db:Session=Depends(get_db)):
     entity=create_homebrew(db,EntityCreate(entity_type=entity_type,name=name,summary=summary,data={"description":description}))
     return RedirectResponse(f"/compendium/{entity.entity_type}/{entity.canonical_key or entity.slug}?source={entity.public_id}",303)
 
@@ -393,9 +402,10 @@ def settings_open5e_sync(request: Request, _=Depends(require_admin), db: Session
     active_run = next((run for run in runs if run.status in ACTIVE_SYNC_STATUSES), None)
     lexicon = _lexicon_map(db)
     endpoint_labels = {row.endpoint: _display_term(row.endpoint, lexicon) for run in runs for row in run.endpoints}
+    invisible_types = {key for key, value in visibility_map(db).items() if value == "invisible"}
     return templates.TemplateResponse(request, "settings_open5e_sync.html", {
         "runs": runs, "active_run": active_run, "settings_section": "open5e-sync",
-        "endpoint_labels": endpoint_labels,
+        "endpoint_labels": endpoint_labels, "invisible_types": invisible_types,
     })
 
 @app.get("/admin/sync/status", response_class=HTMLResponse)
@@ -405,7 +415,8 @@ def sync_status(request: Request, _=Depends(require_admin), db: Session=Depends(
     lexicon = _lexicon_map(db)
     endpoint_labels = {row.endpoint: _display_term(row.endpoint, lexicon) for run in runs for row in run.endpoints}
     return templates.TemplateResponse(
-        request, "fragments/sync_status.html", {"runs": runs, "active_run": active_run, "endpoint_labels": endpoint_labels}
+        request, "fragments/sync_status.html", {"runs": runs, "active_run": active_run, "endpoint_labels": endpoint_labels,
+        "invisible_types": {key for key, value in visibility_map(db).items() if value == "invisible"}}
     )
 
 @app.get("/settings/site-lexicon", response_class=HTMLResponse)
@@ -437,6 +448,26 @@ async def save_lexicon(request: Request, _=Depends(require_admin), db: Session =
             db.add(LexiconTerm(original_term=original, display_term=display))
     db.commit()
     return RedirectResponse("/settings/site-lexicon?saved=1", 303)
+
+@app.get("/settings/view-management", response_class=HTMLResponse)
+def view_management(request: Request, _: object = Depends(require_admin), db: Session = Depends(get_db)):
+    ensure_visibility_rows(db)
+    lexicon = _lexicon_map(db)
+    rows = list(db.scalars(select(EntityTypeVisibility).order_by(EntityTypeVisibility.entity_type)).all())
+    for row in rows:
+        row.display_name = _display_term(row.entity_type, lexicon)
+    rows.sort(key=lambda row: row.display_name.casefold())
+    return templates.TemplateResponse(request, "settings_view_management.html", {"settings_section":"view-management", "rows":rows, "view_labels":VIEW_LABELS})
+
+@app.post("/settings/view-management")
+async def save_view_management(request: Request, _: object = Depends(require_admin), db: Session = Depends(get_db)):
+    form = await request.form()
+    rows = db.scalars(select(EntityTypeVisibility)).all()
+    for row in rows:
+        value = str(form.get(f"visibility_{row.id}", "user"))
+        row.minimum_role = value if value in VIEW_LABELS else "user"
+    db.commit()
+    return RedirectResponse("/settings/view-management?saved=1", 303)
 
 @app.get("/settings/site-config", response_class=HTMLResponse)
 def settings_config(request: Request, _=Depends(require_admin)):
@@ -501,10 +532,10 @@ def api_entity(public_id:str,db:Session=Depends(get_db)):
     return entity
 
 @app.post("/api/v1/homebrew",response_model=EntityOut,status_code=201)
-def api_create(payload:EntityCreate,_=Depends(require_user),db:Session=Depends(get_db)): return create_homebrew(db,payload)
+def api_create(payload:EntityCreate,_=Depends(require_editor),db:Session=Depends(get_db)): return create_homebrew(db,payload)
 
 @app.put("/api/v1/homebrew/{public_id}",response_model=EntityOut)
-def api_update(public_id:str,payload:EntityUpdate,_=Depends(require_user),db:Session=Depends(get_db)):
+def api_update(public_id:str,payload:EntityUpdate,_=Depends(require_editor),db:Session=Depends(get_db)):
     entity=db.scalar(select(Entity).where(Entity.public_id==public_id,Entity.source_kind=="homebrew"))
     if not entity: raise HTTPException(404,"Homebrew entity not found")
     if payload.name is not None: entity.name=payload.name; entity.slug=ensure_unique_slug(db,entity.entity_type,payload.name,entity.id); entity.canonical_key=canonical_entity_key(entity.entity_type,payload.name)

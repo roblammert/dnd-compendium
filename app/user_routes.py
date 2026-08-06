@@ -10,8 +10,10 @@ from sqlalchemy.orm import Session, selectinload
 from app.auth import ROLE_LABELS, can, hash_password, require_admin, require_user, save_token_image, verify_password
 from app.db import get_db
 from app.models import Entity, User, UserEntityList, UserEntityListItem
+from app.visibility import visible_types
 
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
+templates.env.globals["app_version"] = "0.21.0"
 router = APIRouter()
 
 
@@ -117,8 +119,10 @@ def delete_user(public_id: str, admin: User = Depends(require_admin), db: Sessio
 
 @router.get("/lists", response_class=HTMLResponse)
 def my_lists(request: Request, user: User = Depends(require_user), db: Session = Depends(get_db)):
-    lists=db.scalars(select(UserEntityList).where(UserEntityList.owner_id==user.id).options(selectinload(UserEntityList.items)).order_by(UserEntityList.updated_at.desc())).all()
-    return templates.TemplateResponse(request,"lists.html",{"lists":lists})
+    all_lists=list(db.scalars(select(UserEntityList).options(selectinload(UserEntityList.items), selectinload(UserEntityList.owner)).order_by(UserEntityList.updated_at.desc())).all())
+    own_lists=[row for row in all_lists if row.owner_id==user.id]
+    shared_lists=[row for row in all_lists if row.owner_id!=user.id]
+    return templates.TemplateResponse(request,"lists.html",{"lists":own_lists,"shared_lists":shared_lists})
 
 
 @router.post("/lists")
@@ -130,22 +134,23 @@ def create_list(name: str=Form(...), description: str=Form(""), is_public: str|N
 def _list_access(db: Session, public_id: str, user: User | None):
     row=db.scalar(select(UserEntityList).where(UserEntityList.public_id==public_id).options(selectinload(UserEntityList.items).selectinload(UserEntityListItem.entity), selectinload(UserEntityList.owner)))
     if not row: raise HTTPException(404,"List not found")
-    if not row.is_public and (not user or (row.owner_id != user.id and not can(user,"administrator"))): raise HTTPException(403,"This list is private")
+    if not row.is_public and not user: raise HTTPException(403,"Sign in to view this private list")
     return row
 
 
 @router.get("/lists/{public_id}", response_class=HTMLResponse)
 def view_list(request: Request, public_id: str, db: Session=Depends(get_db)):
     row=_list_access(db,public_id,request.state.user)
-    items=list(row.items)
+    allowed_types = visible_types(db, request.state.user)
+    items=[item for item in row.items if item.entity_type in allowed_types]
     if row.sort_mode=="name": items.sort(key=lambda x:x.entity.name.casefold())
-    return templates.TemplateResponse(request,"list_detail.html",{"entity_list":row,"items":items,"can_edit":bool(request.state.user and (row.owner_id==request.state.user.id or can(request.state.user,"administrator")))})
+    return templates.TemplateResponse(request,"list_detail.html",{"entity_list":row,"items":items,"can_edit":bool(request.state.user and row.owner_id==request.state.user.id)})
 
 
 @router.post("/lists/{public_id}/settings")
 def update_list(public_id:str,name:str=Form(...),description:str=Form(""),is_public:str|None=Form(None),sort_mode:str=Form("manual"),user:User=Depends(require_user),db:Session=Depends(get_db)):
     row=db.scalar(select(UserEntityList).where(UserEntityList.public_id==public_id))
-    if not row or (row.owner_id!=user.id and not can(user,"administrator")): raise HTTPException(403)
+    if not row or row.owner_id!=user.id: raise HTTPException(403)
     row.name=name.strip(); row.description=description.strip() or None; row.is_public=bool(is_public); row.sort_mode=sort_mode if sort_mode in {"manual","name"} else "manual"; db.commit()
     return RedirectResponse(f"/lists/{public_id}",303)
 
@@ -153,7 +158,7 @@ def update_list(public_id:str,name:str=Form(...),description:str=Form(""),is_pub
 @router.post("/lists/{public_id}/delete")
 def delete_list(public_id:str,user:User=Depends(require_user),db:Session=Depends(get_db)):
     row=db.scalar(select(UserEntityList).where(UserEntityList.public_id==public_id))
-    if not row or (row.owner_id!=user.id and not can(user,"administrator")): raise HTTPException(403)
+    if not row or row.owner_id!=user.id: raise HTTPException(403)
     db.delete(row); db.commit(); return RedirectResponse("/lists",303)
 
 
@@ -168,16 +173,19 @@ def add_to_list(entity_public_id:str,list_id:str=Form(""),new_list_name:str=Form
         if not target: raise HTTPException(404,"List not found")
     canonical=entity.canonical_key or entity.slug
     exists=db.scalar(select(UserEntityListItem).where(UserEntityListItem.list_id==target.id,UserEntityListItem.entity_type==entity.entity_type,UserEntityListItem.canonical_key==canonical))
-    if not exists:
-        position=(db.scalar(select(func.coalesce(func.max(UserEntityListItem.position),0)).where(UserEntityListItem.list_id==target.id)) or 0)+10
-        db.add(UserEntityListItem(list_id=target.id,entity_id=entity.id,entity_type=entity.entity_type,canonical_key=canonical,position=position)); db.commit()
-    return RedirectResponse(_safe_next(return_to),303)
+    destination = _safe_next(return_to)
+    separator = "&" if "?" in destination else "?"
+    if exists:
+        return RedirectResponse(f"{destination}{separator}list_status=already_added",303)
+    position=(db.scalar(select(func.coalesce(func.max(UserEntityListItem.position),0)).where(UserEntityListItem.list_id==target.id)) or 0)+10
+    db.add(UserEntityListItem(list_id=target.id,entity_id=entity.id,entity_type=entity.entity_type,canonical_key=canonical,position=position)); db.commit()
+    return RedirectResponse(f"{destination}{separator}list_status=added",303)
 
 
 @router.post("/lists/{public_id}/items/{item_id}/remove")
 def remove_list_item(public_id:str,item_id:int,user:User=Depends(require_user),db:Session=Depends(get_db)):
     row=db.scalar(select(UserEntityList).where(UserEntityList.public_id==public_id))
-    if not row or (row.owner_id!=user.id and not can(user,"administrator")): raise HTTPException(403)
+    if not row or row.owner_id!=user.id: raise HTTPException(403)
     item=db.scalar(select(UserEntityListItem).where(UserEntityListItem.id==item_id,UserEntityListItem.list_id==row.id))
     if item: db.delete(item); db.commit()
     return RedirectResponse(f"/lists/{public_id}",303)
@@ -186,12 +194,16 @@ def remove_list_item(public_id:str,item_id:int,user:User=Depends(require_user),d
 @router.post("/lists/{public_id}/reorder")
 async def reorder_list(public_id:str,request:Request,user:User=Depends(require_user),db:Session=Depends(get_db)):
     row=db.scalar(select(UserEntityList).where(UserEntityList.public_id==public_id))
-    if not row or (row.owner_id!=user.id and not can(user,"administrator")): raise HTTPException(403)
+    if not row or row.owner_id!=user.id: raise HTTPException(403)
     form=await request.form()
-    for key,value in form.items():
-        if key.startswith("position_"):
-            try: item_id=int(key.split("_",1)[1]); pos=int(value)
-            except ValueError: continue
-            item=db.scalar(select(UserEntityListItem).where(UserEntityListItem.id==item_id,UserEntityListItem.list_id==row.id))
-            if item: item.position=pos
-    row.sort_mode="manual"; db.commit(); return RedirectResponse(f"/lists/{public_id}",303)
+    raw_order = str(form.get("item_order", ""))
+    item_ids = []
+    for value in raw_order.split(","):
+        try: item_ids.append(int(value))
+        except ValueError: continue
+    if item_ids:
+        valid_items = {item.id:item for item in db.scalars(select(UserEntityListItem).where(UserEntityListItem.list_id==row.id, UserEntityListItem.id.in_(item_ids))).all()}
+        for index, item_id in enumerate(item_ids, start=1):
+            item = valid_items.get(item_id)
+            if item: item.position = index * 10
+    row.sort_mode="manual"; db.commit(); return RedirectResponse(f"/lists/{public_id}?ordered=1",303)

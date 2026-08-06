@@ -49,6 +49,51 @@
     if (closeList && listDialog) closeList.addEventListener("click", () => listDialog.close());
     if (listDialog && new URLSearchParams(location.search).get("add_to_list") === "1") listDialog.showModal();
 
+
+    const listDestination = document.querySelector("[data-list-destination]");
+    const newListFields = document.querySelector("[data-new-list-fields]");
+    const newListName = document.querySelector("[data-new-list-name]");
+    const updateNewListVisibility = () => {
+      if (!listDestination || !newListFields) return;
+      const creating = listDestination.value === "";
+      newListFields.hidden = !creating;
+      if (newListName) newListName.required = creating;
+    };
+    if (listDestination) {
+      listDestination.addEventListener("change", updateNewListVisibility);
+      updateNewListVisibility();
+    }
+
+    const sortableBody = document.querySelector("[data-sortable-list]");
+    const sortableForm = document.querySelector("[data-sortable-list-form]");
+    const orderInput = document.querySelector("[data-item-order]");
+    if (sortableBody && sortableForm && orderInput) {
+      let dragged = null;
+      const syncOrder = () => {
+        orderInput.value = Array.from(sortableBody.querySelectorAll("tr[data-item-id]"))
+          .map((row) => row.dataset.itemId).join(",");
+      };
+      sortableBody.addEventListener("dragstart", (event) => {
+        const row = event.target.closest("tr[data-item-id]");
+        if (!row) return;
+        dragged = row; row.classList.add("is-dragging");
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", row.dataset.itemId);
+      });
+      sortableBody.addEventListener("dragover", (event) => {
+        if (!dragged) return; event.preventDefault();
+        const target = event.target.closest("tr[data-item-id]");
+        if (!target || target === dragged) return;
+        const rect = target.getBoundingClientRect();
+        sortableBody.insertBefore(dragged, event.clientY < rect.top + rect.height / 2 ? target : target.nextSibling);
+      });
+      sortableBody.addEventListener("dragend", () => {
+        if (dragged) dragged.classList.remove("is-dragging");
+        dragged = null; syncOrder();
+      });
+      sortableForm.addEventListener("submit", syncOrder);
+    }
+
     const picker = document.getElementById("source-variant");
     if (picker) picker.addEventListener("change", () => picker.form.submit());
 

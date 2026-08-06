@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     open5e_retry_attempts: int = 5
     open5e_retry_base_delay: float = 2.0
     open5e_retry_max_delay: float = 60.0
-    open5e_user_agent: str = "dnd-compendium/0.14.0"
+    open5e_user_agent: str = "dnd-compendium/0.21.0"
 
     secret_key: str = "change-me"
     default_admin_username: str = "admin"
