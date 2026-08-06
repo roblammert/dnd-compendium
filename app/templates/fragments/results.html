@@ -38,7 +38,7 @@
         {% else %}—{% endif %}
       </td>
       <td><span class="source {{ entity.source_kind }}">{{ entity.source_kind }}</span></td>
-      <td><a class="table-action" href="/compendium/{{ entity.entity_type }}/{{ group.canonical_key }}?return_to={{ browse_return_url|urlencode }}">Open card</a></td>
+      <td><a class="table-action" href="/compendium/{{ entity.entity_type }}/{{ group.canonical_key }}?return_to={{ browse_return_url|urlencode }}">Open card</a>{% if request.state.user %}<br><a class="table-action secondary" href="/compendium/{{ entity.entity_type }}/{{ group.canonical_key }}?return_to={{ browse_return_url|urlencode }}&add_to_list=1">Add to List</a>{% endif %}</td>
     </tr>
   {% else %}
     <tr><td colspan="6" class="empty">No matching entities.</td></tr>

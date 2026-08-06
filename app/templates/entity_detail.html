@@ -221,21 +221,26 @@
   {% endif %}
 
 
-  <details class="raw-json-panel">
+  {% if can_view_json %}<details class="raw-json-panel">
     <summary>View complete entity JSON</summary>
     <div class="raw-json-content">
       <p class="muted">Raw data for the selected source version.</p>
       <pre>{{ entity.data_json|tojson(indent=2) }}</pre>
     </div>
-  </details>
+  </details>{% endif %}
 
-  <section class="asset-tools shared-assets-panel">
+  {% if request is defined and request.state.user %}
+  <section class="entity-user-actions"><button type="button" data-open-list-dialog>Add to List</button></section>
+  <dialog id="add-to-list-dialog" class="list-dialog"><form method="post" action="/entities/{{entity.public_id}}/lists/add"><button type="button" class="dialog-close" data-close-list-dialog aria-label="Close">×</button><h2>Add {{entity.name}} to a list</h2><input type="hidden" name="return_to" value="{{request.url.path}}?source={{entity.public_id}}&return_to={{return_to|urlencode}}"><label>Existing list<select name="list_id"><option value="">Create a new list</option>{% for list in user_lists %}<option value="{{list.public_id}}">{{list.name}}</option>{% endfor %}</select></label><label>New list name<input name="new_list_name"></label><label class="checkbox-label"><input type="checkbox" name="new_list_public" value="1"> Make new list public</label><button>Add entity</button></form></dialog>
+  {% endif %}
+
+  {% if can_upload_artwork %}<section class="asset-tools shared-assets-panel">
     <h2>Shared artwork</h2>
     <p>This artwork is shared by every source version of <b>{{entity.name}}</b>.</p>
     <div class="asset-forms">
       <form method="post" enctype="multipart/form-data" action="/entities/{{entity.public_id}}/assets/upload"><label>Upload image<input type="file" name="image" accept="image/jpeg,image/png,image/webp,image/gif" required></label><label>Attribution<input name="attribution"></label><label>License<input name="license_name"></label><button>Upload and use</button></form>
       <form method="post" action="/entities/{{entity.public_id}}/assets/download"><label>Download public image URL<input type="url" name="image_url" required></label><label>Attribution<input name="attribution"></label><label>License<input name="license_name"></label><button>Download and use</button></form>
     </div>
-  </section>
+  </section>{% endif %}
 </section>
 {% endblock %}

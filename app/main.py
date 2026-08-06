@@ -8,6 +8,7 @@ import time
 from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
 from fastapi.templating import Jinja2Templates
 from markdown_it import MarkdownIt
 from markupsafe import Markup
@@ -15,16 +16,21 @@ from sqlalchemy import func, select, text, tuple_
 from sqlalchemy.orm import Session, selectinload
 from app.config import get_settings
 from app.db import Base, engine, ensure_schema_columns, get_db
-from app.models import Entity, LexiconTerm, SyncEndpoint, SyncRun
+from app.models import Entity, LexiconTerm, SyncEndpoint, SyncRun, UserEntityList
 from app.schemas import EntityCreate, EntityOut, EntityUpdate
 from app.services import backfill_canonical_keys, build_item_card, build_magic_item_card, build_monster_card, build_species_card, build_weapon_card, canonical_entity_key, create_homebrew, descriptor_badge, ensure_unique_slug, init_search, rebuild_search_row
 from app.sync import ACTIVE_SYNC_STATUSES, create_sync_run, recover_interrupted_syncs, run_open5e_sync
 from app.assets import save_upload, save_url
+from app.auth import UserContextMiddleware, can, ensure_default_admin, require_admin, require_editor, require_user
+from app.user_routes import router as user_router
 
 settings=get_settings(); base=Path(__file__).parent
 settings.asset_root.mkdir(parents=True, exist_ok=True)
-APP_VERSION = "0.18.0"
+APP_VERSION = "0.19.0"
 app=FastAPI(title=settings.app_name, version=APP_VERSION)
+app.add_middleware(UserContextMiddleware)
+app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, session_cookie=settings.session_cookie_name, max_age=settings.session_max_age, same_site="lax", https_only=settings.session_https_only)
+app.include_router(user_router)
 app.mount("/static", StaticFiles(directory=base/"static"), name="static")
 app.mount("/assets", StaticFiles(directory=settings.asset_root), name="assets")
 templates=Jinja2Templates(directory=base/"templates")
@@ -107,6 +113,7 @@ def startup():
         init_search(db)
         backfill_canonical_keys(db)
         recover_interrupted_syncs(db)
+        ensure_default_admin(db)
 
 @app.get("/health")
 def health(): return {"status":"ok"}
@@ -338,24 +345,29 @@ def entity_detail(
         descriptor_badges.append(descriptor_badge(entity.game_system_name, "system"))
     if len(variants) > 1:
         descriptor_badges.append(descriptor_badge(str(len(variants)), "versions"))
+    user_lists = []
+    if request.state.user:
+        user_lists = list(db.scalars(select(UserEntityList).where(UserEntityList.owner_id == request.state.user.id).order_by(UserEntityList.name)).all())
     return templates.TemplateResponse(request, "entity_detail.html", {
         "entity": entity, "variants": variants, "canonical_key": resolved_key,
         "shared_assets": shared_assets, "primary_asset": primary_asset, "monster": monster,
         "magic_item": magic_item, "species": species, "item_card": item_card, "weapon": weapon,
         "descriptor_badges": descriptor_badges, "return_to": safe_return_to,
+        "user_lists": user_lists, "can_view_json": can(request.state.user, "editor"),
+        "can_upload_artwork": can(request.state.user, "editor"),
     })
 
 
 @app.get("/homebrew/new", response_class=HTMLResponse)
-def new_homebrew(request:Request): return templates.TemplateResponse(request,"homebrew_form.html",{})
+def new_homebrew(request:Request, _=Depends(require_user)): return templates.TemplateResponse(request,"homebrew_form.html",{})
 
 @app.post("/homebrew/new")
-def create_homebrew_form(entity_type:str=Form(...),name:str=Form(...),summary:str=Form(""),description:str=Form(""),db:Session=Depends(get_db)):
+def create_homebrew_form(entity_type:str=Form(...),name:str=Form(...),summary:str=Form(""),description:str=Form(""),_=Depends(require_user),db:Session=Depends(get_db)):
     entity=create_homebrew(db,EntityCreate(entity_type=entity_type,name=name,summary=summary,data={"description":description}))
     return RedirectResponse(f"/compendium/{entity.entity_type}/{entity.canonical_key or entity.slug}?source={entity.public_id}",303)
 
 @app.post("/admin/sync/open5e")
-def sync_route(background_tasks: BackgroundTasks, db:Session=Depends(get_db)):
+def sync_route(background_tasks: BackgroundTasks, _=Depends(require_admin), db:Session=Depends(get_db)):
     run, created = create_sync_run(db)
     if created:
         background_tasks.add_task(run_open5e_sync, run.id)
@@ -372,11 +384,11 @@ def legacy_admin():
     return RedirectResponse("/settings/open5e-sync", 307)
 
 @app.get("/settings")
-def settings_home():
+def settings_home(_=Depends(require_admin)):
     return RedirectResponse("/settings/open5e-sync", 307)
 
 @app.get("/settings/open5e-sync", response_class=HTMLResponse)
-def settings_open5e_sync(request: Request, db: Session = Depends(get_db)):
+def settings_open5e_sync(request: Request, _=Depends(require_admin), db: Session = Depends(get_db)):
     runs = _sync_runs(db)
     active_run = next((run for run in runs if run.status in ACTIVE_SYNC_STATUSES), None)
     lexicon = _lexicon_map(db)
@@ -387,7 +399,7 @@ def settings_open5e_sync(request: Request, db: Session = Depends(get_db)):
     })
 
 @app.get("/admin/sync/status", response_class=HTMLResponse)
-def sync_status(request: Request, db: Session=Depends(get_db)):
+def sync_status(request: Request, _=Depends(require_admin), db: Session=Depends(get_db)):
     runs = _sync_runs(db)
     active_run = next((run for run in runs if run.status in ACTIVE_SYNC_STATUSES), None)
     lexicon = _lexicon_map(db)
@@ -397,7 +409,7 @@ def sync_status(request: Request, db: Session=Depends(get_db)):
     )
 
 @app.get("/settings/site-lexicon", response_class=HTMLResponse)
-def settings_lexicon(request: Request, db: Session = Depends(get_db)):
+def settings_lexicon(request: Request, _=Depends(require_admin), db: Session = Depends(get_db)):
     known = set(db.scalars(select(Entity.entity_type).distinct()).all())
     known.update(db.scalars(select(SyncEndpoint.endpoint).distinct()).all())
     existing = {row.original_term: row for row in db.scalars(select(LexiconTerm).order_by(LexiconTerm.original_term)).all()}
@@ -409,7 +421,7 @@ def settings_lexicon(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(request, "settings_lexicon.html", {"rows": rows, "settings_section": "site-lexicon"})
 
 @app.post("/settings/site-lexicon")
-async def save_lexicon(request: Request, db: Session = Depends(get_db)):
+async def save_lexicon(request: Request, _=Depends(require_admin), db: Session = Depends(get_db)):
     form = await request.form()
     originals = form.getlist("original_term")
     displays = form.getlist("display_term")
@@ -426,12 +438,8 @@ async def save_lexicon(request: Request, db: Session = Depends(get_db)):
     db.commit()
     return RedirectResponse("/settings/site-lexicon?saved=1", 303)
 
-@app.get("/settings/user-management", response_class=HTMLResponse)
-def settings_users(request: Request):
-    return templates.TemplateResponse(request, "settings_users.html", {"settings_section": "user-management"})
-
 @app.get("/settings/site-config", response_class=HTMLResponse)
-def settings_config(request: Request):
+def settings_config(request: Request, _=Depends(require_admin)):
     fields = []
     current = get_settings()
     for name, field in current.model_fields.items():
@@ -443,7 +451,7 @@ def settings_config(request: Request):
     })
 
 @app.post("/settings/site-config")
-async def save_site_config(request: Request):
+async def save_site_config(request: Request, _=Depends(require_admin)):
     form = await request.form()
     lines = []
     for name in get_settings().model_fields:
@@ -455,19 +463,19 @@ async def save_site_config(request: Request):
     return RedirectResponse("/settings/site-config?saved=1", 303)
 
 @app.post("/settings/restart")
-def restart_service(request: Request, background_tasks: BackgroundTasks):
+def restart_service(request: Request, background_tasks: BackgroundTasks, _=Depends(require_admin)):
     background_tasks.add_task(_restart_process)
     return templates.TemplateResponse(request, "restart.html", {})
 
 @app.post("/entities/{public_id}/assets/upload")
-async def upload_asset(public_id:str, image:UploadFile=File(...), attribution:str=Form(""), license_name:str=Form(""), db:Session=Depends(get_db)):
+async def upload_asset(public_id:str, image:UploadFile=File(...), attribution:str=Form(""), license_name:str=Form(""), _=Depends(require_editor), db:Session=Depends(get_db)):
     entity=db.scalar(select(Entity).where(Entity.public_id==public_id))
     if not entity: raise HTTPException(404,"Entity not found")
     await save_upload(db,entity,image,attribution or None,license_name or None)
     return RedirectResponse(f"/compendium/{entity.entity_type}/{entity.canonical_key or entity.slug}?source={entity.public_id}",303)
 
 @app.post("/entities/{public_id}/assets/download")
-async def download_asset(public_id:str, image_url:str=Form(...), attribution:str=Form(""), license_name:str=Form(""), db:Session=Depends(get_db)):
+async def download_asset(public_id:str, image_url:str=Form(...), attribution:str=Form(""), license_name:str=Form(""), _=Depends(require_editor), db:Session=Depends(get_db)):
     entity=db.scalar(select(Entity).where(Entity.public_id==public_id))
     if not entity: raise HTTPException(404,"Entity not found")
     await save_url(db,entity,image_url,attribution or None,license_name or None)
@@ -493,10 +501,10 @@ def api_entity(public_id:str,db:Session=Depends(get_db)):
     return entity
 
 @app.post("/api/v1/homebrew",response_model=EntityOut,status_code=201)
-def api_create(payload:EntityCreate,db:Session=Depends(get_db)): return create_homebrew(db,payload)
+def api_create(payload:EntityCreate,_=Depends(require_user),db:Session=Depends(get_db)): return create_homebrew(db,payload)
 
 @app.put("/api/v1/homebrew/{public_id}",response_model=EntityOut)
-def api_update(public_id:str,payload:EntityUpdate,db:Session=Depends(get_db)):
+def api_update(public_id:str,payload:EntityUpdate,_=Depends(require_user),db:Session=Depends(get_db)):
     entity=db.scalar(select(Entity).where(Entity.public_id==public_id,Entity.source_kind=="homebrew"))
     if not entity: raise HTTPException(404,"Homebrew entity not found")
     if payload.name is not None: entity.name=payload.name; entity.slug=ensure_unique_slug(db,entity.entity_type,payload.name,entity.id); entity.canonical_key=canonical_entity_key(entity.entity_type,payload.name)

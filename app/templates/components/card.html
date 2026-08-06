@@ -15,6 +15,6 @@
         {% set system_badge = descriptor_badge(entity.game_system_name, 'system') %}
         <span class="descriptor-pill descriptor-pill-system value-{{ system_badge.class_name }}" style="{{ system_badge.style }}">{{ system_badge.value }}</span>
       {% endif %}
-    </div>
+    </div>{% if request is defined and request.state.user %}<a class="card-list-action" href="/compendium/{{ entity.entity_type }}/{{ entity.canonical_key or entity.slug }}?add_to_list=1">Add to List</a>{% endif %}
   </footer>
 </article>

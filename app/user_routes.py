@@ -1,0 +1,197 @@
+from __future__ import annotations
+import uuid
+from pathlib import Path
+from urllib.parse import quote
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session, selectinload
+from app.auth import ROLE_LABELS, can, hash_password, require_admin, require_user, save_token_image, verify_password
+from app.db import get_db
+from app.models import Entity, User, UserEntityList, UserEntityListItem
+
+templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
+router = APIRouter()
+
+
+def _uid(prefix: str) -> str:
+    return f"{prefix}_{uuid.uuid4().hex[:24]}"
+
+
+def _safe_next(value: str | None) -> str:
+    return value if value and value.startswith("/") and not value.startswith("//") else "/"
+
+
+@router.get("/login", response_class=HTMLResponse)
+def login_page(request: Request, next: str = "/"):
+    if request.state.user:
+        return RedirectResponse(_safe_next(next), 303)
+    return templates.TemplateResponse(request, "login.html", {"next": _safe_next(next)})
+
+
+@router.post("/login")
+def login(request: Request, username: str = Form(...), password: str = Form(...), next: str = Form("/"), db: Session = Depends(get_db)):
+    user = db.scalar(select(User).where(func.lower(User.username) == username.strip().lower()))
+    if not user or not user.is_active or not verify_password(password, user.password_hash):
+        return templates.TemplateResponse(request, "login.html", {"next": _safe_next(next), "error": "Invalid username or password"}, status_code=401)
+    request.session.clear(); request.session["user_id"] = user.id
+    return RedirectResponse(_safe_next(next), 303)
+
+
+@router.post("/logout")
+def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse("/", 303)
+
+
+@router.get("/profile", response_class=HTMLResponse)
+def profile(request: Request, user: User = Depends(require_user), db: Session = Depends(get_db)):
+    current = db.get(User, user.id)
+    return templates.TemplateResponse(request, "profile.html", {"profile_user": current})
+
+
+@router.post("/profile")
+def update_profile(request: Request, display_name: str = Form(...), email: str = Form(""), password: str = Form(""), user: User = Depends(require_user), db: Session = Depends(get_db)):
+    current = db.get(User, user.id)
+    current.display_name = display_name.strip() or current.username
+    current.email = email.strip() or None
+    if password:
+        try: current.password_hash = hash_password(password)
+        except ValueError as exc: raise HTTPException(400, str(exc))
+    db.commit()
+    return RedirectResponse("/profile?saved=1", 303)
+
+
+@router.post("/profile/token")
+async def update_token(image: UploadFile = File(...), user: User = Depends(require_user), db: Session = Depends(get_db)):
+    current = db.get(User, user.id)
+    await save_token_image(db, current, image)
+    return RedirectResponse("/profile?saved=1", 303)
+
+
+@router.get("/settings/user-management", response_class=HTMLResponse)
+def user_management(request: Request, _: User = Depends(require_admin), db: Session = Depends(get_db)):
+    users = db.scalars(select(User).order_by(User.username)).all()
+    return templates.TemplateResponse(request, "settings_users.html", {"settings_section": "user-management", "users": users, "role_labels": ROLE_LABELS})
+
+
+@router.post("/settings/user-management")
+def create_user(username: str = Form(...), display_name: str = Form(...), email: str = Form(""), role: str = Form("user"), password: str = Form(...), _: User = Depends(require_admin), db: Session = Depends(get_db)):
+    if role not in ROLE_LABELS: raise HTTPException(400, "Invalid role")
+    if db.scalar(select(User).where(func.lower(User.username) == username.strip().lower())): raise HTTPException(409, "Username already exists")
+    try: hashed = hash_password(password)
+    except ValueError as exc: raise HTTPException(400, str(exc))
+    db.add(User(public_id=_uid("usr"), username=username.strip(), display_name=display_name.strip() or username.strip(), email=email.strip() or None, password_hash=hashed, role=role, is_active=True))
+    db.commit(); return RedirectResponse("/settings/user-management?created=1", 303)
+
+
+@router.get("/settings/user-management/{public_id}", response_class=HTMLResponse)
+def edit_user_page(request: Request, public_id: str, _: User = Depends(require_admin), db: Session = Depends(get_db)):
+    target = db.scalar(select(User).where(User.public_id == public_id))
+    if not target: raise HTTPException(404, "User not found")
+    return templates.TemplateResponse(request, "settings_user_edit.html", {"settings_section": "user-management", "target": target, "role_labels": ROLE_LABELS})
+
+
+@router.post("/settings/user-management/{public_id}")
+def edit_user(public_id: str, username: str = Form(...), display_name: str = Form(...), email: str = Form(""), role: str = Form(...), is_active: str | None = Form(None), password: str = Form(""), admin: User = Depends(require_admin), db: Session = Depends(get_db)):
+    target = db.scalar(select(User).where(User.public_id == public_id))
+    if not target: raise HTTPException(404, "User not found")
+    if role not in ROLE_LABELS: raise HTTPException(400, "Invalid role")
+    if target.id == admin.id and (role != "administrator" or not is_active): raise HTTPException(400, "You cannot disable or demote your current administrator account")
+    target.username=username.strip(); target.display_name=display_name.strip() or target.username; target.email=email.strip() or None; target.role=role; target.is_active=bool(is_active)
+    if password:
+        try: target.password_hash=hash_password(password)
+        except ValueError as exc: raise HTTPException(400, str(exc))
+    db.commit(); return RedirectResponse("/settings/user-management?saved=1", 303)
+
+
+@router.post("/settings/user-management/{public_id}/delete")
+def delete_user(public_id: str, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
+    target=db.scalar(select(User).where(User.public_id==public_id))
+    if not target: raise HTTPException(404, "User not found")
+    if target.id == admin.id: raise HTTPException(400, "You cannot delete your current account")
+    if target.role == "administrator" and db.scalar(select(func.count(User.id)).where(User.role=="administrator", User.is_active==True)) <= 1: raise HTTPException(400, "At least one active administrator is required")
+    db.delete(target); db.commit(); return RedirectResponse("/settings/user-management?deleted=1",303)
+
+
+@router.get("/lists", response_class=HTMLResponse)
+def my_lists(request: Request, user: User = Depends(require_user), db: Session = Depends(get_db)):
+    lists=db.scalars(select(UserEntityList).where(UserEntityList.owner_id==user.id).options(selectinload(UserEntityList.items)).order_by(UserEntityList.updated_at.desc())).all()
+    return templates.TemplateResponse(request,"lists.html",{"lists":lists})
+
+
+@router.post("/lists")
+def create_list(name: str=Form(...), description: str=Form(""), is_public: str|None=Form(None), user: User=Depends(require_user), db:Session=Depends(get_db)):
+    row=UserEntityList(public_id=_uid("lst"),owner_id=user.id,name=name.strip(),description=description.strip() or None,is_public=bool(is_public))
+    db.add(row); db.commit(); return RedirectResponse(f"/lists/{row.public_id}",303)
+
+
+def _list_access(db: Session, public_id: str, user: User | None):
+    row=db.scalar(select(UserEntityList).where(UserEntityList.public_id==public_id).options(selectinload(UserEntityList.items).selectinload(UserEntityListItem.entity), selectinload(UserEntityList.owner)))
+    if not row: raise HTTPException(404,"List not found")
+    if not row.is_public and (not user or (row.owner_id != user.id and not can(user,"administrator"))): raise HTTPException(403,"This list is private")
+    return row
+
+
+@router.get("/lists/{public_id}", response_class=HTMLResponse)
+def view_list(request: Request, public_id: str, db: Session=Depends(get_db)):
+    row=_list_access(db,public_id,request.state.user)
+    items=list(row.items)
+    if row.sort_mode=="name": items.sort(key=lambda x:x.entity.name.casefold())
+    return templates.TemplateResponse(request,"list_detail.html",{"entity_list":row,"items":items,"can_edit":bool(request.state.user and (row.owner_id==request.state.user.id or can(request.state.user,"administrator")))})
+
+
+@router.post("/lists/{public_id}/settings")
+def update_list(public_id:str,name:str=Form(...),description:str=Form(""),is_public:str|None=Form(None),sort_mode:str=Form("manual"),user:User=Depends(require_user),db:Session=Depends(get_db)):
+    row=db.scalar(select(UserEntityList).where(UserEntityList.public_id==public_id))
+    if not row or (row.owner_id!=user.id and not can(user,"administrator")): raise HTTPException(403)
+    row.name=name.strip(); row.description=description.strip() or None; row.is_public=bool(is_public); row.sort_mode=sort_mode if sort_mode in {"manual","name"} else "manual"; db.commit()
+    return RedirectResponse(f"/lists/{public_id}",303)
+
+
+@router.post("/lists/{public_id}/delete")
+def delete_list(public_id:str,user:User=Depends(require_user),db:Session=Depends(get_db)):
+    row=db.scalar(select(UserEntityList).where(UserEntityList.public_id==public_id))
+    if not row or (row.owner_id!=user.id and not can(user,"administrator")): raise HTTPException(403)
+    db.delete(row); db.commit(); return RedirectResponse("/lists",303)
+
+
+@router.post("/entities/{entity_public_id}/lists/add")
+def add_to_list(entity_public_id:str,list_id:str=Form(""),new_list_name:str=Form(""),new_list_public:str|None=Form(None),return_to:str=Form("/compendium"),user:User=Depends(require_user),db:Session=Depends(get_db)):
+    entity=db.scalar(select(Entity).where(Entity.public_id==entity_public_id,Entity.is_active==True))
+    if not entity: raise HTTPException(404,"Entity not found")
+    if new_list_name.strip():
+        target=UserEntityList(public_id=_uid("lst"),owner_id=user.id,name=new_list_name.strip(),is_public=bool(new_list_public)); db.add(target); db.flush()
+    else:
+        target=db.scalar(select(UserEntityList).where(UserEntityList.public_id==list_id,UserEntityList.owner_id==user.id))
+        if not target: raise HTTPException(404,"List not found")
+    canonical=entity.canonical_key or entity.slug
+    exists=db.scalar(select(UserEntityListItem).where(UserEntityListItem.list_id==target.id,UserEntityListItem.entity_type==entity.entity_type,UserEntityListItem.canonical_key==canonical))
+    if not exists:
+        position=(db.scalar(select(func.coalesce(func.max(UserEntityListItem.position),0)).where(UserEntityListItem.list_id==target.id)) or 0)+10
+        db.add(UserEntityListItem(list_id=target.id,entity_id=entity.id,entity_type=entity.entity_type,canonical_key=canonical,position=position)); db.commit()
+    return RedirectResponse(_safe_next(return_to),303)
+
+
+@router.post("/lists/{public_id}/items/{item_id}/remove")
+def remove_list_item(public_id:str,item_id:int,user:User=Depends(require_user),db:Session=Depends(get_db)):
+    row=db.scalar(select(UserEntityList).where(UserEntityList.public_id==public_id))
+    if not row or (row.owner_id!=user.id and not can(user,"administrator")): raise HTTPException(403)
+    item=db.scalar(select(UserEntityListItem).where(UserEntityListItem.id==item_id,UserEntityListItem.list_id==row.id))
+    if item: db.delete(item); db.commit()
+    return RedirectResponse(f"/lists/{public_id}",303)
+
+
+@router.post("/lists/{public_id}/reorder")
+async def reorder_list(public_id:str,request:Request,user:User=Depends(require_user),db:Session=Depends(get_db)):
+    row=db.scalar(select(UserEntityList).where(UserEntityList.public_id==public_id))
+    if not row or (row.owner_id!=user.id and not can(user,"administrator")): raise HTTPException(403)
+    form=await request.form()
+    for key,value in form.items():
+        if key.startswith("position_"):
+            try: item_id=int(key.split("_",1)[1]); pos=int(value)
+            except ValueError: continue
+            item=db.scalar(select(UserEntityListItem).where(UserEntityListItem.id==item_id,UserEntityListItem.list_id==row.id))
+            if item: item.position=pos
+    row.sort_mode="manual"; db.commit(); return RedirectResponse(f"/lists/{public_id}",303)

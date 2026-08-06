@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     open5e_user_agent: str = "dnd-compendium/0.14.0"
 
     secret_key: str = "change-me"
+    default_admin_username: str = "admin"
+    default_admin_password: str = "change-me-now"
+    session_cookie_name: str = "dnd_compendium_session"
+    session_max_age: int = 1209600
+    session_https_only: bool = False
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property

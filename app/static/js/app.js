@@ -42,6 +42,13 @@
   document.addEventListener("DOMContentLoaded", () => {
     startSyncPolling();
     window.setTimeout(refreshSyncStatus, 500);
+    const openList = document.querySelector("[data-open-list-dialog]");
+    const listDialog = document.getElementById("add-to-list-dialog");
+    const closeList = document.querySelector("[data-close-list-dialog]");
+    if (openList && listDialog) openList.addEventListener("click", () => listDialog.showModal());
+    if (closeList && listDialog) closeList.addEventListener("click", () => listDialog.close());
+    if (listDialog && new URLSearchParams(location.search).get("add_to_list") === "1") listDialog.showModal();
+
     const picker = document.getElementById("source-variant");
     if (picker) picker.addEventListener("change", () => picker.form.submit());
 
