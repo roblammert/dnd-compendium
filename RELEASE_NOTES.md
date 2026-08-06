@@ -109,3 +109,9 @@ Cumulative release history for D&D Compendium. New patch installers append their
 - Correct nested Open5e weapon property rendering, including details, descriptions, and local compendium links.
 - Link weapon damage types and versatile damage types to Damage Type entries.
 - Restrict private lists to their owners; other authenticated members see public lists only.
+
+## v0.23.1
+
+- Fixed Weapon summary metadata links rendering as literal dictionaries instead of clickable anchors.
+- Added a Battleaxe regression test covering linked Damage Type, linked Versatile property metadata, and nested Open5e property data.
+- Hide Cost and Weight primary-stat bands when those fields are absent from the source record.

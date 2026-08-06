@@ -178,7 +178,7 @@
         </div>
         <div class="weapon-secondary-stats">
           {% for row in weapon.summary_rows %}
-          <div><span>{{ row.label }}</span><strong>{{ row.value }}</strong></div>
+          <div><span>{{ row.label }}</span><strong>{% if row.value is mapping and row.value.url %}<a class="metadata-link" href="{{ row.value.url }}">{{ row.value.text }}</a>{% else %}{{ row.value }}{% endif %}</strong></div>
           {% endfor %}
         </div>
       </section>

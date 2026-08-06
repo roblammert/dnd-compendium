@@ -1071,9 +1071,11 @@ def build_weapon_card(entity: Entity) -> dict[str, Any]:
 
     primary_stats = [
         {"label": "Damage", "value": damage or "—", "kind": "damage"},
-        {"label": "Cost", **format_cost(cost, present=_has_any_key(data, "cost", "price", "value")), "kind": "cost"},
-        {"label": "Weight", "value": format_weight(weight, present=_has_any_key(data, "weight")), "tooltip": "", "kind": "weight"},
     ]
+    if _has_any_key(data, "cost", "price", "value"):
+        primary_stats.append({"label": "Cost", **format_cost(cost, present=True), "kind": "cost"})
+    if _has_any_key(data, "weight"):
+        primary_stats.append({"label": "Weight", "value": format_weight(weight, present=True), "tooltip": "", "kind": "weight"})
     summary_rows = _summary_rows(
         ("Category", category.title()),
         ("Range Type", weapon_range.title() if weapon_range else None),
