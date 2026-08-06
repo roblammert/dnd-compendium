@@ -196,6 +196,18 @@
       {% for block in weapon.special %}<div class="compendium-feature"><b><i>{{ block.name }}.</i></b> <div class="rich-markdown inline-rich">{{ block.text|render_markdown }}</div></div>{% endfor %}
     </div>
   </article>
+  {% elif reference_card %}
+  <article class="compendium-stat-card reference-stat-card reference-{{ reference_card.accent }}-card">
+    {% if primary_asset %}<div class="compendium-art-frame"><img src="/assets/originals/{{ primary_asset.asset.storage_name }}" alt="{{ primary_asset.alt_text or entity.name }}"></div>{% endif %}
+    <div class="compendium-card-body">
+      <header class="compendium-title-block"><h1>{{ entity.name }}</h1><div class="descriptor-pill-row">{% for badge in descriptor_badges %}<span class="descriptor-pill descriptor-pill-{{ badge.kind }} value-{{ badge.class_name }}" style="{{ badge.style }}">{% if badge.kind == 'versions' %}Versions {{ badge.value }}{% else %}{{ badge.value }}{% endif %}</span>{% endfor %}</div></header>
+      <div class="reference-rule"></div>
+      {% if reference_card.summary_rows %}<section class="reference-summary-grid" aria-label="{{ entity.name }} details">{% for row in reference_card.summary_rows %}<div><span>{{ row.label }}</span><strong>{% if row.value is mapping and row.value.url %}<a class="metadata-link" href="{{ row.value.url }}">{{ row.value.text }}</a>{% elif row.value is mapping %}<span{% if row.value.tooltip %} title="{{ row.value.tooltip }}"{% endif %}>{{ row.value.value }}</span>{% else %}{{ row.value }}{% endif %}</strong></div>{% endfor %}</section>{% endif %}
+      {% if reference_card.chips %}<h2 class="compendium-section-title">{{ reference_card.chips_title }}</h2><div class="descriptor-pill-row">{% for chip in reference_card.chips %}<span class="descriptor-pill descriptor-pill-related">{{ chip }}</span>{% endfor %}</div>{% endif %}
+      {% if reference_card.description %}<section class="entry-prose rich-markdown">{{ reference_card.description|render_markdown }}</section>{% endif %}
+      {% for section in reference_card.sections %}<h2 class="compendium-section-title">{{ section.title }}</h2><div class="entry-prose rich-markdown">{{ section.text|render_markdown }}</div>{% endfor %}
+    </div>
+  </article>
   {% elif item_card %}
   <article class="compendium-stat-card item-stat-card">
     {% if primary_asset %}<div class="compendium-art-frame"><img src="/assets/originals/{{ primary_asset.asset.storage_name }}" alt="{{ primary_asset.alt_text or entity.name }}"></div>{% endif %}

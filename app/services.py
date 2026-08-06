@@ -1096,3 +1096,141 @@ def build_weapon_card(entity: Entity) -> dict[str, Any]:
         "description": description,
         "special": special,
     }
+
+# v0.24 dedicated rules-reference and spell card normalization
+
+def _reference_link(value: Any, endpoint_type: str) -> dict[str, str] | None:
+    label = _display_name(value)
+    if not label:
+        return None
+    key = ""
+    if isinstance(value, dict):
+        key = str(value.get("key") or value.get("slug") or value.get("id") or "").strip()
+    return {"text": label.title(), "url": f"/compendium/{endpoint_type}/{slugify(key or label)}"}
+
+
+def _format_components(value: Any) -> str:
+    if value in (None, "", [], {}):
+        return ""
+    if isinstance(value, dict):
+        parts = []
+        for key, label in (("verbal", "V"), ("somatic", "S"), ("material", "M")):
+            if value.get(key):
+                parts.append(label)
+        material = value.get("material_description") or value.get("materials") or value.get("material_text")
+        rendered = ", ".join(parts)
+        if material:
+            rendered += f" ({_rich_text(material)})"
+        return rendered or _rich_text(value)
+    if isinstance(value, list):
+        return ", ".join(_display_name(item) for item in value if _display_name(item))
+    return str(value)
+
+
+def build_spell_card(entity: Entity) -> dict[str, Any]:
+    data = entity.data_json or {}
+    school_raw = _first(data, "school", "spell_school", "spellschool", default=None)
+    school = _display_name(school_raw)
+    level = _first(data, "level", "spell_level", default=None)
+    level_text = "Cantrip" if str(level).strip() == "0" else (f"Level {level}" if level not in (None, "") else "")
+    casting_time = _rich_text(_first(data, "casting_time", "cast_time", default=None))
+    range_text = _format_measurement(_first(data, "range", "spell_range", default=None), "feet")
+    duration = _rich_text(_first(data, "duration", default=None))
+    components = _format_components(_first(data, "components", default=None))
+    concentration = bool(_first(data, "concentration", "requires_concentration", default=False))
+    ritual = bool(_first(data, "ritual", "is_ritual", default=False))
+    classes = _normalize_named_values(_first(data, "classes", "spell_lists", "class_list", default=[]))
+    damage = _rich_text(_first(data, "damage", "damage_dice", default=None))
+    save = _display_name(_first(data, "saving_throw", "save", "save_ability", default=""))
+    attack = _display_name(_first(data, "attack_type", "spell_attack", default=""))
+    description = _rich_text(_first(data, "desc", "description", "text", default=entity.summary or ""))
+    higher = _rich_text(_first(data, "higher_level", "at_higher_levels", "higher_levels", default=None))
+    badges = []
+    if level_text: badges.append(descriptor_badge(level_text, "spell-level"))
+    if school: badges.append(descriptor_badge(school.title(), "spell-school"))
+    if ritual: badges.append(descriptor_badge("Ritual", "ritual"))
+    if concentration: badges.append(descriptor_badge("Concentration", "concentration"))
+    return {
+        "identity_badges": badges,
+        "accent": "spell",
+        "summary_rows": _summary_rows(
+            ("School", _reference_link(school_raw, "spellschool")),
+            ("Level", level_text or None),
+            ("Casting Time", casting_time or None),
+            ("Range", range_text if range_text != "—" else None),
+            ("Components", components or None),
+            ("Duration", duration or None),
+            ("Attack", attack.title() if attack else None),
+            ("Saving Throw", save.title() if save else None),
+            ("Damage", damage or None),
+        ),
+        "description": description,
+        "sections": ([{"title": "At Higher Levels", "text": higher}] if higher else []),
+        "chips": classes,
+        "chips_title": "Available To",
+    }
+
+
+def _build_reference_card(entity: Entity, *, accent: str, summary_pairs: list[tuple[str, Any]], sections: list[dict[str, str]] | None = None, chips: list[str] | None = None, chips_title: str = "Related Terms", identity: list[dict[str, str]] | None = None) -> dict[str, Any]:
+    data = entity.data_json or {}
+    description = _rich_text(_first(data, "desc", "description", "text", "rules", "effect", default=entity.summary or ""))
+    return {
+        "identity_badges": identity or [],
+        "accent": accent,
+        "summary_rows": _summary_rows(*summary_pairs),
+        "description": description,
+        "sections": sections or [],
+        "chips": chips or [],
+        "chips_title": chips_title,
+    }
+
+
+def build_spell_school_card(entity: Entity) -> dict[str, Any]:
+    data = entity.data_json or {}
+    key = _rich_text(_first(data, "key", "slug", default=None))
+    return _build_reference_card(entity, accent="spell-school", summary_pairs=[("Key", key or None)], identity=[descriptor_badge("Spell School", "type")])
+
+
+def build_weapon_property_card(entity: Entity) -> dict[str, Any]:
+    data = entity.data_json or {}
+    prop_type = _display_name(_first(data, "type", "property_type", default=""))
+    range_text = _format_weapon_range(_first(data, "range", default=None), _first(data, "long_range", default=None))
+    detail = _rich_text(_first(data, "detail", "value", default=None))
+    badges = [descriptor_badge("Weapon Property", "type")]
+    if prop_type: badges.append(descriptor_badge(prop_type.title(), "property-type"))
+    return _build_reference_card(entity, accent="weapon-property", summary_pairs=[("Property Type", prop_type.title() if prop_type else None), ("Detail", detail or None), ("Range", range_text or None)], identity=badges)
+
+
+def build_skill_card(entity: Entity) -> dict[str, Any]:
+    data = entity.data_json or {}
+    ability_raw = _first(data, "ability", "ability_score", "stat", default=None)
+    ability = _display_name(ability_raw)
+    passive = _rich_text(_first(data, "passive", "passive_use", default=None))
+    examples = _normalize_named_values(_first(data, "examples", "uses", default=[]))
+    return _build_reference_card(entity, accent="skill", summary_pairs=[("Ability", _reference_link(ability_raw, "abilitie") if ability else None), ("Passive Use", passive or None)], chips=examples, chips_title="Common Uses", identity=[descriptor_badge("Skill", "type")])
+
+
+def build_service_card(entity: Entity) -> dict[str, Any]:
+    data = entity.data_json or {}
+    category = _display_name(_first(data, "category", "type", default="Service"), "Service")
+    cost = _first(data, "cost", "price", "value", default=None)
+    unit = _rich_text(_first(data, "unit", "per", "duration", default=None))
+    badges = [descriptor_badge(category.title(), "service-category")]
+    return _build_reference_card(entity, accent="service", summary_pairs=[("Category", category.title()), ("Cost", format_cost(cost, present=_has_any_key(data, "cost", "price", "value"))), ("Unit", unit or None)], identity=badges)
+
+
+def build_language_card(entity: Entity) -> dict[str, Any]:
+    data = entity.data_json or {}
+    language_type = _display_name(_first(data, "type", "language_type", default=""))
+    script = _display_name(_first(data, "script", default=""))
+    speakers = _normalize_named_values(_first(data, "typical_speakers", "speakers", "spoken_by", default=[]))
+    return _build_reference_card(entity, accent="language", summary_pairs=[("Language Type", language_type.title() if language_type else None), ("Script", script.title() if script else None)], chips=speakers, chips_title="Typical Speakers", identity=[descriptor_badge("Language", "type")])
+
+
+def build_size_card(entity: Entity) -> dict[str, Any]:
+    data = entity.data_json or {}
+    space = _format_measurement(_first(data, "space", "space_feet", default=None), "feet")
+    height = _rich_text(_first(data, "height", "height_range", default=None))
+    weight = _rich_text(_first(data, "weight", "weight_range", default=None))
+    reach = _format_measurement(_first(data, "reach", "reach_feet", default=None), "feet")
+    return _build_reference_card(entity, accent="size", summary_pairs=[("Space", space if space != "—" else None), ("Reach", reach if reach != "—" else None), ("Typical Height", height or None), ("Typical Weight", weight or None)], identity=[descriptor_badge(entity.name.title(), "size")])

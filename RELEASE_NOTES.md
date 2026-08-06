@@ -115,3 +115,51 @@ Cumulative release history for D&D Compendium. New patch installers append their
 - Fixed Weapon summary metadata links rendering as literal dictionaries instead of clickable anchors.
 - Added a Battleaxe regression test covering linked Damage Type, linked Versatile property metadata, and nested Open5e property data.
 - Hide Cost and Weight primary-stat bands when those fields are absent from the source record.
+# D&D Compendium v0.24.0
+
+## Dedicated cards
+
+Added dedicated, source-aware card renderers for:
+
+- Spell
+- Spell School
+- Weapon Property
+- Skill
+- Service
+- Language
+- Size
+
+The new cards share the established compendium presentation system: artwork, descriptor badges, source switching, Markdown descriptions, linked reference metadata, responsive summary grids, Add to List, role-gated artwork management, and raw JSON inspection.
+
+### Spell
+
+Displays school, level, casting time, range, components, duration, attack/save metadata, damage, ritual/concentration badges, class availability, and At Higher Levels text. Spell-school values link to their compendium entry.
+
+### Spell School
+
+Provides a focused rules-reference card with Markdown description and key metadata.
+
+### Weapon Property
+
+Displays property type, detail, range, and the full property explanation.
+
+### Skill
+
+Displays the governing ability as a linked compendium reference, passive usage, common uses, and description.
+
+### Service
+
+Displays category, normalized D&D currency cost with conversion tooltip, unit, and description.
+
+### Language
+
+Displays language type, script, typical speakers, and description.
+
+### Size
+
+Displays space, reach, typical height, typical weight, and description.
+
+## Verification
+
+- Added dedicated v0.24 card-normalization regression coverage.
+- Full test suite: 63 passed.
