@@ -1,7 +1,7 @@
-# v0.27.0 — Weapon Fallback Metadata and Card Refinements
+# v0.27.2 — Weapon Variant Fallback Matching
 
-- Weapon cards now fall back to the matching Item entity for Cost and Weight when the Weapon record omits, blanks, or zeroes those fields.
-- Item fallback selection prefers a matching game system when multiple Item variants exist.
-- Skill cards now render versioned Descriptions grouped by Game System.
-- Spell cards now recognize `saving_throw_ability` and display it in the top summary.
-- Added regression coverage for all three behaviors.
+- Match Weapon and Item variants by source document first, then game system.
+- Derive source and game-system keys from nested Open5e `document` metadata when indexed columns are blank.
+- When only one Item variant exists, reuse its Cost and Weight for every matching Weapon variant.
+- Keep the Item record unchanged and apply the values only while rendering the Weapon card.
+- Add regression coverage for one-item/many-weapon and multi-source matching.

@@ -28,7 +28,7 @@ from app.endpoint_defaults import endpoint_default
 
 settings=get_settings(); base=Path(__file__).parent
 settings.asset_root.mkdir(parents=True, exist_ok=True)
-APP_VERSION = "0.27.1"
+APP_VERSION = "0.27.2"
 app=FastAPI(title=settings.app_name, version=APP_VERSION)
 app.add_middleware(UserContextMiddleware)
 app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, session_cookie=settings.session_cookie_name, max_age=settings.session_max_age, same_site="lax", https_only=settings.session_https_only)
@@ -72,6 +72,43 @@ templates.env.filters["render_inline_markdown"] = _render_inline_markdown
 templates.env.globals["card_summary"] = _card_summary
 
 ENV_PATH = Path(os.environ.get("COMPENDIUM_ENV_FILE", ".env")).resolve()
+
+
+
+
+def _entity_source_document_key(entity: Entity) -> str:
+    if entity.source_document:
+        return str(entity.source_document).strip().casefold()
+    data = entity.data_json or {}
+    document = data.get("document") if isinstance(data.get("document"), dict) else {}
+    return str(document.get("key") or document.get("slug") or "").strip().casefold()
+
+
+def _entity_game_system_key(entity: Entity) -> str:
+    if entity.game_system_key:
+        return str(entity.game_system_key).strip().casefold()
+    data = entity.data_json or {}
+    document = data.get("document") if isinstance(data.get("document"), dict) else {}
+    gamesystem = document.get("gamesystem") if isinstance(document.get("gamesystem"), dict) else {}
+    return str(gamesystem.get("key") or data.get("gamesystem") or "").strip().casefold()
+
+
+def _select_item_fallback(weapon: Entity, item_candidates: list[Entity]) -> Entity | None:
+    if not item_candidates:
+        return None
+    if len(item_candidates) == 1:
+        return item_candidates[0]
+    weapon_source = _entity_source_document_key(weapon)
+    if weapon_source:
+        matched = [item for item in item_candidates if _entity_source_document_key(item) == weapon_source]
+        if matched:
+            return matched[0]
+    weapon_system = _entity_game_system_key(weapon)
+    if weapon_system:
+        matched = [item for item in item_candidates if _entity_game_system_key(item) == weapon_system]
+        if matched:
+            return matched[0]
+    return item_candidates[0]
 
 
 def _lexicon_map(db: Session) -> dict[str, str]:
@@ -349,10 +386,7 @@ def entity_detail(
             | (Entity.slug == entity.slug)
             | (func.lower(Entity.name) == entity.name.casefold()),
         ).order_by(Entity.id)).all())
-        if item_candidates:
-            fallback_item = next((item for item in item_candidates if item.source_document and item.source_document == entity.source_document), None)
-            fallback_item = fallback_item or next((item for item in item_candidates if item.game_system_key and item.game_system_key == entity.game_system_key), None)
-            fallback_item = fallback_item or item_candidates[0]
+        fallback_item = _select_item_fallback(entity, item_candidates)
     weapon = build_weapon_card(entity, fallback_item=fallback_item) if entity_type == "weapon" else None
     reference_card = None
     if entity_type == "spell": reference_card = build_spell_card(entity)
