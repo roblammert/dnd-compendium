@@ -249,3 +249,9 @@ This release refines Alignment, Background, Class, Condition, Creature Type, Dam
 
 - Moved Weapon Cost and Weight fallback values into the metadata table and fixed structured cost rendering.
 - Added exact-source Battleaxe regression coverage.
+
+## v0.27.4 — Weapon Cost Conversion Tooltip
+
+- Added the D&D coin conversion tooltip to the Weapon card Cost value in the structured metadata table.
+- Corrected rendering of formatted Cost metadata objects.
+- Preserved the existing quick-stat Cost tooltip and omitted tooltips for unknown or zero costs.
