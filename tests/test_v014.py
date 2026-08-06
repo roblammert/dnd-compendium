@@ -20,8 +20,8 @@ def test_footer_has_version_and_open5e_compatibility():
     template_dir = Path(__file__).parents[1] / "app" / "templates"
     env = Environment(loader=FileSystemLoader(template_dir))
     template = env.get_template("base.html")
-    rendered = template.render(app_version="0.14.0")
-    assert "D&amp;D Compendium v0.14.0" in rendered
+    rendered = template.render(app_version="0.14.0", app_name="D&D Compendium")
+    assert "D&D Compendium v0.14.0" in rendered
     assert "Open5e Compatible" in rendered
 
 

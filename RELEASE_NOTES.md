@@ -98,3 +98,15 @@ Cumulative release history for D&D Compendium. New patch installers append their
 - Endpoint visibility applies to home tiles, recent entities, Browse results and filters, direct entity pages, and list contents.
 - Site Lexicon remains complete for administrators, and Open5e synchronization is unaffected.
 - New endpoint types default to Users visibility.
+
+## v0.22.0
+
+- Expanded Weapon properties into structured entries with descriptions, range details, and links to the referenced weapon-property records.
+- Combined Site Lexicon and View Management into Endpoint Management with per-row asynchronous saves and five-second inline confirmation.
+- Prevented direct-host restart requests from terminating Uvicorn without a supervisor; local deployments now receive explicit restart instructions while Docker retains automatic restart behavior.
+- Made `APP_NAME` drive the site header, browser title, FastAPI title, and footer.
+- Reorganized Site Config into Application, Storage, Open5e Synchronization, and Authentication/Session groups.
+- Changed local defaults to `sqlite:///./data/compendium.sqlite3` and `./data/assets`; Docker now mounts host data at `/app/data`.
+- Added a shared D&D coin formatter for visible Cost fields, selecting the simplest exact coin denomination and exposing PP/GP/SP/CP conversions in a hover tooltip.
+- Added explicit `Unknown` rendering for present-but-empty Cost and Weight fields.
+

@@ -1,0 +1,6 @@
+{% extends "settings_layout.html" %}{% block settings_content %}
+<header class="page-heading"><div><p class="eyebrow">Presentation and access</p><h1>Endpoint Management</h1><p>Rename endpoint labels and choose the minimum role that can see each type. Synchronization remains unaffected.</p></div></header>
+<div class="table-wrap"><table class="compendium-table settings-table endpoint-management-table"><thead><tr><th>Imported endpoint</th><th>Display label</th><th>Role view</th><th></th></tr></thead><tbody>
+{% for row in rows %}{% include "fragments/endpoint_management_row.html" %}{% endfor %}
+</tbody></table></div>
+{% endblock %}

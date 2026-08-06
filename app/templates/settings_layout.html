@@ -1,9 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Settings · D&D Compendium{% endblock %}
+{% block title %}Settings · {{ app_name }}{% endblock %}
 {% block content %}<div class="settings-shell"><aside class="settings-sidebar"><p class="eyebrow">Settings</p><nav>
 <a class="{% if settings_section=='open5e-sync' %}active{% endif %}" href="/settings/open5e-sync">Open5e Sync</a>
-<a class="{% if settings_section=='site-lexicon' %}active{% endif %}" href="/settings/site-lexicon">Site Lexicon</a>
+<a class="{% if settings_section=='endpoint-management' %}active{% endif %}" href="/settings/endpoint-management">Endpoint Management</a>
 <a class="{% if settings_section=='user-management' %}active{% endif %}" href="/settings/user-management">User Management</a>
-<a class="{% if settings_section=='view-management' %}active{% endif %}" href="/settings/view-management">View Management</a>
 <a class="{% if settings_section=='site-config' %}active{% endif %}" href="/settings/site-config">Site Config</a>
 </nav></aside><section class="settings-content">{% block settings_content %}{% endblock %}</section></div>{% endblock %}

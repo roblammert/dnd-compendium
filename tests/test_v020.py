@@ -30,4 +30,4 @@ def test_add_to_list_new_fields_toggle_and_duplicate_notice():
 
 def test_user_router_has_footer_version():
     routes = Path("app/user_routes.py").read_text()
-    assert 'templates.env.globals["app_version"] = "0.21.0"' in routes
+    assert 'templates.env.globals["app_version"] = "0.22.0"' in routes

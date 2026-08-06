@@ -7,8 +7,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_env: str = "development"
     app_name: str = "D&D Compendium"
-    database_url: str = "sqlite:////data/compendium.sqlite3"
-    asset_root: Path = Path("/data/assets")
+    database_url: str = "sqlite:///./data/compendium.sqlite3"
+    asset_root: Path = Path("./data/assets")
 
     # Open5e v2 exposes a discoverable root. Leave OPEN5E_ENDPOINTS empty to
     # import every content endpoint returned by that root.
@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     open5e_retry_attempts: int = 5
     open5e_retry_base_delay: float = 2.0
     open5e_retry_max_delay: float = 60.0
-    open5e_user_agent: str = "dnd-compendium/0.21.0"
+    open5e_user_agent: str = "dnd-compendium/0.22.0"
 
     secret_key: str = "change-me"
     default_admin_username: str = "admin"

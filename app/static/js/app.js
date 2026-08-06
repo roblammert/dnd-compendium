@@ -109,3 +109,25 @@
     }
   });
 })();
+
+// v0.22 inline endpoint management saves.
+document.addEventListener("submit", async (event) => {
+  const form = event.target.closest?.("[data-endpoint-row-form]");
+  if (!form) return;
+  event.preventDefault();
+  const button = form.querySelector("button[type=submit]");
+  if (button) button.disabled = true;
+  try {
+    const response = await fetch(form.action, {method: "POST", body: new FormData(form), headers: {"Accept": "text/html"}});
+    if (!response.ok) throw new Error(`Save failed: ${response.status}`);
+    const wrapper = document.createElement("tbody"); wrapper.innerHTML = await response.text();
+    const replacement = wrapper.querySelector("tr"); const current = form.closest("tr");
+    if (replacement && current) {
+      current.replaceWith(replacement);
+      const status = replacement.querySelector(".row-save-status");
+      if (status) window.setTimeout(() => status.classList.add("is-fading"), 4700);
+    }
+  } catch (error) {
+    const status=form.querySelector(".row-save-status"); if(status) status.textContent="Save failed";
+  } finally { if (button) button.disabled = false; }
+});

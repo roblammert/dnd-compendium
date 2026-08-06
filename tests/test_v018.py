@@ -24,7 +24,7 @@ def test_weapon_card_normalizes_common_open5e_fields():
     assert card["primary_stats"][0]["value"] == "1d8 Piercing"
     assert card["primary_stats"][2]["value"] == "2.0 lb."
     assert any(row["label"] == "Range" and row["value"] == "150/600 feet" for row in card["summary_rows"])
-    assert card["properties"] == ["Ammunition", "Heavy", "Two-Handed"]
+    assert [item["name"] for item in card["properties"]] == ["Ammunition", "Heavy", "Two-Handed"]
     assert card["mastery"] == "Slow"
 
 

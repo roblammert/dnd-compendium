@@ -132,7 +132,7 @@
       <header class="compendium-title-block"><h1>{{ entity.name }}</h1><div class="descriptor-pill-row">{% for badge in descriptor_badges %}<span class="descriptor-pill descriptor-pill-{{ badge.kind }} value-{{ badge.class_name }}" style="{{ badge.style }}">{% if badge.kind == 'versions' %}Versions {{ badge.value }}{% else %}{{ badge.value }}{% endif %}</span>{% endfor %}</div></header>
       <div class="magic-rule"></div>
       <section class="item-summary-grid" aria-label="Magic item details">
-        {% for row in magic_item.summary_rows %}<div class="item-summary-cell"><span>{{ row.label }}</span><strong>{{ row.value }}</strong></div>{% endfor %}
+        {% for row in magic_item.summary_rows %}<div class="item-summary-cell"{% if row.tooltip %} title="{{ row.tooltip }}"{% endif %}><span>{{ row.label }}</span><strong>{{ row.value }}</strong></div>{% endfor %}
       </section>
       {% if magic_item.description %}<section class="entry-prose rich-markdown">{{ magic_item.description|render_markdown }}</section>{% endif %}
       {% if magic_item.properties %}<h2 class="compendium-section-title">Properties</h2>{% endif %}
@@ -173,7 +173,7 @@
       <section class="weapon-stat-summary" aria-label="Weapon statistics">
         <div class="weapon-primary-stats">
           {% for stat in weapon.primary_stats %}
-          <div class="weapon-primary-stat weapon-primary-stat-{{ stat.kind }}"><span>{{ stat.label }}</span><strong>{{ stat.value }}</strong></div>
+          <div class="weapon-primary-stat weapon-primary-stat-{{ stat.kind }}"{% if stat.tooltip %} title="{{ stat.tooltip }}"{% endif %}><span>{{ stat.label }}</span><strong>{{ stat.value }}</strong></div>
           {% endfor %}
         </div>
         <div class="weapon-secondary-stats">
@@ -185,8 +185,8 @@
 
       {% if weapon.properties %}
       <h2 class="compendium-section-title weapon-section-title">Properties</h2>
-      <div class="descriptor-pill-row weapon-property-row">
-        {% for prop in weapon.properties %}<span class="descriptor-pill descriptor-pill-property">{{ prop }}</span>{% endfor %}
+      <div class="weapon-property-list">
+        {% for prop in weapon.properties %}<article class="weapon-property-detail"><h3>{{ prop.name }}</h3>{% if prop.description %}<div class="rich-markdown">{{ prop.description|render_markdown }}</div>{% endif %}{% if prop.range %}<p><strong>Range:</strong> {{ prop.range }}</p>{% endif %}{% if prop.url %}<p><a href="{{ prop.url }}" target="_blank" rel="noopener">View weapon property</a></p>{% endif %}</article>{% endfor %}
       </div>
       {% endif %}
 
@@ -202,7 +202,7 @@
     <div class="compendium-card-body">
       <header class="compendium-title-block"><h1>{{ entity.name }}</h1><div class="descriptor-pill-row">{% for badge in descriptor_badges %}<span class="descriptor-pill descriptor-pill-{{ badge.kind }} value-{{ badge.class_name }}" style="{{ badge.style }}">{% if badge.kind == 'versions' %}Versions {{ badge.value }}{% else %}{{ badge.value }}{% endif %}</span>{% endfor %}</div></header>
       <div class="item-rule"></div>
-      <section class="item-summary-grid" aria-label="Item details">{% for row in item_card.summary_rows %}<div class="item-summary-cell"><span>{{ row.label }}</span><strong>{{ row.value }}</strong></div>{% endfor %}</section>
+      <section class="item-summary-grid" aria-label="Item details">{% for row in item_card.summary_rows %}<div class="item-summary-cell"{% if row.tooltip %} title="{{ row.tooltip }}"{% endif %}><span>{{ row.label }}</span><strong>{{ row.value }}</strong></div>{% endfor %}</section>
       {% if item_card.properties %}<h2 class="compendium-section-title">Properties</h2><div class="descriptor-pill-row">{% for prop in item_card.properties %}<span class="descriptor-pill descriptor-pill-property">{{ prop }}</span>{% endfor %}</div>{% endif %}
       {% if item_card.description %}<section class="entry-prose rich-markdown">{{ item_card.description|render_markdown }}</section>{% endif %}
       {% if item_card.details %}<h2 class="compendium-section-title">Details</h2>{% endif %}

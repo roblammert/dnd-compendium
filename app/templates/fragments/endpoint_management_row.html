@@ -1,0 +1,11 @@
+<tr id="endpoint-row-{{ row.original|replace('_','-') }}">
+  <td><code>{{ row.original }}</code></td>
+  <td colspan="3">
+    <form class="endpoint-row-form" method="post" action="/settings/endpoint-management/{{ row.original }}" data-endpoint-row-form>
+      <label><span class="sr-only">Display label</span><input name="display_term" value="{{ row.display }}" required></label>
+      <label><span class="sr-only">Role view</span><select name="minimum_role">{% for value,label in view_labels.items() %}<option value="{{ value }}" {% if row.minimum_role==value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+      <button type="submit">Update</button>
+      <span class="row-save-status" aria-live="polite">{% if saved %}Saved{% endif %}</span>
+    </form>
+  </td>
+</tr>

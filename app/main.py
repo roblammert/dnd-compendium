@@ -22,12 +22,12 @@ from app.services import backfill_canonical_keys, build_item_card, build_magic_i
 from app.sync import ACTIVE_SYNC_STATUSES, create_sync_run, recover_interrupted_syncs, run_open5e_sync
 from app.assets import save_upload, save_url
 from app.auth import UserContextMiddleware, can, ensure_default_admin, require_admin, require_editor, require_user
-from app.user_routes import router as user_router
+from app.user_routes import router as user_router, templates as user_templates
 from app.visibility import VIEW_LABELS, can_view_type, ensure_visibility_rows, visibility_map, visible_types
 
 settings=get_settings(); base=Path(__file__).parent
 settings.asset_root.mkdir(parents=True, exist_ok=True)
-APP_VERSION = "0.21.0"
+APP_VERSION = "0.22.0"
 app=FastAPI(title=settings.app_name, version=APP_VERSION)
 app.add_middleware(UserContextMiddleware)
 app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, session_cookie=settings.session_cookie_name, max_age=settings.session_max_age, same_site="lax", https_only=settings.session_https_only)
@@ -36,6 +36,7 @@ app.mount("/static", StaticFiles(directory=base/"static"), name="static")
 app.mount("/assets", StaticFiles(directory=settings.asset_root), name="assets")
 templates=Jinja2Templates(directory=base/"templates")
 templates.env.globals["app_version"] = APP_VERSION
+templates.env.globals["app_name"] = settings.app_name
 templates.env.globals["descriptor_badge"] = descriptor_badge
 _markdown = MarkdownIt("commonmark", {"html": False, "linkify": True, "typographer": False}).enable("table")
 def _render_markdown(value):
@@ -103,7 +104,8 @@ def _quote_env(value: str) -> str:
 
 def _restart_process() -> None:
     time.sleep(1.0)
-    os.kill(os.getpid(), signal.SIGTERM)
+    if Path("/.dockerenv").exists():
+        os.kill(os.getpid(), signal.SIGTERM)
 
 @app.on_event("startup")
 def startup():
@@ -419,67 +421,47 @@ def sync_status(request: Request, _=Depends(require_admin), db: Session=Depends(
         "invisible_types": {key for key, value in visibility_map(db).items() if value == "invisible"}}
     )
 
-@app.get("/settings/site-lexicon", response_class=HTMLResponse)
-def settings_lexicon(request: Request, _=Depends(require_admin), db: Session = Depends(get_db)):
-    known = set(db.scalars(select(Entity.entity_type).distinct()).all())
+@app.get("/settings/site-lexicon")
+def legacy_lexicon(): return RedirectResponse("/settings/endpoint-management", 303)
+
+@app.get("/settings/view-management")
+def legacy_view_management(): return RedirectResponse("/settings/endpoint-management", 303)
+
+@app.get("/settings/endpoint-management", response_class=HTMLResponse)
+def endpoint_management(request: Request, _=Depends(require_admin), db: Session = Depends(get_db)):
+    known=set(db.scalars(select(Entity.entity_type).distinct()).all())
     known.update(db.scalars(select(SyncEndpoint.endpoint).distinct()).all())
-    existing = {row.original_term: row for row in db.scalars(select(LexiconTerm).order_by(LexiconTerm.original_term)).all()}
-    rows = [{"original": term, "display": existing.get(term).display_term if term in existing else _display_term(term, {})} for term in sorted(x for x in known if x)]
-    for term, row in existing.items():
-        if term not in known:
-            rows.append({"original": term, "display": row.display_term})
-    rows.sort(key=lambda row: row["original"])
-    return templates.TemplateResponse(request, "settings_lexicon.html", {"rows": rows, "settings_section": "site-lexicon"})
-
-@app.post("/settings/site-lexicon")
-async def save_lexicon(request: Request, _=Depends(require_admin), db: Session = Depends(get_db)):
-    form = await request.form()
-    originals = form.getlist("original_term")
-    displays = form.getlist("display_term")
-    for original, display in zip(originals, displays):
-        original = str(original).strip()
-        display = str(display).strip()
-        if not original or not display:
-            continue
-        row = db.scalar(select(LexiconTerm).where(LexiconTerm.original_term == original))
-        if row:
-            row.display_term = display
-        else:
-            db.add(LexiconTerm(original_term=original, display_term=display))
+    existing_lex={row.original_term:row for row in db.scalars(select(LexiconTerm)).all()}
+    existing_vis={row.entity_type:row for row in db.scalars(select(EntityTypeVisibility)).all()}
+    rows=[]
+    for term in sorted(x for x in known if x):
+        if term not in existing_vis:
+            row=EntityTypeVisibility(entity_type=term, minimum_role="user"); db.add(row); db.flush(); existing_vis[term]=row
+        rows.append({"original":term,"display":existing_lex.get(term).display_term if term in existing_lex else _display_term(term,{}),"minimum_role":existing_vis[term].minimum_role})
     db.commit()
-    return RedirectResponse("/settings/site-lexicon?saved=1", 303)
+    return templates.TemplateResponse(request,"settings_endpoint_management.html",{"settings_section":"endpoint-management","rows":rows,"view_labels":VIEW_LABELS})
 
-@app.get("/settings/view-management", response_class=HTMLResponse)
-def view_management(request: Request, _: object = Depends(require_admin), db: Session = Depends(get_db)):
-    ensure_visibility_rows(db)
-    lexicon = _lexicon_map(db)
-    rows = list(db.scalars(select(EntityTypeVisibility).order_by(EntityTypeVisibility.entity_type)).all())
-    for row in rows:
-        row.display_name = _display_term(row.entity_type, lexicon)
-    rows.sort(key=lambda row: row.display_name.casefold())
-    return templates.TemplateResponse(request, "settings_view_management.html", {"settings_section":"view-management", "rows":rows, "view_labels":VIEW_LABELS})
-
-@app.post("/settings/view-management")
-async def save_view_management(request: Request, _: object = Depends(require_admin), db: Session = Depends(get_db)):
-    form = await request.form()
-    rows = db.scalars(select(EntityTypeVisibility)).all()
-    for row in rows:
-        value = str(form.get(f"visibility_{row.id}", "user"))
-        row.minimum_role = value if value in VIEW_LABELS else "user"
+@app.post("/settings/endpoint-management/{term}", response_class=HTMLResponse)
+async def update_endpoint_management(term: str, request: Request, _=Depends(require_admin), db: Session=Depends(get_db)):
+    form=await request.form(); display=str(form.get("display_term","")).strip(); visibility=str(form.get("minimum_role","user"))
+    lex=db.scalar(select(LexiconTerm).where(LexiconTerm.original_term==term))
+    if lex: lex.display_term=display or _display_term(term,{})
+    else: db.add(LexiconTerm(original_term=term,display_term=display or _display_term(term,{})))
+    vis=db.scalar(select(EntityTypeVisibility).where(EntityTypeVisibility.entity_type==term))
+    if not vis: vis=EntityTypeVisibility(entity_type=term); db.add(vis)
+    vis.minimum_role=visibility if visibility in VIEW_LABELS else "user"
     db.commit()
-    return RedirectResponse("/settings/view-management?saved=1", 303)
+    return templates.TemplateResponse(request,"fragments/endpoint_management_row.html",{"row":{"original":term,"display":lex.display_term if lex else display,"minimum_role":vis.minimum_role},"view_labels":VIEW_LABELS,"saved":True})
 
 @app.get("/settings/site-config", response_class=HTMLResponse)
 def settings_config(request: Request, _=Depends(require_admin)):
-    fields = []
     current = get_settings()
+    groups={"Application":[],"Storage":[],"Open5e Synchronization":[],"Authentication and Sessions":[]}
     for name, field in current.model_fields.items():
-        value = _env_value(getattr(current, name))
-        fields.append({"name": name, "env": _env_key(name), "value": value, "secret": "secret" in name.lower() or "password" in name.lower()})
-    return templates.TemplateResponse(request, "settings_config.html", {
-        "settings_section": "site-config", "config_fields": fields,
-        "env_path": str(ENV_PATH), "saved": request.query_params.get("saved"),
-    })
+        item={"name":name,"env":_env_key(name),"value":_env_value(getattr(current,name)),"secret":"secret" in name.lower() or "password" in name.lower()}
+        group="Open5e Synchronization" if name.startswith("open5e_") else "Authentication and Sessions" if name in {"secret_key","default_admin_username","default_admin_password","session_cookie_name","session_max_age","session_https_only"} else "Storage" if name in {"database_url","asset_root"} else "Application"
+        groups[group].append(item)
+    return templates.TemplateResponse(request,"settings_config.html",{"settings_section":"site-config","config_groups":groups,"env_path":str(ENV_PATH),"saved":request.query_params.get("saved"),"is_docker":Path("/.dockerenv").exists()})
 
 @app.post("/settings/site-config")
 async def save_site_config(request: Request, _=Depends(require_admin)):
@@ -491,12 +473,16 @@ async def save_site_config(request: Request, _=Depends(require_admin)):
         lines.append(f"{key}={_quote_env(value)}")
     ENV_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
     get_settings.cache_clear()
+    refreshed=get_settings()
+    templates.env.globals["app_name"]=refreshed.app_name
+    user_templates.env.globals["app_name"]=refreshed.app_name
+    app.title=refreshed.app_name
     return RedirectResponse("/settings/site-config?saved=1", 303)
 
 @app.post("/settings/restart")
 def restart_service(request: Request, background_tasks: BackgroundTasks, _=Depends(require_admin)):
     background_tasks.add_task(_restart_process)
-    return templates.TemplateResponse(request, "restart.html", {})
+    return templates.TemplateResponse(request, "restart.html", {"is_docker": Path("/.dockerenv").exists()})
 
 @app.post("/entities/{public_id}/assets/upload")
 async def upload_asset(public_id:str, image:UploadFile=File(...), attribution:str=Form(""), license_name:str=Form(""), _=Depends(require_editor), db:Session=Depends(get_db)):

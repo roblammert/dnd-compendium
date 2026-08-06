@@ -1,5 +1,8 @@
 {% extends "settings_layout.html" %}{% block settings_content %}
-<header><p class="eyebrow">Runtime</p><h1>Site Config</h1><p>Values are written to <code>{{ env_path }}</code>. Restart the service after saving to apply all changes.</p></header>
-{% if saved %}<p class="success-callout">Configuration saved. Restart the service to load it.</p>{% endif %}
-<form method="post" class="config-form"><div class="config-grid">{% for field in config_fields %}<label><span>{{ field.env }}</span><input type="{{ 'password' if field.secret else 'text' }}" name="{{ field.env }}" value="{{ field.value }}"></label>{% endfor %}</div><button>Save configuration</button></form>
-<section class="restart-panel"><h2>Restart service</h2><p>In Docker, the <code>unless-stopped</code> policy starts the container again. In a local terminal, the process exits and must be restarted by your process supervisor or command.</p><form method="post" action="/settings/restart"><button class="danger-button">Save work and restart service</button></form></section>{% endblock %}
+<header><p class="eyebrow">Runtime</p><h1>Site Config</h1><p>Values are written to <code>{{ env_path }}</code>. Changes to the application name are visible immediately; infrastructure settings require a service restart.</p></header>
+{% if saved %}<p class="success-callout">Configuration saved.</p>{% endif %}
+<form method="post" class="config-form grouped-config-form">
+{% for group, fields in config_groups.items() %}<fieldset class="config-group"><legend>{{ group }}</legend><div class="config-grid">{% for field in fields %}<label><span>{{ field.env }}</span><input type="{{ 'password' if field.secret else 'text' }}" name="{{ field.env }}" value="{{ field.value }}"></label>{% endfor %}</div></fieldset>{% endfor %}
+<div class="form-actions"><button>Save configuration</button></div></form>
+<section class="restart-panel"><h2>Restart service</h2>{% if is_docker %}<p>The container will exit after this page is returned. Docker's restart policy should start it again.</p><form method="post" action="/settings/restart"><button class="danger-button">Restart service</button></form>{% else %}<p>This process is running directly on the host. A web process cannot reliably replace its own parent command, so the restart button will not terminate it. Restart the Uvicorn or supervisor command from your terminal after saving.</p><form method="post" action="/settings/restart"><button>Show local restart instructions</button></form>{% endif %}</section>
+{% endblock %}

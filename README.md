@@ -7,14 +7,13 @@ A self-hosted, searchable Dungeons & Dragons compendium built with **FastAPI**, 
 - Public browse, search, filtering, pagination, and read-only JSON API
 - Background, sequential, throttled Open5e v2 synchronization with live progress
 - Canonical grouping of entities that have multiple sources or game-system variants
-- Professional cards for Monsters, Magic Items, Items, Species, and Weapons
+- Professional cards for Monsters, Magic Items, Items, Species, and Weapons, including detailed linked weapon properties
 - Local artwork uploads and shared images across source variants
 - Protected homebrew content that Open5e sync never overwrites
 - Authentication with Administrator, Editor, and User roles
 - Public and private personal entity lists with persistent drag-and-drop ordering
-- Site Lexicon for display-name overrides
-- Role-based View Management for simplifying the visible interface by endpoint type
-- Docker-first deployment with persistent `/data` storage
+- Endpoint Management combining display-name overrides and role-based visibility
+- Docker-first deployment with persistent `./data` storage
 
 ## Quick start with Docker
 
@@ -33,12 +32,16 @@ Open <http://localhost:8000>. The first startup creates the default administrato
 SECRET_KEY=replace-with-a-long-random-secret
 DEFAULT_ADMIN_USERNAME=admin
 DEFAULT_ADMIN_PASSWORD=replace-with-a-strong-password
-DATABASE_URL=sqlite:////data/compendium.sqlite3
-ASSET_ROOT=/data/assets
+DATABASE_URL=sqlite:///./data/compendium.sqlite3
+ASSET_ROOT=./data/assets
 OPEN5E_API_ROOT=https://api.open5e.com/v2/
 ```
 
-See `.env.example` for synchronization throttling, retry, session, and storage settings.
+See `.env.example` for synchronization throttling, retry, session, and storage settings. Docker mounts the host `./data` directory at `/app/data`, so the same relative paths work locally and in the container.
+
+## Endpoint management
+
+Administrators can use **Settings → Endpoint Management** to rename imported endpoint labels and set the minimum role allowed to see each type. Each row saves independently without a page refresh. These settings affect only the user interface; synchronization and stored data remain unchanged.
 
 ## Open5e synchronization
 

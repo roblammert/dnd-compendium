@@ -729,11 +729,84 @@ def _truth_label(value: Any) -> str:
 def _summary_rows(*pairs: tuple[str, Any]) -> list[dict[str, str]]:
     rows=[]
     for label, value in pairs:
+        if isinstance(value, dict) and "value" in value:
+            rendered=str(value.get("value", ""))
+            if rendered:
+                rows.append({"label":label,"value":rendered,"tooltip":str(value.get("tooltip", ""))})
+            continue
         rendered = _format_scalar(value, "")
         if rendered:
-            rows.append({"label": label, "value": rendered})
+            rows.append({"label": label, "value": rendered, "tooltip": ""})
     return rows
 
+
+
+# v0.22 display normalization
+def _has_any_key(data: dict[str, Any], *keys: str) -> bool:
+    if any(key in data for key in keys):
+        return True
+    for wrapper in ("weapon", "item", "equipment"):
+        nested = data.get(wrapper)
+        if isinstance(nested, dict) and any(key in nested for key in keys):
+            return True
+    return False
+
+def _numeric_value(value: Any) -> float | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, dict):
+        amount = value.get("value", value.get("amount", value.get("quantity", value.get("cost"))))
+        unit = str(value.get("unit", value.get("coin", "gp"))).casefold()
+        numeric = _numeric_value(amount)
+        if numeric is None: return None
+        return numeric * {"pp":10.0,"gp":1.0,"sp":0.1,"cp":0.01}.get(unit, 1.0)
+    if isinstance(value, str):
+        match = re.search(r"(-?\d+(?:\.\d+)?)\s*(pp|gp|sp|cp)?", value.strip(), re.I)
+        if not match: return None
+        numeric=float(match.group(1)); unit=(match.group(2) or "gp").casefold()
+        return numeric * {"pp":10.0,"gp":1.0,"sp":0.1,"cp":0.01}[unit]
+    return None
+
+def _coin_number(value: float) -> str:
+    if abs(value-round(value)) < 1e-9: return f"{int(round(value)):,}"
+    return f"{value:,.4f}".rstrip("0").rstrip(".")
+
+def format_cost(value: Any, *, present: bool = True) -> dict[str, str]:
+    if not present: return {"value":"", "tooltip":""}
+    gp=_numeric_value(value)
+    if gp is None: return {"value":"Unknown", "tooltip":""}
+    if gp == 0: return {"value":"0 GP", "tooltip":""}
+    choices=(("PP",gp/10),("GP",gp),("SP",gp*10),("CP",gp*100))
+    chosen=next(((coin,amount) for coin,amount in choices if abs(amount-round(amount))<1e-9 and amount>=1), choices[-1])
+    tooltip="\n".join(f"{_coin_number(amount)} {coin}" for coin,amount in choices)
+    return {"value":f"{_coin_number(chosen[1])} {chosen[0]}", "tooltip":tooltip}
+
+def format_weight(value: Any, *, present: bool = True) -> str:
+    if not present: return ""
+    numeric=_numeric_value(value)
+    if numeric is None: return "Unknown"
+    return f"{numeric:.1f} lb."
+
+def _normalize_weapon_properties(value: Any) -> list[dict[str, str]]:
+    if isinstance(value, dict):
+        for wrapper in ("data","results","items","properties"):
+            if isinstance(value.get(wrapper), list): return _normalize_weapon_properties(value[wrapper])
+        value=[value]
+    if not isinstance(value, list):
+        return [{"name":name.title(),"description":"","range":"","url":""} for name in _normalize_named_values(value)]
+    rows=[]
+    for item in value:
+        if isinstance(item, str):
+            rows.append({"name":item.title(),"description":"","range":"","url":""}); continue
+        if not isinstance(item, dict): continue
+        name=_display_name(item.get("name") or item.get("property") or item.get("key"))
+        description=_rich_text(item.get("desc") or item.get("description") or item.get("text"))
+        range_text=_format_weapon_range(item.get("range") or item.get("normal_range"), item.get("long_range"))
+        url=str(item.get("permalink") or item.get("url") or item.get("link") or "")
+        if name: rows.append({"name":name.title(),"description":description,"range":range_text,"url":url})
+    return rows
 
 def build_magic_item_card(entity: Entity) -> dict[str, Any]:
     data = entity.data_json or {}
@@ -769,8 +842,8 @@ def build_magic_item_card(entity: Entity) -> dict[str, Any]:
         "item_type": category.title(),
         "subtype": subtype.title() if subtype else "",
         "attunement": attunement,
-        "cost": _format_scalar(value, "—"),
-        "weight": _format_measurement(weight, "lb.", decimals=1) if weight not in (None, "") else "—",
+        "cost": format_cost(value, present=_has_any_key(data, "cost", "value", "price")),
+        "weight": format_weight(weight, present=_has_any_key(data, "weight")),
         "armor_class": armor_class,
         "charges": _format_scalar(charges, "—"),
         "recharge": recharge,
@@ -779,8 +852,8 @@ def build_magic_item_card(entity: Entity) -> dict[str, Any]:
             ("Item Type", category.title()),
             ("Subtype", subtype.title() if subtype else None),
             ("Attunement", attunement),
-            ("Cost", value),
-            ("Weight", _format_measurement(weight, "lb.", decimals=1) if weight not in (None, "") else None),
+            ("Cost", format_cost(value, present=_has_any_key(data, "cost", "value", "price"))),
+            ("Weight", format_weight(weight, present=_has_any_key(data, "weight"))),
             ("Armor Class", armor_class or None),
             ("Charges", charges),
             ("Recharge", recharge),
@@ -880,15 +953,15 @@ def build_item_card(entity: Entity) -> dict[str, Any]:
         "identity_badges": badges,
         "category": category.title(),
         "subtype": subtype.title() if subtype else "",
-        "cost": _format_scalar(cost, "—"),
-        "weight": _format_measurement(weight, "lb.", decimals=1) if weight not in (None, "") else "—",
+        "cost": format_cost(cost, present=_has_any_key(data, "cost", "price", "value")),
+        "weight": format_weight(weight, present=_has_any_key(data, "weight")),
         "armor_class": armor_class,
         "properties": properties,
         "summary_rows": _summary_rows(
             ("Item Type", category.title()),
             ("Subtype", subtype.title() if subtype else None),
-            ("Cost", cost),
-            ("Weight", _format_measurement(weight, "lb.", decimals=1) if weight not in (None, "") else None),
+            ("Cost", format_cost(cost, present=_has_any_key(data, "cost", "price", "value"))),
+            ("Weight", format_weight(weight, present=_has_any_key(data, "weight"))),
             ("Armor Class", armor_class or None),
             ("Damage", f"{damage} {damage_type}".strip() if damage or damage_type else None),
             ("Quantity", quantity),
@@ -965,7 +1038,7 @@ def build_weapon_card(entity: Entity) -> dict[str, Any]:
         reach_text = ""
     cost = _weapon_value(data, "cost", "price", "value", default=None)
     weight = _weapon_value(data, "weight", default=None)
-    properties = _normalize_named_values(_weapon_value(data, "properties", "weapon_properties", "property", "tags", default=[]))
+    properties = _normalize_weapon_properties(_weapon_value(data, "properties", "weapon_properties", "property", "tags", default=[]))
     mastery = _display_name(_weapon_value(data, "mastery", "mastery_property", "weapon_mastery", default=""))
     ammunition = _rich_text(_weapon_value(data, "ammunition", "ammo", "ammunition_type", default=None))
     loading = _weapon_value(data, "loading", default=None)
@@ -982,8 +1055,8 @@ def build_weapon_card(entity: Entity) -> dict[str, Any]:
 
     primary_stats = [
         {"label": "Damage", "value": damage or "—", "kind": "damage"},
-        {"label": "Cost", "value": _format_scalar(cost, "—"), "kind": "cost"},
-        {"label": "Weight", "value": _format_measurement(weight, "lb.", decimals=1) if weight not in (None, "") else "—", "kind": "weight"},
+        {"label": "Cost", **format_cost(cost, present=_has_any_key(data, "cost", "price", "value")), "kind": "cost"},
+        {"label": "Weight", "value": format_weight(weight, present=_has_any_key(data, "weight")), "tooltip": "", "kind": "weight"},
     ]
     summary_rows = _summary_rows(
         ("Category", category.title()),
