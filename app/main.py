@@ -28,7 +28,7 @@ from app.endpoint_defaults import endpoint_default
 
 settings=get_settings(); base=Path(__file__).parent
 settings.asset_root.mkdir(parents=True, exist_ok=True)
-APP_VERSION = "0.26.0"
+APP_VERSION = "0.27.0"
 app=FastAPI(title=settings.app_name, version=APP_VERSION)
 app.add_middleware(UserContextMiddleware)
 app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, session_cookie=settings.session_cookie_name, max_age=settings.session_max_age, same_site="lax", https_only=settings.session_https_only)
@@ -338,7 +338,16 @@ def entity_detail(
     magic_item = build_magic_item_card(entity) if entity_type in {"magicitem", "magic-item"} else None
     species = build_species_card(entity) if entity_type == "species" else None
     item_card = build_item_card(entity) if entity_type == "item" else None
-    weapon = build_weapon_card(entity) if entity_type == "weapon" else None
+    fallback_item = None
+    if entity_type == "weapon":
+        item_candidates = list(db.scalars(select(Entity).where(
+            Entity.entity_type == "item",
+            Entity.is_active == True,
+            (Entity.canonical_key == resolved_key) | (Entity.slug == canonical_key) | (Entity.name == entity.name),
+        ).order_by(Entity.id)).all())
+        if item_candidates:
+            fallback_item = next((item for item in item_candidates if item.game_system_key == entity.game_system_key), item_candidates[0])
+    weapon = build_weapon_card(entity, fallback_item=fallback_item) if entity_type == "weapon" else None
     reference_card = None
     if entity_type == "spell": reference_card = build_spell_card(entity)
     elif entity_type == "spellschool": reference_card = build_spell_school_card(entity)

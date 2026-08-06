@@ -164,12 +164,11 @@ Displays space, reach, typical height, typical weight, and description.
 - Added dedicated v0.24 card-normalization regression coverage.
 - Full test suite: 63 passed.
 
-
 # v0.25.0 — Complete Open5e Endpoint Card Coverage
 
-This release adds tailored cards for every remaining Open5e v2 endpoint type imported by the synchronizer.
+This release adds tailored cards for every remaining Open5e v2 endpoint type discovered by the application.
 
-## New dedicated card types
+## New cards
 
 - Ability
 - Alignment
@@ -193,32 +192,38 @@ This release adds tailored cards for every remaining Open5e v2 endpoint type imp
 - Rule
 - Rule Set
 
-The cards normalize common nested Open5e fields, render linked references with real endpoint keys, retain Markdown formatting, support source switching and shared artwork, and preserve role-gated raw JSON inspection.
+Each card uses the established compendium presentation system: descriptor badges, source variants, linked references, Markdown descriptions, shared artwork, Add to List, role-gated artwork tools, and raw JSON inspection.
 
 ## Verification
 
-- Added endpoint-builder coverage for all 21 remaining card types.
-- Added linked-reference checks for documents, game systems, and publishers.
+- Added coverage for every remaining endpoint-card builder.
+- Added link validation for Document, Game System, and Publisher references.
 - Full test suite: 85 passed.
 
 # v0.26.0 — Reference Card Metadata Refinement
 
-This release refines Alignment, Background, Class, Condition, Creature Type, Damage Type, Feat, Game System, and Item cards around the actual Open5e metadata shapes.
+This release refines Alignment, Background, Class, Condition, Creature Type, Damage Type, Feat, Game System, and Item cards around their actual Open5e metadata.
 
-## Changes
+## Card updates
 
-- Alignment cards now show **Morality** and **Societal Attitude** as the two summary fields.
-- Alignment descriptions are grouped under **Descriptions** by game-system key; the nested `document` data is intentionally ignored.
-- Background `benefits` are rendered as complete named blocks with detail values and descriptions.
-- Class features are moved below the description and rendered as full feature blocks.
-- Condition, Creature Type, and Damage Type cards no longer show their internal `key` field.
-- Condition, Creature Type, and Damage Type versioned descriptions are grouped by game system.
-- Feat benefits are rendered as full named blocks rather than flattened chips.
-- Game System cards no longer show their internal `key` field.
-- Item cards display Size when present in the source JSON.
-- Added shared styling for versioned descriptions and structured benefit/feature blocks.
+- Alignment now emphasizes Morality and Societal Attitude and renders each versioned description with its game system.
+- Background benefits render as named detail blocks instead of flattened labels.
+- Class features appear beneath the class description as full named feature blocks.
+- Condition, Creature Type, and Damage Type omit internal key fields and render versioned descriptions by game system.
+- Feat benefits render as complete named blocks with details and descriptions.
+- Game System omits its internal key field.
+- Item displays Size when supplied by Open5e.
+- Document metadata inside versioned-description records remains intentionally excluded from card content.
 
 ## Verification
 
-- Added targeted regression tests for all requested card updates.
-- Full test suite: **90 passed**.
+- Added focused regression tests for all requested card shapes.
+- Full test suite: 90 passed.
+
+# v0.27.0 — Weapon Fallback Metadata and Card Refinements
+
+- Weapon cards now fall back to the matching Item entity for Cost and Weight when the Weapon record omits, blanks, or zeroes those fields.
+- Item fallback selection prefers a matching game system when multiple Item variants exist.
+- Skill cards now render versioned Descriptions grouped by Game System.
+- Spell cards now recognize `saving_throw_ability` and display it in the top summary.
+- Added regression coverage for all three behaviors.

@@ -1032,8 +1032,9 @@ def _format_weapon_damage(value: Any, damage_type: Any = None) -> str:
     return " ".join(part for part in (dice, dtype.title() if dtype else "") if part)
 
 
-def build_weapon_card(entity: Entity) -> dict[str, Any]:
+def build_weapon_card(entity: Entity, fallback_item: Entity | None = None) -> dict[str, Any]:
     data = entity.data_json or {}
+    fallback_data = (fallback_item.data_json or {}) if fallback_item else {}
     category = _display_name(_weapon_value(data, "category", "weapon_category", "type", default="Weapon"), "Weapon")
     weapon_range = _display_name(_weapon_value(data, "weapon_range", "range_type", "classification", default=""))
     damage_type = _display_name(_weapon_value(data, "damage_type", default=""))
@@ -1055,6 +1056,18 @@ def build_weapon_card(entity: Entity) -> dict[str, Any]:
         reach_text = ""
     cost = _weapon_value(data, "cost", "price", "value", default=None)
     weight = _weapon_value(data, "weight", default=None)
+    cost_present = _has_any_key(data, "cost", "price", "value")
+    weight_present = _has_any_key(data, "weight")
+    if cost in (None, "", 0, 0.0, "0", "0.0") and fallback_data:
+        fallback_cost = _first(fallback_data, "cost", "price", "value", default=None)
+        if fallback_cost not in (None, "", 0, 0.0, "0", "0.0"):
+            cost = fallback_cost
+            cost_present = True
+    if weight in (None, "", 0, 0.0, "0", "0.0") and fallback_data:
+        fallback_weight = _first(fallback_data, "weight", default=None)
+        if fallback_weight not in (None, "", 0, 0.0, "0", "0.0"):
+            weight = fallback_weight
+            weight_present = True
     properties = _normalize_weapon_properties(_weapon_value(data, "properties", "weapon_properties", "property", "tags", default=[]))
     mastery = _display_name(_weapon_value(data, "mastery", "mastery_property", "weapon_mastery", default=""))
     ammunition = _rich_text(_weapon_value(data, "ammunition", "ammo", "ammunition_type", default=None))
@@ -1073,9 +1086,9 @@ def build_weapon_card(entity: Entity) -> dict[str, Any]:
     primary_stats = [
         {"label": "Damage", "value": damage or "—", "kind": "damage"},
     ]
-    if _has_any_key(data, "cost", "price", "value"):
+    if cost_present:
         primary_stats.append({"label": "Cost", **format_cost(cost, present=True), "kind": "cost"})
-    if _has_any_key(data, "weight"):
+    if weight_present:
         primary_stats.append({"label": "Weight", "value": format_weight(weight, present=True), "tooltip": "", "kind": "weight"})
     summary_rows = _summary_rows(
         ("Category", category.title()),
@@ -1142,7 +1155,7 @@ def build_spell_card(entity: Entity) -> dict[str, Any]:
     ritual = bool(_first(data, "ritual", "is_ritual", default=False))
     classes = _normalize_named_values(_first(data, "classes", "spell_lists", "class_list", default=[]))
     damage = _rich_text(_first(data, "damage", "damage_dice", default=None))
-    save = _display_name(_first(data, "saving_throw", "save", "save_ability", default=""))
+    save = _display_name(_first(data, "saving_throw_ability", "saving_throw", "save", "save_ability", default=""))
     attack = _display_name(_first(data, "attack_type", "spell_attack", default=""))
     description = _rich_text(_first(data, "desc", "description", "text", default=entity.summary or ""))
     higher = _rich_text(_first(data, "higher_level", "at_higher_levels", "higher_levels", default=None))
@@ -1211,7 +1224,9 @@ def build_skill_card(entity: Entity) -> dict[str, Any]:
     ability = _display_name(ability_raw)
     passive = _rich_text(_first(data, "passive", "passive_use", default=None))
     examples = _normalize_named_values(_first(data, "examples", "uses", default=[]))
-    return _build_reference_card(entity, accent="skill", summary_pairs=[("Ability", _reference_link(ability_raw, "abilitie") if ability else None), ("Passive Use", passive or None)], chips=examples, chips_title="Common Uses", identity=[descriptor_badge("Skill", "type")])
+    card = _build_reference_card(entity, accent="skill", summary_pairs=[("Ability", _reference_link(ability_raw, "abilitie") if ability else None), ("Passive Use", passive or None)], chips=examples, chips_title="Common Uses", identity=[descriptor_badge("Skill", "type")])
+    card["description_entries"] = _description_entries(data.get("descriptions"))
+    return card
 
 
 def build_service_card(entity: Entity) -> dict[str, Any]:
