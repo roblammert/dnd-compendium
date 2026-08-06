@@ -1,0 +1,2 @@
+<div class="card-grid">{% for entity in entities %}{% include "components/card.html" %}{% else %}<p class="empty">No matching entities.</p>{% endfor %}</div>
+<nav class="pagination">{% if page>1 %}<a hx-get="/compendium?q={{q}}&entity_type={{entity_type or ''}}&source_kind={{source_kind or ''}}&page={{page-1}}" hx-target="#results">Previous</a>{% endif %}<span>Page {{page}} of {{pages}}</span>{% if page<pages %}<a hx-get="/compendium?q={{q}}&entity_type={{entity_type or ''}}&source_kind={{source_kind or ''}}&page={{page+1}}" hx-target="#results">Next</a>{% endif %}</nav>

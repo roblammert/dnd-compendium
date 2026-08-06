@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% block title %}Browse · D&D Compendium{% endblock %}{% block content %}<h1>Compendium</h1>
+<form id="filters" class="filters" hx-get="/compendium" hx-target="#results" hx-push-url="true" hx-trigger="input changed delay:250ms, change">
+<input name="q" value="{{q}}" placeholder="Search names and rules text"><select name="entity_type"><option value="">All types</option>{% for t in types %}<option value="{{t}}" {% if t==entity_type %}selected{% endif %}>{{t|title}}</option>{% endfor %}</select>
+<select name="source_kind"><option value="">All sources</option><option value="open5e" {% if source_kind=='open5e' %}selected{% endif %}>Open5e</option><option value="homebrew" {% if source_kind=='homebrew' %}selected{% endif %}>Homebrew</option></select></form>
+<div id="results">{% include "fragments/results.html" %}</div>{% endblock %}
