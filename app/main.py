@@ -28,7 +28,7 @@ from app.endpoint_defaults import endpoint_default
 
 settings=get_settings(); base=Path(__file__).parent
 settings.asset_root.mkdir(parents=True, exist_ok=True)
-APP_VERSION = "0.27.0"
+APP_VERSION = "0.27.1"
 app=FastAPI(title=settings.app_name, version=APP_VERSION)
 app.add_middleware(UserContextMiddleware)
 app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, session_cookie=settings.session_cookie_name, max_age=settings.session_max_age, same_site="lax", https_only=settings.session_https_only)
@@ -343,10 +343,16 @@ def entity_detail(
         item_candidates = list(db.scalars(select(Entity).where(
             Entity.entity_type == "item",
             Entity.is_active == True,
-            (Entity.canonical_key == resolved_key) | (Entity.slug == canonical_key) | (Entity.name == entity.name),
+            (Entity.canonical_key == resolved_key)
+            | (Entity.canonical_key == canonical_entity_key("item", entity.name))
+            | (Entity.slug == canonical_key)
+            | (Entity.slug == entity.slug)
+            | (func.lower(Entity.name) == entity.name.casefold()),
         ).order_by(Entity.id)).all())
         if item_candidates:
-            fallback_item = next((item for item in item_candidates if item.game_system_key == entity.game_system_key), item_candidates[0])
+            fallback_item = next((item for item in item_candidates if item.source_document and item.source_document == entity.source_document), None)
+            fallback_item = fallback_item or next((item for item in item_candidates if item.game_system_key and item.game_system_key == entity.game_system_key), None)
+            fallback_item = fallback_item or item_candidates[0]
     weapon = build_weapon_card(entity, fallback_item=fallback_item) if entity_type == "weapon" else None
     reference_card = None
     if entity_type == "spell": reference_card = build_spell_card(entity)

@@ -227,3 +227,13 @@ This release refines Alignment, Background, Class, Condition, Creature Type, Dam
 - Skill cards now render versioned Descriptions grouped by Game System.
 - Spell cards now recognize `saving_throw_ability` and display it in the top summary.
 - Added regression coverage for all three behaviors.
+
+
+# v0.27.1 — Weapon Item-Fallback Hotfix
+
+- Fix Weapon detail routes so matching Item records are selected by canonical key, slug, or case-insensitive name.
+- Prefer an Item from the same source document, then the same game system.
+- Read Cost and Weight from top-level or nested `item`, `equipment`, and `weapon` objects.
+- Treat blank and zero Weapon values as missing so linked Item metadata can replace them.
+- Support structured coin-unit objects and full coin names.
+- Add regression coverage for nested Battleaxe Item metadata.

@@ -763,7 +763,9 @@ def _numeric_value(value: Any) -> float | None:
         return float(value)
     if isinstance(value, dict):
         amount = value.get("value", value.get("amount", value.get("quantity", value.get("cost"))))
-        unit = str(value.get("unit", value.get("coin", "gp"))).casefold()
+        raw_unit = value.get("unit", value.get("coin", "gp"))
+        unit = _display_name(raw_unit, "gp").casefold() if isinstance(raw_unit, dict) else str(raw_unit).casefold()
+        unit = {"gold piece":"gp", "gold pieces":"gp", "silver piece":"sp", "silver pieces":"sp", "copper piece":"cp", "copper pieces":"cp", "platinum piece":"pp", "platinum pieces":"pp"}.get(unit, unit)
         numeric = _numeric_value(amount)
         if numeric is None: return None
         return numeric * {"pp":10.0,"gp":1.0,"sp":0.1,"cp":0.01}.get(unit, 1.0)
@@ -991,14 +993,25 @@ def build_item_card(entity: Entity) -> dict[str, Any]:
 # v0.18 dedicated Weapon card normalization
 
 def _weapon_value(data: dict[str, Any], *keys: str, default: Any = None) -> Any:
-    """Read weapon fields from top-level or a nested ``weapon`` object."""
+    """Read equipment fields from common Open5e top-level and nested wrappers."""
     value = _first(data, *keys, default=None)
     if value not in (None, "", [], {}):
         return value
-    nested = data.get("weapon")
-    if isinstance(nested, dict):
-        return _first(nested, *keys, default=default)
+    for wrapper in ("weapon", "item", "equipment"):
+        nested = data.get(wrapper)
+        if isinstance(nested, dict):
+            value = _first(nested, *keys, default=None)
+            if value not in (None, "", [], {}):
+                return value
     return default
+
+
+def _is_missing_equipment_value(value: Any) -> bool:
+    """True when an equipment value should be replaced by linked item metadata."""
+    if value in (None, "", [], {}):
+        return True
+    numeric = _numeric_value(value)
+    return numeric == 0 if numeric is not None else False
 
 
 def _format_weapon_range(value: Any, long_value: Any = None) -> str:
@@ -1058,14 +1071,14 @@ def build_weapon_card(entity: Entity, fallback_item: Entity | None = None) -> di
     weight = _weapon_value(data, "weight", default=None)
     cost_present = _has_any_key(data, "cost", "price", "value")
     weight_present = _has_any_key(data, "weight")
-    if cost in (None, "", 0, 0.0, "0", "0.0") and fallback_data:
-        fallback_cost = _first(fallback_data, "cost", "price", "value", default=None)
-        if fallback_cost not in (None, "", 0, 0.0, "0", "0.0"):
+    if _is_missing_equipment_value(cost) and fallback_data:
+        fallback_cost = _weapon_value(fallback_data, "cost", "price", "value", default=None)
+        if not _is_missing_equipment_value(fallback_cost):
             cost = fallback_cost
             cost_present = True
-    if weight in (None, "", 0, 0.0, "0", "0.0") and fallback_data:
-        fallback_weight = _first(fallback_data, "weight", default=None)
-        if fallback_weight not in (None, "", 0, 0.0, "0", "0.0"):
+    if _is_missing_equipment_value(weight) and fallback_data:
+        fallback_weight = _weapon_value(fallback_data, "weight", default=None)
+        if not _is_missing_equipment_value(fallback_weight):
             weight = fallback_weight
             weight_present = True
     properties = _normalize_weapon_properties(_weapon_value(data, "properties", "weapon_properties", "property", "tags", default=[]))
