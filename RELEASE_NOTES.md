@@ -200,3 +200,25 @@ The cards normalize common nested Open5e fields, render linked references with r
 - Added endpoint-builder coverage for all 21 remaining card types.
 - Added linked-reference checks for documents, game systems, and publishers.
 - Full test suite: 85 passed.
+
+# v0.26.0 — Reference Card Metadata Refinement
+
+This release refines Alignment, Background, Class, Condition, Creature Type, Damage Type, Feat, Game System, and Item cards around the actual Open5e metadata shapes.
+
+## Changes
+
+- Alignment cards now show **Morality** and **Societal Attitude** as the two summary fields.
+- Alignment descriptions are grouped under **Descriptions** by game-system key; the nested `document` data is intentionally ignored.
+- Background `benefits` are rendered as complete named blocks with detail values and descriptions.
+- Class features are moved below the description and rendered as full feature blocks.
+- Condition, Creature Type, and Damage Type cards no longer show their internal `key` field.
+- Condition, Creature Type, and Damage Type versioned descriptions are grouped by game system.
+- Feat benefits are rendered as full named blocks rather than flattened chips.
+- Game System cards no longer show their internal `key` field.
+- Item cards display Size when present in the source JSON.
+- Added shared styling for versioned descriptions and structured benefit/feature blocks.
+
+## Verification
+
+- Added targeted regression tests for all requested card updates.
+- Full test suite: **90 passed**.
