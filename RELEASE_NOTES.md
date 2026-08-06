@@ -163,3 +163,40 @@ Displays space, reach, typical height, typical weight, and description.
 
 - Added dedicated v0.24 card-normalization regression coverage.
 - Full test suite: 63 passed.
+
+
+# v0.25.0 — Complete Open5e Endpoint Card Coverage
+
+This release adds tailored cards for every remaining Open5e v2 endpoint type imported by the synchronizer.
+
+## New dedicated card types
+
+- Ability
+- Alignment
+- Armor
+- Background
+- Class
+- Condition
+- Creature Set
+- Creature Type
+- Damage Type
+- Document / Source
+- Environment
+- Feat
+- Game System
+- Image
+- Item Category
+- Item Rarity
+- Item Set
+- License
+- Publisher
+- Rule
+- Rule Set
+
+The cards normalize common nested Open5e fields, render linked references with real endpoint keys, retain Markdown formatting, support source switching and shared artwork, and preserve role-gated raw JSON inspection.
+
+## Verification
+
+- Added endpoint-builder coverage for all 21 remaining card types.
+- Added linked-reference checks for documents, game systems, and publishers.
+- Full test suite: 85 passed.

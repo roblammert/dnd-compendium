@@ -1234,3 +1234,236 @@ def build_size_card(entity: Entity) -> dict[str, Any]:
     weight = _rich_text(_first(data, "weight", "weight_range", default=None))
     reach = _format_measurement(_first(data, "reach", "reach_feet", default=None), "feet")
     return _build_reference_card(entity, accent="size", summary_pairs=[("Space", space if space != "—" else None), ("Reach", reach if reach != "—" else None), ("Typical Height", height or None), ("Typical Weight", weight or None)], identity=[descriptor_badge(entity.name.title(), "size")])
+
+
+def _external_link(value: Any, *, fallback_text: str = "Open reference") -> dict[str, str] | None:
+    if isinstance(value, dict):
+        url = value.get("url") or value.get("permalink") or value.get("href")
+        text_value = value.get("name") or value.get("display_name") or value.get("title") or fallback_text
+    else:
+        url = value if isinstance(value, str) and value.startswith(("http://", "https://")) else None
+        text_value = fallback_text
+    return {"text": str(text_value), "url": str(url)} if url else None
+
+
+def _join_named(value: Any) -> str | None:
+    names = _normalize_named_values(value)
+    return ", ".join(names) if names else None
+
+
+def _linked_named_list(value: Any, entity_type: str) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    if value in (None, ""):
+        return rows
+    values = value if isinstance(value, list) else [value]
+    for item in values:
+        link = _reference_link(item, entity_type)
+        if link:
+            rows.append(link)
+    return rows
+
+
+def build_ability_card(entity: Entity) -> dict[str, Any]:
+    data = entity.data_json or {}
+    short = _rich_text(_first(data, "short", "abbreviation", "abbr", default=None))
+    skills = _normalize_named_values(_first(data, "skills", "related_skills", default=[]))
+    return _build_reference_card(entity, accent="ability", summary_pairs=[("Abbreviation", short or None), ("Key", _rich_text(_first(data, "key", default=None)) or None)], chips=skills, chips_title="Associated Skills", identity=[descriptor_badge("Ability", "type")])
+
+
+def build_alignment_card(entity: Entity) -> dict[str, Any]:
+    data = entity.data_json or {}
+    abbreviation = _rich_text(_first(data, "abbreviation", "abbr", "short", default=None))
+    ethics = _display_name(_first(data, "ethics", "law_chaos", "order_axis", default=""))
+    morality = _display_name(_first(data, "morality", "good_evil", "moral_axis", default=""))
+    return _build_reference_card(entity, accent="alignment", summary_pairs=[("Abbreviation", abbreviation or None), ("Ethical Axis", ethics.title() if ethics else None), ("Moral Axis", morality.title() if morality else None)], identity=[descriptor_badge(entity.name.title(), "alignment")])
+
+
+def build_armor_card(entity: Entity) -> dict[str, Any]:
+    data = entity.data_json or {}
+    armor = data.get("armor") if isinstance(data.get("armor"), dict) else data
+    ac_display = _rich_text(_first(armor, "ac_display", "armor_class", "ac", default=None))
+    category = _display_name(_first(armor, "category", "armor_category", "type", default=""))
+    strength = _rich_text(_first(armor, "strength_score_required", "strength_required", "minimum_strength", default=None))
+    stealth = _first(armor, "grants_stealth_disadvantage", "stealth_disadvantage", default=None)
+    cost_present = _has_any_key(data, "cost", "price")
+    weight_present = _has_any_key(data, "weight")
+    badges = [descriptor_badge("Armor", "type")]
+    if category: badges.append(descriptor_badge(category.title(), "armor-category"))
+    return _build_reference_card(entity, accent="armor", summary_pairs=[("Armor Class", ac_display or None), ("Category", category.title() if category else None), ("Strength Required", strength or None), ("Stealth", "Disadvantage" if stealth is True else ("No disadvantage" if stealth is False else None)), ("Cost", format_cost(_first(data, "cost", "price", default=None), present=cost_present)), ("Weight", format_weight(_first(data, "weight", default=None), present=weight_present))], identity=badges)
+
+
+def build_background_card(entity: Entity) -> dict[str, Any]:
+    data = entity.data_json or {}
+    skills = _join_named(_first(data, "skill_proficiencies", "skills", default=[]))
+    tools = _join_named(_first(data, "tool_proficiencies", "tools", default=[]))
+    languages = _join_named(_first(data, "languages", "language_options", default=[]))
+    equipment = _join_named(_first(data, "equipment", "starting_equipment", default=[]))
+    feature = _display_name(_first(data, "feature", default=""))
+    feats = _normalize_named_values(_first(data, "feats", "origin_feats", default=[]))
+    return _build_reference_card(entity, accent="background", summary_pairs=[("Skill Proficiencies", skills), ("Tool Proficiencies", tools), ("Languages", languages), ("Starting Equipment", equipment), ("Feature", feature or None)], chips=feats, chips_title="Associated Feats", identity=[descriptor_badge("Background", "type")])
+
+
+def build_class_card(entity: Entity) -> dict[str, Any]:
+    data = entity.data_json or {}
+    hit_die = _rich_text(_first(data, "hit_die", "hit_dice", default=None))
+    primary = _join_named(_first(data, "primary_ability", "primary_abilities", "abilities", default=[]))
+    saves = _join_named(_first(data, "saving_throw_proficiencies", "saving_throws", default=[]))
+    armor = _join_named(_first(data, "armor_proficiencies", "armor", default=[]))
+    weapons = _join_named(_first(data, "weapon_proficiencies", "weapons", default=[]))
+    tools = _join_named(_first(data, "tool_proficiencies", "tools", default=[]))
+    spellcasting = _display_name(_first(data, "spellcasting_ability", "spellcasting", default=""))
+    features = _normalize_named_values(_first(data, "features", "class_features", default=[]))
+    return _build_reference_card(entity, accent="class", summary_pairs=[("Hit Die", hit_die or None), ("Primary Ability", primary), ("Saving Throws", saves), ("Armor Proficiencies", armor), ("Weapon Proficiencies", weapons), ("Tool Proficiencies", tools), ("Spellcasting Ability", spellcasting.title() if spellcasting else None)], chips=features, chips_title="Class Features", identity=[descriptor_badge("Class", "type")])
+
+
+def build_condition_card(entity: Entity) -> dict[str, Any]:
+    data = entity.data_json or {}
+    effects = _normalize_named_values(_first(data, "effects", "mechanics", default=[]))
+    return _build_reference_card(entity, accent="condition", summary_pairs=[("Key", _rich_text(_first(data, "key", default=None)) or None)], chips=effects, chips_title="Mechanical Effects", identity=[descriptor_badge("Condition", "type")])
+
+
+def build_creature_set_card(entity: Entity) -> dict[str, Any]:
+    data = entity.data_json or {}
+    creatures = _normalize_named_values(_first(data, "creatures", "members", default=[]))
+    set_type = _display_name(_first(data, "type", "set_type", default=""))
+    return _build_reference_card(entity, accent="creature-set", summary_pairs=[("Set Type", set_type.title() if set_type else None), ("Creature Count", len(creatures) if creatures else None)], chips=creatures, chips_title="Creatures", identity=[descriptor_badge("Creature Set", "type")])
+
+
+def build_creature_type_card(entity: Entity) -> dict[str, Any]:
+    data = entity.data_json or {}
+    examples = _normalize_named_values(_first(data, "examples", "creatures", default=[]))
+    return _build_reference_card(entity, accent="creature-type", summary_pairs=[("Key", _rich_text(_first(data, "key", default=None)) or None)], chips=examples, chips_title="Examples", identity=[descriptor_badge(entity.name.title(), "creature-type")])
+
+
+def build_damage_type_card(entity: Entity) -> dict[str, Any]:
+    data = entity.data_json or {}
+    category = _display_name(_first(data, "category", "damage_category", default=""))
+    return _build_reference_card(entity, accent="damage-type", summary_pairs=[("Category", category.title() if category else None), ("Key", _rich_text(_first(data, "key", default=None)) or None)], identity=[descriptor_badge(entity.name.title(), "damage-type")])
+
+
+def build_document_card(entity: Entity) -> dict[str, Any]:
+    data = entity.data_json or {}
+    game = _first(data, "gamesystem", "game_system", default=None)
+    publisher = _first(data, "publisher", default=None)
+    doc_type = _display_name(_first(data, "type", "document_type", default=""))
+    permalink = _external_link(_first(data, "permalink", "url", default=None), fallback_text="Open source document")
+    return _build_reference_card(entity, accent="document", summary_pairs=[("Display Name", _rich_text(_first(data, "display_name", default=None)) or None), ("Game System", _reference_link(game, "gamesystem")), ("Publisher", _reference_link(publisher, "publisher")), ("Document Type", doc_type.title() if doc_type else None), ("Permalink", permalink)], identity=[descriptor_badge("Source Document", "type")])
+
+
+def build_environment_card(entity: Entity) -> dict[str, Any]:
+    data = entity.data_json or {}
+    terrain = _join_named(_first(data, "terrain", "terrains", "biomes", default=[]))
+    climate = _join_named(_first(data, "climate", "climates", default=[]))
+    creatures = _normalize_named_values(_first(data, "creatures", "common_creatures", default=[]))
+    return _build_reference_card(entity, accent="environment", summary_pairs=[("Terrain", terrain), ("Climate", climate)], chips=creatures, chips_title="Associated Creatures", identity=[descriptor_badge("Environment", "type")])
+
+
+def build_feat_card(entity: Entity) -> dict[str, Any]:
+    data = entity.data_json or {}
+    prerequisite = _rich_text(_first(data, "prerequisite", "prerequisites", default=None))
+    repeatable = _first(data, "repeatable", "is_repeatable", default=None)
+    category = _display_name(_first(data, "category", "feat_type", "type", default=""))
+    benefits = _normalize_named_values(_first(data, "benefits", "features", "effects", default=[]))
+    return _build_reference_card(entity, accent="feat", summary_pairs=[("Category", category.title() if category else None), ("Prerequisite", prerequisite or None), ("Repeatable", "Yes" if repeatable is True else ("No" if repeatable is False else None))], chips=benefits, chips_title="Benefits", identity=[descriptor_badge("Feat", "type")])
+
+
+def build_game_system_card(entity: Entity) -> dict[str, Any]:
+    data = entity.data_json or {}
+    publisher = _first(data, "publisher", default=None)
+    version = _rich_text(_first(data, "version", "edition", default=None))
+    release = _rich_text(_first(data, "release_date", "published_at", default=None))
+    return _build_reference_card(entity, accent="game-system", summary_pairs=[("Version", version or None), ("Publisher", _reference_link(publisher, "publisher")), ("Release Date", release or None), ("Key", _rich_text(_first(data, "key", default=None)) or None)], identity=[descriptor_badge("Game System", "type")])
+
+
+def build_image_card(entity: Entity) -> dict[str, Any]:
+    data = entity.data_json or {}
+    image_url = _external_link(_first(data, "url", "image_url", "href", default=None), fallback_text="Open image")
+    license_value = _first(data, "license", default=None)
+    creator = _display_name(_first(data, "creator", "artist", "author", default=""))
+    alt = _rich_text(_first(data, "alt", "alt_text", "caption", default=None))
+    return _build_reference_card(entity, accent="image", summary_pairs=[("Image", image_url), ("Creator", creator or None), ("License", _reference_link(license_value, "license")), ("Alt Text", alt or None)], identity=[descriptor_badge("Image", "type")])
+
+
+def build_item_category_card(entity: Entity) -> dict[str, Any]:
+    data = entity.data_json or {}
+    parent = _first(data, "parent", "parent_category", default=None)
+    examples = _normalize_named_values(_first(data, "items", "examples", default=[]))
+    return _build_reference_card(entity, accent="item-category", summary_pairs=[("Parent Category", _reference_link(parent, "itemcategorie")), ("Key", _rich_text(_first(data, "key", default=None)) or None)], chips=examples, chips_title="Items", identity=[descriptor_badge("Item Category", "type")])
+
+
+def build_item_rarity_card(entity: Entity) -> dict[str, Any]:
+    data = entity.data_json or {}
+    rank = _rich_text(_first(data, "rank", "order", "value", default=None))
+    tier = _display_name(_first(data, "tier", "category", default=""))
+    return _build_reference_card(entity, accent="item-rarity", summary_pairs=[("Tier", tier.title() if tier else None), ("Sort Rank", rank or None), ("Key", _rich_text(_first(data, "key", default=None)) or None)], identity=[descriptor_badge(entity.name.title(), "rarity")])
+
+
+def build_item_set_card(entity: Entity) -> dict[str, Any]:
+    data = entity.data_json or {}
+    items = _normalize_named_values(_first(data, "items", "members", default=[]))
+    bonuses = _normalize_named_values(_first(data, "bonuses", "set_bonuses", "effects", default=[]))
+    sections = [{"title": "Set Bonuses", "text": "\n\n".join(f"- {value}" for value in bonuses)}] if bonuses else []
+    return _build_reference_card(entity, accent="item-set", summary_pairs=[("Item Count", len(items) if items else None)], chips=items, chips_title="Set Items", sections=sections, identity=[descriptor_badge("Item Set", "type")])
+
+
+def build_license_card(entity: Entity) -> dict[str, Any]:
+    data = entity.data_json or {}
+    url = _external_link(_first(data, "url", "permalink", "license_url", default=None), fallback_text="View license")
+    abbreviation = _rich_text(_first(data, "short_name", "abbreviation", "spdx_id", default=None))
+    return _build_reference_card(entity, accent="license", summary_pairs=[("Short Name", abbreviation or None), ("License URL", url), ("Key", _rich_text(_first(data, "key", default=None)) or None)], identity=[descriptor_badge("License", "type")])
+
+
+def build_publisher_card(entity: Entity) -> dict[str, Any]:
+    data = entity.data_json or {}
+    website = _external_link(_first(data, "website", "url", "permalink", default=None), fallback_text="Publisher website")
+    documents = _normalize_named_values(_first(data, "documents", "sources", default=[]))
+    return _build_reference_card(entity, accent="publisher", summary_pairs=[("Website", website), ("Key", _rich_text(_first(data, "key", default=None)) or None)], chips=documents, chips_title="Published Sources", identity=[descriptor_badge("Publisher", "type")])
+
+
+def build_rule_card(entity: Entity) -> dict[str, Any]:
+    data = entity.data_json or {}
+    ruleset = _first(data, "ruleset", "rule_set", default=None)
+    section = _display_name(_first(data, "section", "category", "chapter", default=""))
+    parent = _first(data, "parent", "parent_rule", default=None)
+    return _build_reference_card(entity, accent="rule", summary_pairs=[("Rule Set", _reference_link(ruleset, "ruleset")), ("Section", section.title() if section else None), ("Parent Rule", _reference_link(parent, "rule")), ("Key", _rich_text(_first(data, "key", default=None)) or None)], identity=[descriptor_badge("Rule", "type")])
+
+
+def build_ruleset_card(entity: Entity) -> dict[str, Any]:
+    data = entity.data_json or {}
+    game = _first(data, "gamesystem", "game_system", default=None)
+    rules = _normalize_named_values(_first(data, "rules", "sections", default=[]))
+    return _build_reference_card(entity, accent="ruleset", summary_pairs=[("Game System", _reference_link(game, "gamesystem")), ("Rule Count", len(rules) if rules else None), ("Key", _rich_text(_first(data, "key", default=None)) or None)], chips=rules, chips_title="Rules and Sections", identity=[descriptor_badge("Rule Set", "type")])
+
+
+REMAINING_REFERENCE_BUILDERS = {
+    "abilitie": build_ability_card,
+    "ability": build_ability_card,
+    "alignment": build_alignment_card,
+    "armor": build_armor_card,
+    "background": build_background_card,
+    "classe": build_class_card,
+    "class": build_class_card,
+    "condition": build_condition_card,
+    "creatureset": build_creature_set_card,
+    "creaturetype": build_creature_type_card,
+    "damagetype": build_damage_type_card,
+    "document": build_document_card,
+    "environment": build_environment_card,
+    "feat": build_feat_card,
+    "gamesystem": build_game_system_card,
+    "image": build_image_card,
+    "itemcategorie": build_item_category_card,
+    "itemcategory": build_item_category_card,
+    "itemraritie": build_item_rarity_card,
+    "itemrarity": build_item_rarity_card,
+    "itemset": build_item_set_card,
+    "license": build_license_card,
+    "publisher": build_publisher_card,
+    "rule": build_rule_card,
+    "ruleset": build_ruleset_card,
+}
+
+
+def build_remaining_reference_card(entity: Entity) -> dict[str, Any] | None:
+    builder = REMAINING_REFERENCE_BUILDERS.get(entity.entity_type)
+    return builder(entity) if builder else None

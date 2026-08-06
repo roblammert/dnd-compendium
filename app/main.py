@@ -18,7 +18,7 @@ from app.config import get_settings
 from app.db import Base, engine, ensure_schema_columns, get_db
 from app.models import Entity, EntityTypeVisibility, LexiconTerm, SyncEndpoint, SyncRun, UserEntityList
 from app.schemas import EntityCreate, EntityOut, EntityUpdate
-from app.services import backfill_canonical_keys, build_item_card, build_magic_item_card, build_monster_card, build_species_card, build_weapon_card, build_spell_card, build_spell_school_card, build_weapon_property_card, build_skill_card, build_service_card, build_language_card, build_size_card, canonical_entity_key, create_homebrew, descriptor_badge, ensure_unique_slug, init_search, rebuild_search_row
+from app.services import backfill_canonical_keys, build_item_card, build_magic_item_card, build_monster_card, build_species_card, build_weapon_card, build_spell_card, build_spell_school_card, build_weapon_property_card, build_skill_card, build_service_card, build_language_card, build_size_card, build_remaining_reference_card, canonical_entity_key, create_homebrew, descriptor_badge, ensure_unique_slug, init_search, rebuild_search_row
 from app.sync import ACTIVE_SYNC_STATUSES, create_sync_run, recover_interrupted_syncs, run_open5e_sync
 from app.assets import save_upload, save_url
 from app.auth import UserContextMiddleware, can, ensure_default_admin, require_admin, require_editor, require_user
@@ -28,7 +28,7 @@ from app.endpoint_defaults import endpoint_default
 
 settings=get_settings(); base=Path(__file__).parent
 settings.asset_root.mkdir(parents=True, exist_ok=True)
-APP_VERSION = "0.24.0"
+APP_VERSION = "0.25.0"
 app=FastAPI(title=settings.app_name, version=APP_VERSION)
 app.add_middleware(UserContextMiddleware)
 app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, session_cookie=settings.session_cookie_name, max_age=settings.session_max_age, same_site="lax", https_only=settings.session_https_only)
@@ -347,6 +347,7 @@ def entity_detail(
     elif entity_type == "service": reference_card = build_service_card(entity)
     elif entity_type == "language": reference_card = build_language_card(entity)
     elif entity_type == "size": reference_card = build_size_card(entity)
+    else: reference_card = build_remaining_reference_card(entity)
     safe_return_to = return_to if return_to and return_to.startswith("/compendium?") else "/compendium"
     descriptor_badges = []
     if monster:

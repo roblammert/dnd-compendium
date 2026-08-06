@@ -92,3 +92,9 @@ Every entity has a `source_kind`. Open5e synchronization may update only `open5e
 ## Content and licensing
 
 This repository contains application code only. Open5e records and downloaded artwork retain their original licenses and attribution requirements.
+
+## Complete Open5e card coverage
+
+The compendium includes dedicated presentations for all Open5e v2 content types currently imported by the synchronizer. In addition to Monsters, Magic Items, Species, Items, Weapons, Spells, and rules-reference cards, v0.25.0 adds tailored cards for abilities, alignments, armor, backgrounds, classes, conditions, creature sets and types, damage types, source documents, environments, feats, game systems, images, item categories and rarities, item sets, licenses, publishers, rules, and rule sets.
+
+Card builders normalize nested Open5e references into readable metadata and preserve the original source JSON for authorized users.
