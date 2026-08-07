@@ -435,3 +435,14 @@ button:disabled { cursor:not-allowed; opacity:.55; }
 .review-completion-panel .complete-toggle{display:inline-flex;align-items:center;justify-content:flex-start;gap:.55rem;max-width:260px;width:auto;min-width:0;padding:.55rem .7rem;white-space:normal}
 .review-completion-panel .complete-toggle input[type=checkbox]{appearance:auto;width:1rem!important;height:1rem!important;min-width:1rem!important;max-width:1rem!important;padding:0!important;margin:0!important;flex:0 0 1rem}
 .review-completion-panel .complete-toggle span{display:inline;min-width:0;line-height:1.25;font:800 .82rem/1.25 system-ui}
+
+/* v0.31.13 — keep Step 9 ability modifiers inside their tiles */
+.review-character-step .review-ability-row{
+  grid-template-columns:minmax(1.65rem,.9fr) minmax(1.55rem,.55fr) minmax(1.35rem,.5fr);
+  column-gap:.2rem;
+  padding:.55rem .4rem;
+  overflow:hidden;
+}
+.review-character-step .review-ability-row b{min-width:0;white-space:nowrap}
+.review-character-step .review-ability-row strong{justify-self:center;min-width:0;white-space:nowrap}
+.review-character-step .review-ability-row span{justify-self:end;min-width:0;white-space:nowrap;text-align:right}

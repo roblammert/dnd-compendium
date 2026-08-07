@@ -458,3 +458,9 @@ This release adds generated-result list assignment, modernizes My Lists, and int
 - Increased Review ability score prominence while preserving the smaller modifier typography.
 - Replaced the oversized completion checkbox presentation with an explicitly sized native checkbox and compact inline label.
 - Constrained the completion control so its label remains inside the Character Status panel.
+
+## v0.31.13 - Character Review ability-tile fit hotfix
+
+- Tightened the Step 9 Ability Scores row grid so the ability abbreviation, score, and modifier all remain inside each tile.
+- Preserved the existing score and modifier font sizes while reducing only spacing and reserved column width.
+- Added overflow safeguards for narrow Review layouts.
