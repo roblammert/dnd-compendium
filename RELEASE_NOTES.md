@@ -403,3 +403,14 @@ This release adds generated-result list assignment, modernizes My Lists, and int
 - Makes skills, languages, and other proficiency rows open read-only reference information inside the Character Builder modal when cached endpoint data exists.
 - Rebuilds Equipment & Attacks with automatic class/background/species starting-equipment grants, locked granted rows, duplicate generic Item suppression when a dedicated Weapon/Armor exists, Endpoint Management display labels as pills, source-aware Weapon→Item cost fallback, live purchased-equipment cost, armor training checks, and one-suit/one-shield enforcement.
 - Adds compact 2024 Basic Rules fallback metadata for class armor/weapon training and Package A starting equipment when Open5e does not expose structured values.
+
+## v0.31.7 — Character Builder controlled navigation, live search, and spell/feat rules
+
+- Non-clickable step rail with guarded Up/Down controls.
+- Fully visible Background skill/language/proficiency grids.
+- Debounced SQLite wildcard search and live type filters for Equipment.
+- Correct live armor deselection/reselection behavior.
+- Debounced class-specific Spell search with level/selected filters.
+- All-source spell/feat reference choices with source pills and More Info modals.
+- 2024 spell selection/preparation limits and feat prerequisite enforcement.
+- Locked background grants remain persisted server-side.

@@ -439,6 +439,8 @@ document.addEventListener("submit", async (event) => {
     updatePreview(); updateLanguages();
   }
 
+  function debounce(fn, wait=450) { let timer; return (...args)=>{ clearTimeout(timer); timer=setTimeout(()=>fn(...args),wait); }; }
+
   function initGearBuilder(root=document) {
     const form=root.querySelector?.('[data-gear-builder]');
     if(!form || form.dataset.gearReady==='1') return;
@@ -448,6 +450,25 @@ document.addEventListener("submit", async (event) => {
     const armorStatus=form.querySelector('[data-armor-limit-status]');
     const message=form.querySelector('[data-gear-rule-message]');
     const search=form.querySelector('[data-character-equipment-search]');
+    const filter=form.querySelector('[data-character-equipment-filter]');
+    const count=form.querySelector('[data-equipment-visible-count]');
+    let serverIds=new Set(rows.map(r=>r.dataset.equipmentId));
+    const applyVisibility=()=>{
+      const mode=filter?.value||'all'; let visible=0;
+      rows.forEach(r=>{
+        const checked=!!r.querySelector('input')?.checked;
+        const type=r.dataset.equipmentType||'';
+        const matchesServer=serverIds.has(r.dataset.equipmentId);
+        const matchesMode=mode==='all' ? true : mode==='selected' ? checked : type===mode;
+        r.hidden=!(matchesServer && matchesMode); if(!r.hidden) visible++;
+      });
+      if(count) count.textContent=`${visible} shown`;
+    };
+    const runSearch=debounce(async()=>{
+      const url=search?.dataset.filterUrl; if(!url) return;
+      const params=new URLSearchParams({q:(search.value||'').trim(),kind:(filter?.value||'all')==='selected'?'all':(filter?.value||'all')});
+      try { const res=await fetch(`${url}?${params}`,{headers:{Accept:'application/json'},cache:'no-store'}); if(res.ok){ const data=await res.json(); serverIds=new Set(data.ids||[]); applyVisibility(); } } catch(_) { applyVisibility(); }
+    },450);
     const update=()=>{
       const selected=rows.filter(r=>r.querySelector('input')?.checked);
       const purchased=selected.filter(r=>r.dataset.equipmentLocked!=='1');
@@ -456,22 +477,57 @@ document.addEventListener("submit", async (event) => {
       const suit=selected.find(r=>['light','medium','heavy','armor'].includes(r.dataset.armorKind));
       const shield=selected.find(r=>r.dataset.armorKind==='shield');
       rows.forEach(r=>{
-        const input=r.querySelector('input'); if(!input || r.dataset.equipmentLocked==='1' || r.dataset.armorTrained==='0') return;
+        const input=r.querySelector('input'); if(!input || r.dataset.equipmentLocked==='1') return;
         const kind=r.dataset.armorKind;
-        const blocked=(['light','medium','heavy','armor'].includes(kind)&&!!suit&&!input.checked)||(kind==='shield'&&!!shield&&!input.checked);
-        input.disabled=blocked;
-        r.classList.toggle('is-limit-disabled',blocked);
+        const untrained=r.dataset.armorTrained==='0';
+        const conflict=(['light','medium','heavy','armor'].includes(kind)&&!!suit&&!input.checked)||(kind==='shield'&&!!shield&&!input.checked);
+        input.disabled=untrained || conflict;
+        r.classList.toggle('is-rule-disabled',untrained);
+        r.classList.toggle('is-limit-disabled',!untrained && conflict);
       });
       if(armorStatus) armorStatus.textContent=suit ? (shield ? 'Suit + Shield selected' : 'Armor suit selected') : (shield ? 'Shield selected' : 'Ready');
-      if(message) message.textContent=(suit||shield) ? 'Armor limit reached where applicable; conflicting armor choices are greyed out.' : 'Armor limits and training are enforced as you make selections.';
+      if(message) message.textContent=(suit||shield) ? 'Armor capacity is satisfied. The selected armor remains enabled so it can be removed; conflicting choices unlock immediately when it is unchecked.' : 'Armor limits and training are enforced live as you make selections.';
+      applyVisibility();
     };
     rows.forEach(r=>r.querySelector('input')?.addEventListener('change',update));
-    search?.addEventListener('input',()=>{ const q=(search.value||'').trim().toLowerCase(); rows.forEach(r=>{r.hidden=!!q && !(r.dataset.equipmentName||'').includes(q);}); });
-    update();
+    search?.addEventListener('input',runSearch); filter?.addEventListener('change',runSearch);
+    update(); runSearch();
+  }
+
+  function initSpellBuilder(root=document) {
+    const form=root.querySelector?.('[data-spell-builder]');
+    if(!form || form.dataset.spellReady==='1') return;
+    form.dataset.spellReady='1';
+    const rows=Array.from(form.querySelectorAll('[data-spell-row]'));
+    const search=form.querySelector('[data-character-spell-search]');
+    const levelFilter=form.querySelector('[data-character-spell-level]');
+    const count=form.querySelector('[data-spell-visible-count]');
+    const status=form.querySelector('[data-spell-limit-status]');
+    const cantripLimit=Number(form.dataset.spellCantripLimit||0), knownLimit=Number(form.dataset.spellKnownLimit||0), preparedLimit=Number(form.dataset.spellPreparedLimit||0);
+    let serverIds=new Set(rows.map(r=>r.dataset.spellId));
+    const selectedRows=()=>rows.filter(r=>r.querySelector('input[name="spells"]')?.checked);
+    const applyLimits=()=>{
+      const selected=selectedRows();
+      const cantrips=selected.filter(r=>Number(r.dataset.spellLevel||0)===0);
+      const leveled=selected.filter(r=>Number(r.dataset.spellLevel||0)>0);
+      const prepared=rows.filter(r=>r.querySelector('input[name="prepared"]')?.checked);
+      rows.forEach(r=>{
+        const choose=r.querySelector('input[name="spells"]'); const prep=r.querySelector('input[name="prepared"]'); if(!choose)return;
+        const level=Number(r.dataset.spellLevel||0); const chosen=choose.checked;
+        choose.disabled=!chosen && ((level===0 && cantripLimit && cantrips.length>=cantripLimit)||(level>0 && knownLimit && leveled.length>=knownLimit));
+        if(prep){ if(!chosen) prep.checked=false; prep.disabled=!chosen || (!prep.checked && prepared.length>=preparedLimit); }
+      });
+      if(status) status.textContent=`Cantrips ${cantrips.length}/${cantripLimit || '—'} · Chosen level 1+ ${leveled.length}/${knownLimit || '—'} · Prepared ${prepared.length}/${preparedLimit || '—'}`;
+    };
+    const applyVisibility=()=>{ const mode=levelFilter?.value||'all'; let visible=0; rows.forEach(r=>{ const selected=!!r.querySelector('input[name="spells"]')?.checked; const level=String(r.dataset.spellLevel||'0'); const match=serverIds.has(r.dataset.spellId) && (mode==='all'||(mode==='selected'&&selected)||mode===level); r.hidden=!match; if(match)visible++; }); if(count)count.textContent=`${visible} shown`; };
+    const runSearch=debounce(async()=>{ const url=search?.dataset.filterUrl; if(!url)return; const params=new URLSearchParams({q:(search.value||'').trim()}); try{const res=await fetch(`${url}?${params}`,{headers:{Accept:'application/json'},cache:'no-store'});if(res.ok){const data=await res.json();serverIds=new Set(data.ids||[]);applyVisibility();}}catch(_){applyVisibility();}},450);
+    rows.forEach(r=>{r.querySelector('input[name="spells"]')?.addEventListener('change',()=>{applyLimits();applyVisibility();});r.querySelector('input[name="prepared"]')?.addEventListener('change',applyLimits);});
+    search?.addEventListener('input',runSearch); levelFilter?.addEventListener('change',applyVisibility);
+    applyLimits(); applyVisibility(); runSearch();
   }
 
   function initCharacterEnhancements(root=document) {
-    initIdentityBuilder(root); initClassBuilder(root); initBackgroundBuilder(root); initGearBuilder(root);
+    initIdentityBuilder(root); initClassBuilder(root); initBackgroundBuilder(root); initGearBuilder(root); initSpellBuilder(root);
     const abilityForm = root.querySelector?.('[data-ability-builder]');
     if (abilityForm) updateAbilityInputs(abilityForm);
   }

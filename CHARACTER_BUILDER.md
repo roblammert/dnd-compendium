@@ -196,6 +196,14 @@ The post-Ability-Score workflow keeps one sticky right-side live rail. It contai
 Identity keeps Level and XP coherent using the bundled 2024 XP threshold table. Background variants are source-specific, background-granted skills/tools are locked in the UI, and selected background ability adjustments immediately update the live ability rail and dependent HP/AC preview.
 
 
-## v0.31.6 rules-aware interaction notes
+## v0.31.7 rules-aware interaction notes
 
 The equipment workflow now treats Open5e as the local item catalog while bundled 2024 mechanical metadata supplies missing class armor/weapon training and Package A starting-equipment facts. Exact cached structured values remain preferred. Common is always granted, backgrounds from the exact `srd-2024` source expose the 2024 three-point ability adjustment, and legacy backgrounds do not.
+
+## v0.31.7 workflow controls
+
+The step rail is intentionally informational rather than directly navigable. Players move with Save & Continue, Previous, or the guarded Up/Down controls beneath the nine-stage list. This prevents accidentally jumping forward around validation while still allowing backward review.
+
+Equipment and Spell searches are debounced browser requests backed by SQLite wildcard matching against name and cached content. Equipment can also filter by endpoint type or selected state. Spells can filter by currently available spell level or selected state.
+
+Spell choices are allowed from any cached source only when the record explicitly identifies the selected primary class in its class/spell-list/Available-To metadata. Selection counts are then constrained by the pinned 2024 rules layer for the character's class and level.

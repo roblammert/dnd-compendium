@@ -234,3 +234,25 @@ def class_rule(name_or_key: str | None) -> dict:
 def background_rule(name_or_key: str | None) -> dict:
     key = canonical_rule_key(name_or_key)
     return BACKGROUND_RULES.get(key, {})
+
+# Spell-selection limits for the 2024 character builder. Prepared-spell values
+# follow the class feature tables; cantrip counts are creation/progression limits.
+_FULL_PREPARED = [0,4,5,6,7,9,10,11,12,14,15,16,16,17,17,18,18,19,20,21,22]
+_HALF_PREPARED = [0,2,3,4,5,6,6,7,7,9,9,10,10,11,11,12,12,14,14,15,15]
+SORCERER_PREPARED = [0,2,4,6,7,9,10,11,12,14,15,16,16,17,17,18,18,19,20,21,22]
+WARLOCK_PREPARED = [0,2,3,4,5,6,7,8,9,10,10,11,11,12,12,13,13,14,14,15,15]
+
+def spell_selection_limits(class_name_or_key: str | None, level: int) -> dict:
+    key=canonical_rule_key(class_name_or_key); level=max(1,min(20,int(level or 1)))
+    if key in {"bard","cleric","druid","wizard"}: prepared=_FULL_PREPARED[level]
+    elif key in {"paladin","ranger"}: prepared=_HALF_PREPARED[level]
+    elif key=="sorcerer": prepared=SORCERER_PREPARED[level]
+    elif key=="warlock": prepared=WARLOCK_PREPARED[level]
+    else: return {"cantrips":0,"prepared":0,"known":0,"max_spell_level":0}
+    cantrip_base={"bard":2,"cleric":3,"druid":2,"sorcerer":4,"warlock":2,"wizard":3}.get(key,0)
+    cantrips=cantrip_base + (1 if cantrip_base and level>=4 else 0) + (1 if cantrip_base and level>=10 else 0)
+    # Wizards record a spellbook separately from prepared spells. The builder's
+    # chosen-spell list represents that book for Wizard characters.
+    known=(6 + 2*(level-1)) if key=="wizard" else prepared
+    max_spell_level=min(9,(level+1)//2) if key not in {"paladin","ranger","warlock"} else (min(5,(level+1)//2) if key in {"paladin","ranger"} else min(5,(level+1)//2))
+    return {"cantrips":cantrips,"prepared":prepared,"known":known,"max_spell_level":max_spell_level}

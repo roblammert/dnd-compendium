@@ -6,11 +6,11 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response, JSONResponse
 from fastapi.templating import Jinja2Templates
 from markdown_it import MarkdownIt
 from markupsafe import Markup
-from sqlalchemy import select
+from sqlalchemy import select, or_, cast, String
 from sqlalchemy.orm import Session
 
 from app.auth import require_user
@@ -27,12 +27,12 @@ from app.db import get_db
 from app.models import Character, Entity, User, LexiconTerm
 from app.character_rules_2024 import (
     RULESET_SOURCE_KEY, RULESET_SOURCE_LABEL, RULESET_GAME_SYSTEM_KEY,
-    RULESET_GAME_SYSTEM_LABEL, RULESET_DISPLAY_NAME, STANDARD_LANGUAGES, LEVEL_XP,
+    RULESET_GAME_SYSTEM_LABEL, RULESET_DISPLAY_NAME, STANDARD_LANGUAGES, LEVEL_XP, spell_selection_limits,
 )
 
 router = APIRouter(prefix="/tools/character-builder")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-templates.env.globals["app_version"] = "0.31.6"
+templates.env.globals["app_version"] = "0.31.7"
 templates.env.globals["app_name"] = get_settings().app_name
 _md = MarkdownIt("commonmark", {"html": False, "linkify": True}).enable("table")
 templates.env.filters["render_markdown"] = lambda value: Markup(_md.render(str(value or "")))
@@ -55,6 +55,77 @@ STEPS = [
 ]
 STEP_KEYS = {key for key, _ in STEPS}
 
+STEP_INDEX = {key: index for index, (key, _) in enumerate(STEPS)}
+
+
+def _step_complete(character: Character, step: str) -> bool:
+    if step == "identity": return bool((character.name or "").strip()) and 1 <= int(character.level or 0) <= 20
+    if step == "species": return bool(character.species_key)
+    if step == "class": return bool(character.class_key)
+    if step == "abilities":
+        scores = character.ability_scores or {}
+        return all(1 <= int(scores.get(a, 0) or 0) <= 20 for a in ABILITIES)
+    if step == "background": return bool(character.background_key) and "Common" in (character.languages or ["Common"])
+    if step in {"gear", "spells", "details"}: return True
+    return bool(character.is_complete) if step == "review" else False
+
+
+def _navigation_state(character: Character, step: str) -> dict[str, Any]:
+    index = STEP_INDEX[step]
+    prev_key = STEPS[index - 1][0] if index > 0 else None
+    next_key = STEPS[index + 1][0] if index + 1 < len(STEPS) else None
+    return {
+        "previous_step": prev_key, "next_step_key": next_key,
+        "can_step_previous": bool(prev_key),
+        "can_step_next": bool(next_key and _step_complete(character, step)),
+    }
+
+
+def _entity_search_blob(entity: Entity) -> str:
+    data = entity.data_json or {}
+    values = [entity.name or "", entity.summary or ""]
+    for key in ("desc", "description", "descriptions", "benefits", "prerequisite", "prerequisites"):
+        value = data.get(key)
+        if value is not None: values.append(str(value))
+    return " ".join(values).casefold()
+
+
+def _spell_class_blob(spell: Entity) -> str:
+    data = spell.data_json or {}
+    values=[]
+    for key in ("classes", "class", "spell_lists", "spell_list", "available_to", "available_to_classes"):
+        value=data.get(key)
+        if value not in (None, "", [], {}): values.append(str(value))
+    return " ".join(values).casefold()
+
+
+def _spell_matches_class_explicit(spell: Entity, class_entity: Entity | None, level: int) -> bool:
+    if not class_entity: return False
+    data=spell.data_json or {}
+    m=re.search(r"\d+", str(data.get("level", 0)))
+    spell_level=int(m.group()) if m else 0
+    max_level=max(0, min(9, (int(level)+1)//2))
+    if spell_level > max_level: return False
+    blob=_spell_class_blob(spell)
+    if not blob: return False
+    names={class_entity.name.casefold(), str(class_entity.canonical_key or '').casefold(), str(class_entity.slug or '').casefold()}-{''}
+    return any(name in blob for name in names)
+
+
+def _feat_eligibility(feat: Entity, character: Character, derived: dict[str, Any]) -> tuple[bool, str]:
+    data=feat.data_json or {}; prereq=data.get("prerequisites") or data.get("prerequisite") or []
+    text=str(prereq).casefold(); reasons=[]
+    m=re.search(r"level[^0-9]*(\d+)", text)
+    if m and int(character.level or 1) < int(m.group(1)): reasons.append(f"Level {m.group(1)}")
+    scores=derived.get("scores") or {}
+    for short, longname in ABILITY_NAMES.items():
+        m=re.search(rf"{longname.casefold()}[^0-9]*(\d+)", text) or re.search(rf"\b{short}\b[^0-9]*(\d+)", text)
+        if m and int(scores.get(short,0) or 0) < int(m.group(1)): reasons.append(f"{longname} {m.group(1)}")
+    profs=" ".join(list(character.other_proficiencies or [])+list(character.skill_proficiencies or [])).casefold()
+    if "proficien" in text and profs and not any(token in text for token in profs.split() if len(token)>3):
+        # Unknown structured proficiency prerequisites are left enabled unless a clear mismatch is detectable.
+        pass
+    return (not reasons, ", ".join(reasons) if reasons else ("Requirements met" if text else "No prerequisite detected"))
 
 def _uid() -> str:
     return f"chr_{uuid.uuid4().hex[:24]}"
@@ -145,6 +216,7 @@ def _step_context(db: Session, character: Character, step: str) -> dict[str, Any
         "ruleset_display_name": RULESET_DISPLAY_NAME,
         "ruleset_source_label": RULESET_SOURCE_LABEL,
         "ruleset_game_system_label": RULESET_GAME_SYSTEM_LABEL,
+        **_navigation_state(character, step),
     }
     if step == "species":
         context["species_rows"] = entities_for_character(db, ["species", "race"], character)
@@ -187,9 +259,19 @@ def _step_context(db: Session, character: Character, step: str) -> dict[str, Any
         context["equipment_rows"] = equipment_reference_rows(db, character, lexicon)
         context["equipment_locked_ids"] = [r["entity"].public_id for r in context["equipment_rows"] if r["locked"]]
     elif step == "spells":
-        all_spells = entities_for_character(db, ["spell"], character)
-        context["spell_rows"] = [s for s in all_spells if _spell_matches_class(s, derived["class_entity"], character.level)]
-        context["feat_rows"] = entities_for_character(db, ["feat"], character)
+        # Spells and feats may come from any cached source, but spells must explicitly
+        # designate the selected primary class as available.
+        all_spells = _all_active_entities(db, ["spell"])
+        spell_rows = [s for s in all_spells if _spell_matches_class_explicit(s, derived["class_entity"], character.level)]
+        context["spell_rows"] = sorted(spell_rows, key=lambda e: (int(re.search(r"\d+", str((e.data_json or {}).get("level",0))).group()) if re.search(r"\d+", str((e.data_json or {}).get("level",0))) else 0, e.name.casefold(), e.source_display_name or ""))
+        context["spell_levels"] = sorted({int(re.search(r"\d+", str((s.data_json or {}).get("level",0))).group()) if re.search(r"\d+", str((s.data_json or {}).get("level",0))) else 0 for s in spell_rows})
+        class_key = primary_class_key(derived["class_entity"]) or (derived["class_entity"].canonical_key if derived["class_entity"] else None)
+        context["spell_limits"] = spell_selection_limits(class_key, character.level)
+        feats=[]
+        for feat in _all_active_entities(db,["feat"]):
+            eligible, reason = _feat_eligibility(feat, character, derived)
+            feats.append({"entity": feat, "eligible": eligible, "reason": reason, "summary": builder_summary(feat, "feat")})
+        context["feat_rows"] = feats
     return context
 
 
@@ -298,17 +380,19 @@ async def save_step(request: Request, public_id: str, step: str, user: User = De
     elif step == "background":
         row.background_key = str(form.get("background_key") or "") or None
         row.alignment_key = str(form.get("alignment_key") or "") or None
-        row.skill_proficiencies = list(dict.fromkeys(str(v) for v in form.getlist("skills") if v))
+        selected_background = next((r for r in _all_active_entities(db,["background"]) if r.public_id == row.background_key or (r.canonical_key or r.slug) == row.background_key), None)
+        locked_skills = background_skills(selected_background)
+        locked_profs = background_other_proficiencies(selected_background)
+        row.skill_proficiencies = list(dict.fromkeys(locked_skills + [str(v) for v in form.getlist("skills") if v]))
         posted_languages = [str(v).strip() for v in form.getlist("languages") if str(v).strip() and str(v).strip() != "Common"][:2]
         row.languages = ["Common"] + list(dict.fromkeys(posted_languages))
-        row.other_proficiencies = list(dict.fromkeys(str(v).strip() for v in form.getlist("other_proficiencies") if str(v).strip()))
+        row.other_proficiencies = list(dict.fromkeys(locked_profs + [str(v).strip() for v in form.getlist("other_proficiencies") if str(v).strip()]))
         choices = dict(row.choices_json or {})
         bonuses = {}
         for ability in ABILITIES:
             amount = int(form.get(f"background_bonus_{ability}") or 0)
             if amount:
                 bonuses[ability] = amount
-        selected_background = next((r for r in _all_active_entities(db,["background"]) if r.public_id == row.background_key or (r.canonical_key or r.slug) == row.background_key), None)
         # Background ASIs are only part of the exact 5e 2024 Rules background model.
         # Legacy backgrounds keep their proficiencies but do not expose or persist
         # this widget in the builder.
@@ -339,10 +423,24 @@ async def save_step(request: Request, public_id: str, step: str, user: User = De
         row.selected_equipment = accepted
         row.currency = {coin: max(0, int(form.get(coin) or 0)) for coin in ("cp","sp","ep","gp","pp")}
     elif step == "spells":
-        row.selected_spells = list(dict.fromkeys(str(v) for v in form.getlist("spells") if v))
-        selected = set(row.selected_spells)
-        row.prepared_spells = [str(v) for v in form.getlist("prepared") if str(v) in selected]
-        row.feats = list(dict.fromkeys(str(v) for v in form.getlist("feats") if v))
+        derived_now=derive_character(db,row); class_entity=derived_now.get("class_entity")
+        class_key=primary_class_key(class_entity) or (class_entity.canonical_key if class_entity else None)
+        limits=spell_selection_limits(class_key,row.level)
+        eligible_spells={e.public_id:e for e in _all_active_entities(db,["spell"]) if _spell_matches_class_explicit(e,class_entity,row.level)}
+        posted=list(dict.fromkeys(str(v) for v in form.getlist("spells") if str(v) in eligible_spells))
+        cantrips=[]; leveled=[]
+        for pid in posted:
+            data=eligible_spells[pid].data_json or {}; m=re.search(r"\d+",str(data.get("level",0))); spell_level=int(m.group()) if m else 0
+            (cantrips if spell_level==0 else leveled).append(pid)
+        row.selected_spells = cantrips[:limits.get("cantrips",0)] + leveled[:limits.get("known",0)]
+        selected=set(row.selected_spells)
+        prepared=[str(v) for v in form.getlist("prepared") if str(v) in selected]
+        row.prepared_spells=prepared[:limits.get("prepared",0)]
+        eligible_feats=[]
+        for feat in _all_active_entities(db,["feat"]):
+            if _feat_eligibility(feat,row,derived_now)[0]: eligible_feats.append(feat.public_id)
+        allowed=set(eligible_feats)
+        row.feats=list(dict.fromkeys(str(v) for v in form.getlist("feats") if str(v) in allowed))
     elif step == "details":
         fields = ["player_name","inspiration","personality_traits","ideals","bonds","flaws","age","height","weight","eyes","skin","hair","appearance","backstory","allies","symbol","treasure","additional_features","notes"]
         details = dict(row.details_json or {})
@@ -361,6 +459,30 @@ async def save_step(request: Request, public_id: str, step: str, user: User = De
         response.headers["HX-Push-Url"] = f"/tools/character-builder/{row.public_id}?step={next_step}"
         return response
     return RedirectResponse(f"/tools/character-builder/{row.public_id}?step={next_step}", 303)
+
+
+@router.get("/{public_id}/equipment-filter")
+def equipment_filter(public_id: str, q: str = "", kind: str = "all", user: User = Depends(require_user), db: Session = Depends(get_db)):
+    row=_character_or_404(db,public_id,user); _enforce_2024_rules(row)
+    query=select(Entity.public_id).where(Entity.is_active.is_(True),Entity.entity_type.in_(["equipment","item","weapon","armor"]))
+    term=(q or "").strip().casefold()
+    if term:
+        pattern=f"%{term}%"
+        query=query.where(or_(Entity.name.ilike(pattern),Entity.summary.ilike(pattern),cast(Entity.data_json,String).ilike(pattern)))
+    if kind == "item": query=query.where(Entity.entity_type.in_(["item","equipment"]))
+    elif kind in {"armor","weapon"}: query=query.where(Entity.entity_type==kind)
+    return JSONResponse({"ids":list(db.scalars(query).all())})
+
+@router.get("/{public_id}/spell-filter")
+def spell_filter(public_id: str, q: str = "", user: User = Depends(require_user), db: Session = Depends(get_db)):
+    row=_character_or_404(db,public_id,user); derived=derive_character(db,row)
+    query=select(Entity).where(Entity.is_active.is_(True),Entity.entity_type=="spell")
+    term=(q or "").strip().casefold()
+    if term:
+        pattern=f"%{term}%"
+        query=query.where(or_(Entity.name.ilike(pattern),Entity.summary.ilike(pattern),cast(Entity.data_json,String).ilike(pattern)))
+    ids=[e.public_id for e in db.scalars(query).all() if _spell_matches_class_explicit(e,derived.get("class_entity"),row.level)]
+    return JSONResponse({"ids":ids})
 
 
 @router.get("/{public_id}/print", response_class=HTMLResponse)

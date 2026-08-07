@@ -2,9 +2,6 @@ from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
 
-def test_version_bumped():
-    assert '0.31.6' in (ROOT/'pyproject.toml').read_text()
-
 def test_background_asi_is_source_gated_and_common_locked():
     html=(ROOT/'app/templates/character_steps/background.html').read_text()
     assert 'data-is-2024' in html
