@@ -22,17 +22,21 @@ from app.character_services import (
 from app.config import get_settings
 from app.db import get_db
 from app.models import Character, Entity, User
+from app.character_rules_2024 import (
+    RULESET_SOURCE_KEY, RULESET_SOURCE_LABEL, RULESET_GAME_SYSTEM_KEY,
+    RULESET_GAME_SYSTEM_LABEL, RULESET_DISPLAY_NAME,
+)
 
 router = APIRouter(prefix="/tools/character-builder")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-templates.env.globals["app_version"] = "0.31.0"
+templates.env.globals["app_version"] = "0.31.1"
 templates.env.globals["app_name"] = get_settings().app_name
 _md = MarkdownIt("commonmark", {"html": False, "linkify": True}).enable("table")
 templates.env.filters["render_markdown"] = lambda value: Markup(_md.render(str(value or "")))
 templates.env.globals["entity_summary"] = entity_summary
 
 STEPS = [
-    ("identity", "Identity & Rules"),
+    ("identity", "Identity"),
     ("species", "Species / Race"),
     ("class", "Class & Subclass"),
     ("abilities", "Ability Scores"),
@@ -54,6 +58,29 @@ def _character_or_404(db: Session, public_id: str, user: User) -> Character:
     if not row:
         raise HTTPException(404, "Character not found")
     return row
+
+
+def _enforce_2024_rules(character: Character, *, reset_incompatible: bool = True) -> bool:
+    """Pin Character Builder state to the single supported 2024 ruleset.
+
+    Returns True when the row was changed. Existing pre-v0.31.1 characters that
+    were explicitly tied to another edition have their source-dependent choices
+    cleared once so 2014 entities cannot leak into a 2024 character.
+    """
+    old_source = character.source_document
+    changed = old_source != RULESET_SOURCE_KEY or character.game_system_key != RULESET_GAME_SYSTEM_KEY
+    if reset_incompatible and old_source and old_source != RULESET_SOURCE_KEY:
+        character.species_key = character.heritage_key = character.class_key = None
+        character.subclass_key = character.background_key = None
+        character.selected_spells = []
+        character.prepared_spells = []
+        character.selected_equipment = []
+        character.feats = []
+        character.skill_proficiencies = []
+        character.save_proficiencies = []
+    character.source_document = RULESET_SOURCE_KEY
+    character.game_system_key = RULESET_GAME_SYSTEM_KEY
+    return changed
 
 
 def _source_options(db: Session) -> list[dict[str, str]]:
@@ -89,10 +116,11 @@ def _step_context(db: Session, character: Character, step: str) -> dict[str, Any
         "character": character, "step": step, "steps": STEPS, "derived": derived,
         "ability_names": ABILITY_NAMES, "abilities": ABILITIES, "skill_abilities": SKILL_ABILITIES,
         "standard_array": STANDARD_ARRAY,
+        "ruleset_display_name": RULESET_DISPLAY_NAME,
+        "ruleset_source_label": RULESET_SOURCE_LABEL,
+        "ruleset_game_system_label": RULESET_GAME_SYSTEM_LABEL,
     }
-    if step == "identity":
-        context["sources"] = _source_options(db)
-    elif step == "species":
+    if step == "species":
         context["species_rows"] = entities_for_character(db, ["species", "race"], character)
         context["selected_species"] = find_character_entity(db, character, ["species", "race"], character.species_key)
     elif step == "class":
@@ -129,11 +157,9 @@ def character_builder_home(request: Request, user: User = Depends(require_user),
 @router.post("/new")
 async def new_character(request: Request, user: User = Depends(require_user), db: Session = Depends(get_db)):
     form = await request.form()
-    source = str(form.get("source_document") or user.preferred_source_document or "") or None
-    source_row = next((row for row in _source_options(db) if row["key"] == source), None)
     row = Character(
         public_id=_uid(), user_id=user.id, name=str(form.get("name") or "New Character").strip() or "New Character",
-        source_document=source, game_system_key=(source_row or {}).get("game_system_key") or None,
+        source_document=RULESET_SOURCE_KEY, game_system_key=RULESET_GAME_SYSTEM_KEY,
         ability_scores={ability: 10 for ability in ABILITIES}, currency={"cp":0,"sp":0,"ep":0,"gp":0,"pp":0},
         details_json={}, choices_json={}, selected_spells=[], prepared_spells=[], selected_equipment=[], feats=[],
         skill_proficiencies=[], save_proficiencies=[], languages=[], other_proficiencies=[],
@@ -152,6 +178,8 @@ def delete_character(public_id: str, user: User = Depends(require_user), db: Ses
 @router.get("/{public_id}", response_class=HTMLResponse)
 def edit_character(request: Request, public_id: str, step: str | None = None, user: User = Depends(require_user), db: Session = Depends(get_db)):
     row = _character_or_404(db, public_id, user)
+    if _enforce_2024_rules(row):
+        db.commit(); db.refresh(row)
     active = step if step in STEP_KEYS else (row.current_step if row.current_step in STEP_KEYS else "identity")
     context = _step_context(db, row, active)
     context.update({"tools_section": "character-builder"})
@@ -163,6 +191,7 @@ def get_step(request: Request, public_id: str, step: str, user: User = Depends(r
     if step not in STEP_KEYS:
         raise HTTPException(404)
     row = _character_or_404(db, public_id, user)
+    _enforce_2024_rules(row)
     row.current_step = step; db.commit()
     return _render_stage(request, db, row, step)
 
@@ -172,23 +201,19 @@ async def save_step(request: Request, public_id: str, step: str, user: User = De
     if step not in STEP_KEYS:
         raise HTTPException(404)
     row = _character_or_404(db, public_id, user)
+    _enforce_2024_rules(row)
     form = await request.form()
     next_step = str(form.get("next_step") or step)
     if next_step not in STEP_KEYS:
         next_step = step
 
     if step == "identity":
-        old_source = row.source_document
         row.name = str(form.get("name") or row.name).strip() or "New Character"
         row.level = max(1, min(20, int(form.get("level") or row.level)))
         row.experience_points = max(0, int(form.get("experience_points") or 0))
-        row.source_document = str(form.get("source_document") or "") or None
-        source = next((item for item in _source_options(db) if item["key"] == row.source_document), None)
-        row.game_system_key = (source or {}).get("game_system_key") or None
-        if old_source and old_source != row.source_document:
-            row.species_key=row.heritage_key=row.class_key=row.subclass_key=row.background_key=None
-            row.selected_spells=[]; row.prepared_spells=[]; row.selected_equipment=[]; row.feats=[]
-            row.skill_proficiencies=[]; row.save_proficiencies=[]
+        # Source/game-system fields are deliberately ignored. Character Builder
+        # is pinned to the 2024 rules and cannot be switched by the client.
+        _enforce_2024_rules(row, reset_incompatible=False)
     elif step == "species":
         row.species_key = str(form.get("species_key") or "") or None
         row.heritage_key = str(form.get("heritage_key") or "") or None

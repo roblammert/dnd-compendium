@@ -11,8 +11,8 @@ from app.models import Character, Entity, User
 def _entity(pid, entity_type, name, key, data):
     return Entity(
         public_id=pid, entity_type=entity_type, name=name, slug=key, canonical_key=key,
-        source_kind="open5e", source_document="srd-2014", source_display_name="5e 2014 Rules",
-        game_system_key="5e-2014", game_system_name="5th Edition 2014", data_json=data,
+        source_kind="open5e", source_document="srd-2024", source_display_name="5e 2024 Rules",
+        game_system_key="5e-2024", game_system_name="5th Edition 2024", data_json=data,
     )
 
 
@@ -35,11 +35,11 @@ def test_v031_derivation_uses_class_species_and_equipment():
         armor = _entity("ent_armor", "armor", "Chain Mail", "chain-mail", {"category":"Heavy Armor", "base_ac":16, "strength_requirement":13, "stealth_disadvantage":True})
         weapon = _entity("ent_weapon", "weapon", "Longsword", "longsword", {"damage_dice":"1d8", "damage_type":{"name":"Slashing"}, "properties":[]})
         db.add_all([user,species,cls,armor,weapon]); db.flush()
-        char = Character(public_id="chr_test", user_id=user.id, name="Arden", source_document="srd-2014", game_system_key="5e-2014", level=1, species_key="dwarf", class_key="fighter", ability_scores={"str":15,"dex":12,"con":14,"int":10,"wis":10,"cha":8}, selected_equipment=[armor.public_id, weapon.public_id], skill_proficiencies=["Athletics"], save_proficiencies=[], currency={})
+        char = Character(public_id="chr_test", user_id=user.id, name="Arden", source_document="srd-2024", game_system_key="5e-2024", level=1, species_key="dwarf", class_key="fighter", ability_scores={"str":15,"dex":12,"con":14,"int":10,"wis":10,"cha":8}, selected_equipment=[armor.public_id, weapon.public_id], skill_proficiencies=["Athletics"], save_proficiencies=[], currency={})
         db.add(char); db.commit()
         result = derive_character(db, char)
-        assert result["scores"]["con"] == 16
-        assert result["hp_max"] == 13
+        assert result["scores"]["con"] == 14
+        assert result["hp_max"] == 12
         assert result["armor_class"] == 16
         assert result["speed"] == 25
         assert result["stealth_disadvantage"] is True

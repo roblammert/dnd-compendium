@@ -10,6 +10,10 @@ from sqlalchemy.orm import Session
 
 from app.models import Character, Entity
 from app.services import build_weapon_card
+from app.character_rules_2024 import (
+    RULESET_SOURCE_KEY, RULESET_GAME_SYSTEM_KEY, CLASS_RULES, BACKGROUND_RULES,
+    class_rule, background_rule,
+)
 
 ABILITIES = ("str", "dex", "con", "int", "wis", "cha")
 ABILITY_NAMES = {
@@ -87,14 +91,20 @@ def _source_matches(entity: Entity, source_document: str | None, game_system_key
 
 
 def entities_for_character(db: Session, entity_types: list[str], character: Character) -> list[Entity]:
+    """Return only 2024-compatible reference entities for Character Builder.
+
+    The general Compendium can contain many editions/sources. Character Builder
+    deliberately ignores the user's preferred source and never falls through to
+    2014 records. Exact srd-2024 variants win; other records tagged 5e-2024 are
+    allowed only when an endpoint has no exact SRD variant.
+    """
     rows = list(db.scalars(
         select(Entity).where(Entity.entity_type.in_(entity_types), Entity.is_active.is_(True)).order_by(Entity.name)
     ).all())
-    same_source = [r for r in rows if character.source_document and r.source_document == character.source_document]
+    same_source = [r for r in rows if r.source_document == RULESET_SOURCE_KEY]
     if same_source:
         return same_source
-    same_system = [r for r in rows if character.game_system_key and r.game_system_key == character.game_system_key]
-    return same_system or rows
+    return [r for r in rows if r.game_system_key == RULESET_GAME_SYSTEM_KEY]
 
 
 def find_character_entity(db: Session, character: Character, entity_types: list[str], key: str | None) -> Entity | None:
@@ -110,12 +120,12 @@ def find_character_entity(db: Session, character: Character, entity_types: list[
     if not rows:
         return None
     for row in rows:
-        if character.source_document and row.source_document == character.source_document:
+        if row.source_document == RULESET_SOURCE_KEY:
             return row
     for row in rows:
-        if character.game_system_key and row.game_system_key == character.game_system_key:
+        if row.game_system_key == RULESET_GAME_SYSTEM_KEY:
             return row
-    return rows[0]
+    return None
 
 
 def entity_summary(entity: Entity | None) -> str:
@@ -130,6 +140,10 @@ def entity_summary(entity: Entity | None) -> str:
 
 def species_bonuses(entity: Entity | None) -> dict[str, int]:
     if not entity:
+        return {}
+    # Under the 2024 rules, species do not grant ability-score increases;
+    # those choices come from the character's background/origin.
+    if entity.source_document == RULESET_SOURCE_KEY or entity.game_system_key == RULESET_GAME_SYSTEM_KEY:
         return {}
     data = entity.data_json or {}
     raw = _nested(data, "ability_score_increases", "ability_scores", "ability_score_bonus", "ability_bonuses")
@@ -156,7 +170,8 @@ def class_hit_die(entity: Entity | None) -> int:
         return 8
     data = entity.data_json or {}
     raw = _nested(data, "hit_die", "hit_dice", "hit_points.hit_die", "core_traits.hit_point_die")
-    return max(4, _number(raw, 8))
+    fallback = int(class_rule(entity.canonical_key or entity.slug or entity.name).get("hit_die", 8))
+    return max(4, _number(raw, fallback))
 
 
 def _ability_key(value: Any) -> str | None:
@@ -178,14 +193,17 @@ def class_save_proficiencies(entity: Entity | None) -> list[str]:
         key = _ability_key(item)
         if key and key not in result:
             result.append(key)
-    return result
+    if result:
+        return result
+    return list(class_rule(entity.canonical_key or entity.slug or entity.name).get("saves", []))
 
 
 def class_spellcasting_ability(entity: Entity | None) -> str | None:
     if not entity:
         return None
     data = entity.data_json or {}
-    return _ability_key(_nested(data, "spellcasting_ability", "spellcasting.ability", "primary_ability", "core_traits.primary_ability"))
+    detected = _ability_key(_nested(data, "spellcasting_ability", "spellcasting.ability", "primary_ability", "core_traits.primary_ability"))
+    return detected or class_rule(entity.canonical_key or entity.slug or entity.name).get("spellcasting_ability")
 
 
 def species_speed(entity: Entity | None) -> int:
@@ -203,7 +221,10 @@ def class_skill_choices(entity: Entity | None) -> list[str]:
     raw = _nested(data, "skill_proficiencies", "skills", "proficiencies.skills", "core_traits.skill_proficiencies")
     text = _text(raw)
     result = [skill for skill in SKILL_ABILITIES if skill.casefold() in text.casefold()]
-    return result or list(SKILL_ABILITIES)
+    if result:
+        return result
+    fallback = class_rule(entity.canonical_key or entity.slug or entity.name).get("skills")
+    return list(SKILL_ABILITIES) if fallback == "any" else list(fallback or SKILL_ABILITIES)
 
 
 
@@ -217,7 +238,8 @@ def class_skill_choice_count(entity: Entity | None) -> int | None:
     word_numbers = {"one":1,"two":2,"three":3,"four":4,"five":5,"six":6}
     match = re.search(r"choose\s+(one|two|three|four|five|six|\d+)", text)
     if not match:
-        return None
+        fallback = class_rule(entity.canonical_key or entity.slug or entity.name).get("skill_count")
+        return int(fallback) if fallback is not None else None
     token = match.group(1)
     return word_numbers.get(token, int(token) if token.isdigit() else None)
 
@@ -246,7 +268,10 @@ def background_skills(entity: Entity | None) -> list[str]:
     data = entity.data_json or {}
     raw = _nested(data, "skill_proficiencies", "skills", "proficiencies.skills")
     text = _text(raw)
-    return [skill for skill in SKILL_ABILITIES if skill.casefold() in text.casefold()]
+    detected = [skill for skill in SKILL_ABILITIES if skill.casefold() in text.casefold()]
+    if detected:
+        return detected
+    return list(background_rule(entity.canonical_key or entity.slug or entity.name).get("skills", []))
 
 
 def point_buy_total(scores: dict[str, int]) -> int | None:
@@ -368,7 +393,6 @@ def derive_character(db: Session, character: Character) -> dict[str, Any]:
     class_features = class_features_for_level(class_entity, character.level)
     skill_choice_count = class_skill_choice_count(class_entity)
     warnings = []
-    if not character.source_document: warnings.append("Choose a rules source.")
     if not species: warnings.append("Choose a species/race.")
     if not class_entity: warnings.append("Choose a class.")
     if character.ability_method == "point_buy":

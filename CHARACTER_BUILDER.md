@@ -174,3 +174,11 @@ The v0.31 model is designed to support later increments without replacing charac
 - character portraits and organization symbols
 - import/export character JSON
 - campaign assignment and DM-view permissions
+
+## v0.31.1: Fixed 2024 Ruleset
+
+Character Builder no longer exposes a rules-source selector. It is permanently pinned to the locally cached Open5e `srd-2024` source and `5e-2024` game system. The normal user Preferred Source setting continues to affect Compendium browsing, but it does not affect Character Builder.
+
+If an endpoint does not have an exact `srd-2024` record, Character Builder may use a record tagged `5e-2024`; it never falls through to a 2014 record.
+
+`app/character_rules_2024.py` contains compact mechanical fallback metadata based on SRD 5.2.1 / the 2024 Free Rules. It supplements missing structured Open5e fields used by calculations (for example class Hit Dice, saving throws, class skill-choice counts, spellcasting abilities, and Free Rules background mechanics). Long-form rules text remains in the Compendium cache rather than being duplicated in application code.

@@ -345,3 +345,12 @@ This release adds generated-result list assignment, modernizes My Lists, and int
 - Added three-page print output and direct PDF generation with WeasyPrint.
 - Added Docker PDF-rendering dependencies and Character Builder architecture documentation.
 - Added v0.31 regression tests.
+
+## v0.31.1 - Locked 2024 Character Rules
+
+- Removed the Character Builder Game Rules / Source selector.
+- Character Builder is now permanently pinned to `srd-2024` / `5e-2024` regardless of the user's general Preferred Source setting.
+- New characters begin with the 2024 rules source already assigned, eliminating the Step 1 "source required" blocker.
+- Existing Character Builder records from another edition are normalized to the 2024 rules and incompatible source-specific choices are cleared once.
+- Character reference lookups never fall through to 2014 data; exact `srd-2024` entities are preferred, with `5e-2024` records as the only fallback.
+- Added bundled SRD 5.2.1 mechanical fallback metadata for core class hit dice, saving throws, skill choices, spellcasting abilities, and Free Rules background mechanics when cached Open5e records omit structured fields.
