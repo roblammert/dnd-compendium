@@ -30,7 +30,7 @@ from app.endpoint_defaults import endpoint_default
 
 settings=get_settings(); base=Path(__file__).parent
 settings.asset_root.mkdir(parents=True, exist_ok=True)
-APP_VERSION = "0.31.2"
+APP_VERSION = "0.31.3"
 app=FastAPI(title=settings.app_name, version=APP_VERSION)
 app.add_middleware(UserContextMiddleware)
 app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, session_cookie=settings.session_cookie_name, max_age=settings.session_max_age, same_site="lax", https_only=settings.session_https_only)

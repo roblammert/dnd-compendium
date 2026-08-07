@@ -55,5 +55,5 @@ def test_identity_step_has_no_source_selector():
     identity = (root / "app/templates/character_steps/identity.html").read_text()
     routes = (root / "app/character_routes.py").read_text()
     assert 'name="source_document"' not in identity
-    assert "D&amp;D 2024 fifth-edition rules" in identity
+    assert "fixed 2024 character-generation rules" in identity
     assert "source_document=RULESET_SOURCE_KEY" in routes

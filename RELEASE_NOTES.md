@@ -362,3 +362,14 @@ This release adds generated-result list assignment, modernizes My Lists, and int
 - Redirects direct `/step/{step}` browser requests to the full Character Builder page instead of rendering a fragment without site CSS/navigation.
 - Adds application-version cache busting to CSS, HTMX, and JavaScript asset URLs.
 - Adds regression coverage for all Character Builder step forms and fragment routing.
+
+## v0.31.3 — Character Builder Guided Choice UX
+
+- Removes repeated ruleset/source callouts from builder cards.
+- Adds descriptive Species/Race, Class, Subclass, and Background cards with More Info modals loading the cached Compendium card.
+- Groups subclasses under their primary class and filters them live.
+- Repairs Ability Score method controls and adds Standard Array, exact 27-point Point Buy, and 4d6-drop-lowest auto generation with instant modifier updates.
+- Supports legacy cached backgrounds under the 2024 conversion rules while preferring 2024 variants when duplicates exist.
+- Repairs Alignment availability by using the best cached variant when a dedicated 2024 record is absent.
+- Replaces free-text language/proficiency entry with selectable controls.
+- Adds a persistent Live Abilities rail after the Ability Scores step with green/red five-second change feedback.

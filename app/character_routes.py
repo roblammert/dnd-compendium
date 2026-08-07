@@ -17,23 +17,26 @@ from app.auth import require_user
 from app.character_services import (
     ABILITIES, ABILITY_NAMES, SKILL_ABILITIES, STANDARD_ARRAY,
     class_save_proficiencies, class_skill_choices, derive_character,
-    entities_for_character, entity_summary, find_character_entity,
+    entities_for_character, entity_summary, find_character_entity, builder_summary,
+    subclass_parent_key, background_allowed_abilities,
 )
 from app.config import get_settings
 from app.db import get_db
 from app.models import Character, Entity, User
 from app.character_rules_2024 import (
     RULESET_SOURCE_KEY, RULESET_SOURCE_LABEL, RULESET_GAME_SYSTEM_KEY,
-    RULESET_GAME_SYSTEM_LABEL, RULESET_DISPLAY_NAME,
+    RULESET_GAME_SYSTEM_LABEL, RULESET_DISPLAY_NAME, STANDARD_LANGUAGES,
 )
 
 router = APIRouter(prefix="/tools/character-builder")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-templates.env.globals["app_version"] = "0.31.2"
+templates.env.globals["app_version"] = "0.31.3"
 templates.env.globals["app_name"] = get_settings().app_name
 _md = MarkdownIt("commonmark", {"html": False, "linkify": True}).enable("table")
 templates.env.filters["render_markdown"] = lambda value: Markup(_md.render(str(value or "")))
 templates.env.globals["entity_summary"] = entity_summary
+templates.env.globals["builder_summary"] = builder_summary
+templates.env.globals["background_allowed_abilities"] = background_allowed_abilities
 
 STEPS = [
     ("identity", "Identity"),
@@ -110,6 +113,25 @@ def _spell_matches_class(spell: Entity, class_entity: Entity | None, level: int)
     return not blob or class_name in blob
 
 
+def _all_active_entities(db: Session, entity_types: list[str]) -> list[Entity]:
+    return list(db.scalars(select(Entity).where(
+        Entity.entity_type.in_(entity_types), Entity.is_active.is_(True)
+    ).order_by(Entity.name, Entity.source_display_name, Entity.id)).all())
+
+
+def _dedupe_prefer_2024(rows: list[Entity]) -> list[Entity]:
+    grouped: dict[str, list[Entity]] = {}
+    for row in rows:
+        key = row.canonical_key or row.slug or row.name.casefold()
+        grouped.setdefault(key, []).append(row)
+    result = []
+    for variants in grouped.values():
+        pick = next((r for r in variants if r.source_document == RULESET_SOURCE_KEY), None)
+        pick = pick or next((r for r in variants if r.game_system_key == RULESET_GAME_SYSTEM_KEY), None)
+        result.append(pick or variants[0])
+    return sorted(result, key=lambda r: r.name.casefold())
+
+
 def _step_context(db: Session, character: Character, step: str) -> dict[str, Any]:
     derived = derive_character(db, character)
     context: dict[str, Any] = {
@@ -127,12 +149,23 @@ def _step_context(db: Session, character: Character, step: str) -> dict[str, Any
         context["class_rows"] = entities_for_character(db, ["class", "classe"], character)
         context["subclass_rows"] = entities_for_character(db, ["subclass", "subclasse"], character)
         context["selected_class"] = find_character_entity(db, character, ["class", "classe"], character.class_key)
+        context["subclass_parents"] = {r.public_id: subclass_parent_key(r) for r in context["subclass_rows"]}
     elif step == "background":
-        context["background_rows"] = entities_for_character(db, ["background"], character)
-        context["alignment_rows"] = entities_for_character(db, ["alignment"], character)
+        # 2024 characters may use backgrounds from older books. Prefer the 2024
+        # variant when duplicates exist, but expose distinct legacy backgrounds too.
+        context["background_rows"] = _dedupe_prefer_2024(_all_active_entities(db, ["background"]))
+        # Alignment is descriptive rather than an edition-specific mechanic, so use
+        # the best available cached variant instead of requiring srd-2024 coverage.
+        context["alignment_rows"] = _dedupe_prefer_2024(_all_active_entities(db, ["alignment"]))
+        context["language_rows"] = _dedupe_prefer_2024(_all_active_entities(db, ["language"]))
+        context["language_options"] = sorted(set(STANDARD_LANGUAGES + [r.name for r in context["language_rows"]]))
+        context["selected_background"] = next((r for r in context["background_rows"] if (r.canonical_key or r.slug) == character.background_key), None)
+        context["background_allowed_abilities"] = background_allowed_abilities(context["selected_background"])
         class_entity = derived["class_entity"]
         context["class_skill_choices"] = class_skill_choices(class_entity)
         context["class_saves"] = class_save_proficiencies(class_entity)
+        suggested = list(dict.fromkeys(list(character.other_proficiencies or []) + [str(x) for x in context["class_saves"]]))
+        context["proficiency_options"] = sorted(set(suggested + ["Light Armor", "Medium Armor", "Heavy Armor", "Shields", "Simple Weapons", "Martial Weapons", "Thieves' Tools", "Calligrapher's Supplies", "Gaming Set"]))
     elif step == "gear":
         context["equipment_rows"] = entities_for_character(db, ["equipment", "item", "weapon", "armor"], character)
     elif step == "spells":
@@ -143,7 +176,7 @@ def _step_context(db: Session, character: Character, step: str) -> dict[str, Any
 
 
 def _render_stage(request: Request, db: Session, character: Character, step: str):
-    return templates.TemplateResponse(request, f"character_steps/{step}.html", _step_context(db, character, step))
+    return templates.TemplateResponse(request, "character_stage_response.html", _step_context(db, character, step))
 
 
 @router.get("", response_class=HTMLResponse)
@@ -242,8 +275,22 @@ async def save_step(request: Request, public_id: str, step: str, user: User = De
         row.background_key = str(form.get("background_key") or "") or None
         row.alignment_key = str(form.get("alignment_key") or "") or None
         row.skill_proficiencies = list(dict.fromkeys(str(v) for v in form.getlist("skills") if v))
-        row.languages = [str(v).strip() for v in str(form.get("languages") or "").split(",") if str(v).strip()]
-        row.other_proficiencies = [str(v).strip() for v in str(form.get("other_proficiencies") or "").split(",") if str(v).strip()]
+        row.languages = list(dict.fromkeys(str(v).strip() for v in form.getlist("languages") if str(v).strip()))
+        row.other_proficiencies = list(dict.fromkeys(str(v).strip() for v in form.getlist("other_proficiencies") if str(v).strip()))
+        choices = dict(row.choices_json or {})
+        bonuses = {}
+        for ability in ABILITIES:
+            amount = int(form.get(f"background_bonus_{ability}") or 0)
+            if amount:
+                bonuses[ability] = amount
+        # Enforce the 2024 three-point background adjustment shape. Legacy
+        # backgrounds may place the points on any abilities; current backgrounds
+        # are constrained in the browser and validated by the total here.
+        if sum(bonuses.values()) == 3 and sorted(bonuses.values()) in ([1, 1, 1], [1, 2]):
+            choices["background_ability_bonuses"] = bonuses
+        else:
+            choices.pop("background_ability_bonuses", None)
+        row.choices_json = choices
     elif step == "gear":
         row.selected_equipment = list(dict.fromkeys(str(v) for v in form.getlist("equipment") if v))
         row.currency = {coin: max(0, int(form.get(coin) or 0)) for coin in ("cp","sp","ep","gp","pp")}

@@ -12,7 +12,8 @@ from app.models import Character, Entity
 from app.services import build_weapon_card
 from app.character_rules_2024 import (
     RULESET_SOURCE_KEY, RULESET_GAME_SYSTEM_KEY, CLASS_RULES, BACKGROUND_RULES,
-    class_rule, background_rule,
+    SPECIES_SUMMARIES, CLASS_SUMMARIES, BACKGROUND_SUMMARIES, DEFAULT_SUBCLASS_PARENTS,
+    class_rule, background_rule, canonical_rule_key,
 )
 
 ABILITIES = ("str", "dex", "con", "int", "wis", "cha")
@@ -128,6 +129,19 @@ def find_character_entity(db: Session, character: Character, entity_types: list[
     return None
 
 
+
+
+def find_any_character_entity(db: Session, entity_types: list[str], key: str | None) -> Entity | None:
+    if not key:
+        return None
+    rows = list(db.scalars(select(Entity).where(
+        Entity.entity_type.in_(entity_types), Entity.is_active.is_(True),
+        (Entity.canonical_key == key) | (Entity.slug == key)
+    ).order_by(Entity.id)).all())
+    if not rows:
+        return None
+    return next((r for r in rows if r.source_document == RULESET_SOURCE_KEY), None) or next((r for r in rows if r.game_system_key == RULESET_GAME_SYSTEM_KEY), None) or rows[0]
+
 def entity_summary(entity: Entity | None) -> str:
     if not entity:
         return ""
@@ -161,8 +175,64 @@ def species_bonuses(entity: Entity | None) -> dict[str, int]:
 
 
 def background_bonuses(entity: Entity | None) -> dict[str, int]:
-    # 2024-style backgrounds may carry ability score increases. Same generic parser works.
-    return species_bonuses(entity)
+    if not entity:
+        return {}
+    data = entity.data_json or {}
+    raw = _nested(data, "ability_score_increases", "ability_scores", "ability_score_bonus", "ability_bonuses")
+    result: dict[str, int] = {}
+    entries = raw if isinstance(raw, list) else ([raw] if raw else [])
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        name = _text(entry.get("ability") or entry.get("ability_score") or entry.get("name") or entry.get("key")).casefold()
+        amount = _number(entry.get("increase") or entry.get("bonus") or entry.get("value"), 0)
+        for abbr, full in ABILITY_NAMES.items():
+            if abbr == name or full.casefold() in name:
+                result[abbr] = result.get(abbr, 0) + amount
+    return result
+
+
+def builder_summary(entity: Entity | None, kind: str = "") -> str:
+    summary = entity_summary(entity).strip()
+    if summary:
+        return summary
+    if not entity:
+        return "No description is available for this option yet."
+    key = canonical_rule_key(entity.canonical_key or entity.slug or entity.name)
+    table = SPECIES_SUMMARIES if kind == "species" else CLASS_SUMMARIES if kind == "class" else BACKGROUND_SUMMARIES if kind == "background" else {}
+    return table.get(key) or f"{entity.name} is a {kind or entity.entity_type} option available to this character. Open More Info to review the cached compendium record before selecting it."
+
+
+def subclass_parent_key(entity: Entity | None) -> str | None:
+    if not entity:
+        return None
+    data = entity.data_json or {}
+    raw = _nested(data, "class", "parent_class", "parent", "class_key", "base_class")
+    text = _text(raw)
+    if text:
+        key = canonical_rule_key(text)
+        for class_key in CLASS_RULES:
+            if class_key in key:
+                return class_key
+    key = canonical_rule_key(entity.canonical_key or entity.slug or entity.name)
+    for sub_key, parent in DEFAULT_SUBCLASS_PARENTS.items():
+        if sub_key in key:
+            return parent
+    return None
+
+
+def background_allowed_abilities(entity: Entity | None) -> list[str]:
+    if not entity:
+        return list(ABILITIES)
+    rule = background_rule(entity.canonical_key or entity.slug or entity.name)
+    if rule.get("abilities"):
+        return list(rule["abilities"])
+    data = entity.data_json or {}
+    raw = _nested(data, "ability_scores", "ability_score_options", "ability_score_increases")
+    text = _text(raw).casefold()
+    detected = [abbr for abbr, full in ABILITY_NAMES.items() if abbr in text or full.casefold() in text]
+    # 2024 conversion rule for legacy backgrounds: any abilities may receive the three points.
+    return detected or list(ABILITIES)
 
 
 def class_hit_die(entity: Entity | None) -> int:
@@ -327,8 +397,8 @@ def _weapon_attack(entity: Entity, scores: dict[str, int], prof_bonus: int) -> d
 def derive_character(db: Session, character: Character) -> dict[str, Any]:
     species = find_character_entity(db, character, ["species", "race"], character.species_key)
     class_entity = find_character_entity(db, character, ["class", "classe"], character.class_key)
-    background = find_character_entity(db, character, ["background"], character.background_key)
-    alignment = find_character_entity(db, character, ["alignment"], character.alignment_key)
+    background = find_any_character_entity(db, ["background"], character.background_key)
+    alignment = find_any_character_entity(db, ["alignment"], character.alignment_key)
     subclass = find_character_entity(db, character, ["subclass", "subclasse"], character.subclass_key)
 
     base_scores = {ability: int((character.ability_scores or {}).get(ability, 10)) for ability in ABILITIES}
@@ -336,8 +406,14 @@ def derive_character(db: Session, character: Character) -> dict[str, Any]:
     # 2014 sources generally place ASIs on race/species; 2024 sources place them on background.
     for key, value in species_bonuses(species).items():
         bonuses[key] += value
-    for key, value in background_bonuses(background).items():
-        bonuses[key] += value
+    stored_background_bonuses = (character.choices_json or {}).get("background_ability_bonuses", {})
+    if isinstance(stored_background_bonuses, dict) and stored_background_bonuses:
+        for key, value in stored_background_bonuses.items():
+            if key in ABILITIES:
+                bonuses[key] += int(value or 0)
+    else:
+        for key, value in background_bonuses(background).items():
+            bonuses[key] += value
     final_scores = {ability: max(1, min(30, base_scores[ability] + bonuses.get(ability, 0))) for ability in ABILITIES}
     modifiers = {ability: ability_modifier(score) for ability, score in final_scores.items()}
     prof = proficiency_bonus(character.level)
