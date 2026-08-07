@@ -49,6 +49,6 @@ def test_spell_filter_uses_normalized_levels_and_enter_does_not_submit():
     spells = (ROOT / 'app/templates/character_steps/spells.html').read_text()
     js = (ROOT / 'app/static/js/app.js').read_text()
     assert 'context["spell_row_levels"]' in routes
-    assert 'spell_row_levels.get(entity.public_id, 0)' in spells
-    assert 'data-character-spell-level' in spells
+    assert 'data-spell-level="0"' in spells
+    assert 'data-character-spell-level' not in spells
     assert '[data-character-equipment-search], [data-character-spell-search]' in js

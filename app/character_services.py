@@ -400,12 +400,7 @@ def spell_usage_print_guide(character: Character, class_entity: Entity | None, s
     ability_name = ABILITY_NAMES.get(spell_ability or "", (spell_ability or "your spellcasting ability").upper())
     pact = class_key == "warlock"
     slot_summary = ", ".join(f"L{level}: {count}" for level, count in sorted(slots.items())) or "No spell slots at this level"
-    change_when = {
-        "bard":"when you gain a Bard level (one spell)", "cleric":"after a Long Rest (any prepared spells)",
-        "druid":"after a Long Rest (any prepared spells)", "paladin":"after a Long Rest (one spell)",
-        "ranger":"after a Long Rest (one spell)", "sorcerer":"when you gain a Sorcerer level (one spell)",
-        "warlock":"when you gain a Warlock level (one spell)", "wizard":"after a Long Rest (any prepared spells)",
-    }.get(class_key, "when your class feature allows")
+    change_when = "after a Long Rest or when leveling up, as your class permits"
     return {
         "class_name": class_name,
         "ability_name": ability_name,

@@ -29,7 +29,8 @@ def test_equipment_search_uses_server_like_and_filter_controls():
 def test_spells_and_feats_are_source_aware_and_limited():
     html=(ROOT/'app/templates/character_steps/spells.html').read_text()
     routes=(ROOT/'app/character_routes.py').read_text()
-    assert 'data-character-spell-level' in html
+    assert 'Cantrips &amp; Feats' in html
+    assert 'data-character-spell-level' not in html
     assert 'descriptor-pill-source' in html
     assert 'data-reference-url' in html
     assert '_spell_matches_class_explicit' in routes

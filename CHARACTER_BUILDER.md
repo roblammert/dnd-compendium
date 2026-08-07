@@ -228,3 +228,9 @@ For PDF output, page footer content is emitted through CSS paged-media margin bo
 ## v0.32.3 printable play aids
 
 The printable sheet now includes Hit Dice expenditure pips, a 15-condition tracker, coin equivalency reference, class/level spell-slot totals, empty prepared-spell tracking pips, and a personalized Spell Usage rules panel.
+
+## v0.32.4 cantrip-only spell generation
+
+Character generation now persists only cantrip choices. Level 1+ spells and prepared-spell lists are play-state choices and are intentionally not stored by the Character Builder. Once a character is marked complete, its generated cantrip list is locked in `choices_json.cantrips_locked` and cannot be changed by later edits.
+
+The printable Spellcasting page renders up to eight cantrip lines, nine writable level boxes with class/level slot totals, and a bottom-anchored Spell Usage reference explaining slot expenditure, preparation changes, casting math, concentration, and components.

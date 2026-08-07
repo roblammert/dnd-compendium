@@ -514,3 +514,12 @@ Every printed page includes `Generated with Rob's D&D Compendium - {version} - {
 - Prepared spell pips print empty for manual tracking during play.
 - Added a personalized Spell Usage reference covering cantrips, leveled spells, slots, preparation, spellcasting math, Concentration, and components.
 - Strengthened the footer into one continuous full-width rule while preserving Central-time generation stamps and character/player page numbering.
+
+# D&D Compendium v0.32.4 Patch
+
+## v0.32.4 — Cantrip-Locked Character Generation and Writable Spell Sheet
+
+- Character creation now selects only cantrips; level 1+ spells and prepared-spell choices are no longer persisted by the builder.
+- Cantrips become permanently locked when a character is marked complete.
+- Printable Spellcasting page now always provides eight cantrip lines and nine writable spell-level boxes with calculated slot totals.
+- Spell Usage is anchored at the bottom and explains fixed cantrips, prepared-spell changes after Long Rest/level-up, slot use, casting math, concentration, and components.

@@ -491,31 +491,21 @@ document.addEventListener("submit", async (event) => {
     form.dataset.spellReady='1';
     const rows=Array.from(form.querySelectorAll('[data-spell-row]'));
     const search=form.querySelector('[data-character-spell-search]');
-    const levelFilter=form.querySelector('[data-character-spell-level]');
     const count=form.querySelector('[data-spell-visible-count]');
     const status=form.querySelector('[data-spell-limit-status]');
-    const cantripLimit=Number(form.dataset.spellCantripLimit||0), knownLimit=Number(form.dataset.spellKnownLimit||0), preparedLimit=Number(form.dataset.spellPreparedLimit||0);
+    const cantripLimit=Number(form.dataset.spellCantripLimit||0);
+    const locked=form.dataset.cantripsLocked==='1';
     let serverIds=new Set(rows.map(r=>r.dataset.spellId));
-    const selectedRows=()=>rows.filter(r=>r.querySelector('input[name="spells"]')?.checked);
     const applyLimits=()=>{
-      const selected=selectedRows();
-      const cantrips=selected.filter(r=>Number(r.dataset.spellLevel||0)===0);
-      const leveled=selected.filter(r=>Number(r.dataset.spellLevel||0)>0);
-      const prepared=rows.filter(r=>r.querySelector('input[name="prepared"]')?.checked);
-      rows.forEach(r=>{
-        const choose=r.querySelector('input[name="spells"]'); const prep=r.querySelector('input[name="prepared"]'); if(!choose)return;
-        const level=Number(r.dataset.spellLevel||0); const chosen=choose.checked;
-        choose.disabled=!chosen && ((level===0 && cantripLimit && cantrips.length>=cantripLimit)||(level>0 && knownLimit && leveled.length>=knownLimit));
-        if(prep){ if(!chosen) prep.checked=false; prep.disabled=!chosen || (!prep.checked && prepared.length>=preparedLimit); }
-      });
-      if(status) status.textContent=`Cantrips ${cantrips.length}/${cantripLimit || '—'} · Chosen level 1+ ${leveled.length}/${knownLimit || '—'} · Prepared ${prepared.length}/${preparedLimit || '—'}`;
+      const selected=rows.filter(r=>r.querySelector('input[name="spells"]:not([type="hidden"])')?.checked);
+      rows.forEach(r=>{ const choose=r.querySelector('input[name="spells"]:not([type="hidden"])'); if(!choose)return; if(locked){choose.disabled=true;return;} choose.disabled=!choose.checked && cantripLimit && selected.length>=cantripLimit; });
+      if(status) status.textContent=locked ? `Cantrips locked · ${selected.length}/${cantripLimit || '—'}` : `Cantrips ${selected.length}/${cantripLimit || '—'}`;
     };
-    const applyVisibility=()=>{ const mode=levelFilter?.value||'all'; let visible=0; rows.forEach(r=>{ const selected=!!r.querySelector('input[name="spells"]')?.checked; const level=String(r.dataset.spellLevel||'0'); const match=serverIds.has(r.dataset.spellId) && (mode==='all'||(mode==='selected'&&selected)||mode===level); r.hidden=!match; if(match)visible++; }); if(count)count.textContent=`${visible} shown`; };
-    const runSearch=debounce(async()=>{ const url=search?.dataset.filterUrl; if(!url)return; const params=new URLSearchParams({q:(search.value||'').trim()}); try{const res=await fetch(`${url}?${params}`,{headers:{Accept:'application/json'},cache:'no-store'});if(res.ok){const data=await res.json();serverIds=new Set(data.ids||[]);applyVisibility();}}catch(_){applyVisibility();}},450);
-    rows.forEach(r=>{r.querySelector('input[name="spells"]')?.addEventListener('change',()=>{applyLimits();applyVisibility();});r.querySelector('input[name="prepared"]')?.addEventListener('change',applyLimits);});
-    search?.addEventListener('input',runSearch); levelFilter?.addEventListener('change',applyVisibility);
-    search?.addEventListener('keydown',(event)=>{ if(event.key==='Enter'){ event.preventDefault(); event.stopPropagation(); runSearch(); } });
-    applyLimits(); applyVisibility(); runSearch();
+    const applyVisibility=()=>{let visible=0;rows.forEach(r=>{const match=serverIds.has(r.dataset.spellId);r.hidden=!match;if(match)visible++;});if(count)count.textContent=`${visible} shown`;};
+    const runSearch=debounce(async()=>{const url=search?.dataset.filterUrl;if(!url)return;const params=new URLSearchParams({q:(search.value||'').trim(),level:'0'});try{const res=await fetch(`${url}?${params}`,{headers:{Accept:'application/json'},cache:'no-store'});if(res.ok){const data=await res.json();serverIds=new Set(data.ids||[]);applyVisibility();}}catch(_){applyVisibility();}},450);
+    rows.forEach(r=>r.querySelector('input[name="spells"]:not([type="hidden"])')?.addEventListener('change',applyLimits));
+    search?.addEventListener('input',runSearch);search?.addEventListener('keydown',(event)=>{if(event.key==='Enter'){event.preventDefault();event.stopPropagation();runSearch();}});
+    applyLimits();applyVisibility();runSearch();
   }
 
   function initCharacterEnhancements(root=document) {

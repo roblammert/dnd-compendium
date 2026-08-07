@@ -52,7 +52,7 @@ STEPS = [
     ("abilities", "Ability Scores"),
     ("background", "Background & Proficiencies"),
     ("gear", "Equipment & Attacks"),
-    ("spells", "Spells & Feats"),
+    ("spells", "Cantrips & Feats"),
     ("details", "Character Details"),
     ("review", "Review & Sheet"),
 ]
@@ -299,15 +299,20 @@ def _step_context(db: Session, character: Character, step: str) -> dict[str, Any
         # Spells and feats may come from any cached source, but spells must explicitly
         # designate the selected primary class as available.
         all_spells = _all_active_entities(db, ["spell"])
-        spell_rows = [s for s in all_spells if _spell_matches_class_explicit(s, derived["class_entity"], character.level)]
+        eligible = [sp for sp in all_spells if _spell_matches_class_explicit(sp, derived["class_entity"], character.level)]
         def _spell_level(entity: Entity) -> int:
             match = re.search(r"\d+", str((entity.data_json or {}).get("level", 0)))
             return int(match.group()) if match else 0
-        context["spell_row_levels"] = {entity.public_id: _spell_level(entity) for entity in spell_rows}
-        context["spell_rows"] = sorted(spell_rows, key=lambda e: (context["spell_row_levels"][e.public_id], e.name.casefold(), e.source_display_name or ""))
-        context["spell_levels"] = sorted(set(context["spell_row_levels"].values()))
+        # Character creation selects cantrips only. Level 1+ spells are prepared during play
+        # and are intentionally not persisted by the builder.
+        spell_rows = [sp for sp in eligible if _spell_level(sp) == 0]
+        context["spell_row_levels"] = {entity.public_id: 0 for entity in spell_rows}
+        context["spell_rows"] = sorted(spell_rows, key=lambda e: (e.name.casefold(), e.source_display_name or ""))
+        context["spell_levels"] = [0] if spell_rows else []
         class_key = primary_class_key(derived["class_entity"]) or (derived["class_entity"].canonical_key if derived["class_entity"] else None)
         context["spell_limits"] = spell_selection_limits(class_key, character.level)
+        choices = character.choices_json or {}
+        context["cantrips_locked"] = bool(choices.get("cantrips_locked") or character.is_complete)
         feats=[]
         for feat in _all_active_entities(db,["feat"]):
             eligible, reason = _feat_eligibility(feat, character, derived)
@@ -469,15 +474,26 @@ async def save_step(request: Request, public_id: str, step: str, user: User = De
         class_key=primary_class_key(class_entity) or (class_entity.canonical_key if class_entity else None)
         limits=spell_selection_limits(class_key,row.level)
         eligible_spells={e.public_id:e for e in _all_active_entities(db,["spell"]) if _spell_matches_class_explicit(e,class_entity,row.level)}
-        posted=list(dict.fromkeys(str(v) for v in form.getlist("spells") if str(v) in eligible_spells))
-        cantrips=[]; leveled=[]
-        for pid in posted:
-            data=eligible_spells[pid].data_json or {}; m=re.search(r"\d+",str(data.get("level",0))); spell_level=int(m.group()) if m else 0
-            (cantrips if spell_level==0 else leveled).append(pid)
-        row.selected_spells = cantrips[:limits.get("cantrips",0)] + leveled[:limits.get("known",0)]
-        selected=set(row.selected_spells)
-        prepared=[str(v) for v in form.getlist("prepared") if str(v) in selected]
-        row.prepared_spells=prepared[:limits.get("prepared",0)]
+        choices = dict(row.choices_json or {})
+        cantrips_locked = bool(choices.get("cantrips_locked") or row.is_complete)
+        if cantrips_locked:
+            # Preserve the original generated cantrips permanently.
+            existing=[]
+            for pid in list(row.selected_spells or []):
+                ent=eligible_spells.get(pid)
+                if not ent: continue
+                data=ent.data_json or {}; m=re.search(r"\d+",str(data.get("level",0))); level=int(m.group()) if m else 0
+                if level == 0: existing.append(pid)
+            row.selected_spells = existing[:limits.get("cantrips",0)]
+        else:
+            posted=list(dict.fromkeys(str(v) for v in form.getlist("spells") if str(v) in eligible_spells))
+            cantrips=[]
+            for pid in posted:
+                data=eligible_spells[pid].data_json or {}; m=re.search(r"\d+",str(data.get("level",0))); level=int(m.group()) if m else 0
+                if level == 0: cantrips.append(pid)
+            row.selected_spells = cantrips[:limits.get("cantrips",0)]
+        # Prepared/known level 1+ spells are not character-generation state.
+        row.prepared_spells=[]
         eligible_feats=[]
         for feat in _all_active_entities(db,["feat"]):
             if _feat_eligibility(feat,row,derived_now)[0]: eligible_feats.append(feat.public_id)
@@ -493,6 +509,10 @@ async def save_step(request: Request, public_id: str, step: str, user: User = De
         row.details_json = details
     elif step == "review":
         row.is_complete = bool(form.get("is_complete"))
+        if row.is_complete:
+            choices = dict(row.choices_json or {})
+            choices["cantrips_locked"] = True
+            row.choices_json = choices
 
     if step != "review" and _completion_fingerprint(row) != completion_before:
         row.is_complete = False

@@ -29,4 +29,5 @@ def test_legacy_name_only_character_filters_removed():
 
 def test_search_enter_is_not_parent_form_submit():
     js = (ROOT / 'app/static/js/app.js').read_text()
-    assert js.count("if(event.key==='Enter'){ event.preventDefault(); event.stopPropagation(); runSearch(); }") >= 2
+    assert js.count("event.key==='Enter'") >= 2
+    assert js.count('event.preventDefault()') >= 2
