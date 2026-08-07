@@ -7,12 +7,17 @@
 @page {
   size: Letter;
   margin: .34in .38in .64in;
+  @bottom-center {
+    content:"";
+    width:7.74in;
+    border-top:.7pt solid #b9a77f;
+    vertical-align:top;
+  }
   @bottom-left {
     content: string(footerleft);
     width:3.87in;
     color:#5f5b54;
     font:6.25pt Arial, Helvetica, sans-serif;
-    border-top:.7pt solid #b9a77f;
     padding:3pt 0 0;
     vertical-align:top;
   }
@@ -21,7 +26,6 @@
     width:3.87in;
     color:#5f5b54;
     font:6.25pt Arial, Helvetica, sans-serif;
-    border-top:.7pt solid #b9a77f;
     padding:3pt 0 0;
     text-align:right;
     vertical-align:top;
@@ -86,12 +90,20 @@ body { color:#1c1b19; font-family:Arial,Helvetica,sans-serif; background:#e5e1d8
 .player-guide .guide-body { padding:5px 6px; font-size:6.75pt; line-height:1.25; }
 .player-guide .guide-body p { margin:0 0 4px; }
 .player-guide .guide-body p:last-child { margin-bottom:0; }
+.hit-dice-line { display:flex; align-items:center; gap:6px; margin:0 0 4px!important; }
+.hit-dice-pips { display:inline-flex; gap:2px; flex-wrap:nowrap; flex-shrink:0; }
+.hit-die-pip { width:7px; height:7px; border:1px solid #173643; border-radius:50%; display:inline-block; background:#fff; }
 .roll-guide-table { width:100%; border-collapse:collapse; font-size:6.25pt; }
 .roll-guide-table th { background:#f1ece1; color:#5d4930; text-transform:uppercase; font-size:5.7pt; letter-spacing:.03em; text-align:left; padding:2px 3px; border:1px solid #cabb9c; }
 .roll-guide-table td { padding:2px 3px; border:1px solid #d9ccb2; vertical-align:top; }
 .roll-guide-table td:first-child { font-weight:800; color:#173643; white-space:nowrap; }
 .guide-note { margin-top:4px!important; padding-top:4px; border-top:1px dotted #cabb9c; font-style:italic; color:#51493f; }
 .currency { display:grid; grid-template-columns:repeat(4,1fr); gap:3px; }
+.panel-title.split-title { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.panel-title .title-note { font-size:5.8pt; letter-spacing:.01em; text-transform:none; font-weight:700; white-space:nowrap; }
+.condition-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:3px 8px; }
+.condition-item { display:flex; align-items:center; gap:4px; min-height:15px; font-size:6.8pt; }
+.condition-box { width:9px; height:9px; border:1px solid #333; display:inline-block; background:#fff; flex:0 0 auto; }
 .coin { border:1px solid #d0c09d; background:#faf7ef; text-align:center; padding:3px; }
 .coin b { display:block; color:#806029; font-size:6.4pt; }
 .coin span { font-weight:800; font-size:9pt; }
@@ -135,10 +147,14 @@ body { color:#1c1b19; font-family:Arial,Helvetica,sans-serif; background:#e5e1d8
 .spell-summary { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-bottom:7px; break-inside:avoid; }
 .spell-columns { display:grid; grid-template-columns:1fr 1fr; gap:7px; align-items:start; }
 .spell-level { display:inline-block; width:100%; border:1px solid #b9a77f; margin:0 0 7px; break-inside:avoid-page; page-break-inside:avoid; }
-.spell-level h3 { display:flex; justify-content:space-between; align-items:center; margin:0; padding:4px 6px; background:#173643; color:#fff; font-size:7pt; text-transform:uppercase; letter-spacing:.06em; }
+.spell-level h3 { display:flex; justify-content:space-between; align-items:center; margin:0; padding:4px 6px; background:#fff; color:#173643; border-bottom:1.5px solid #173643; font-size:7pt; text-transform:uppercase; letter-spacing:.06em; font-weight:900; }
+.spell-usage { margin-top:8px; break-inside:auto; }
+.spell-usage .panel-title { background:#fff; color:#173643; border-bottom:1.5px solid #173643; font-size:8pt; }
+.spell-usage-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px 10px; }
+.spell-usage-grid p { margin:0 0 5px; }
 .spell-line { display:grid; grid-template-columns:11px 1fr; gap:4px; align-items:center; border-bottom:1px dotted #d2c5ad; min-height:17px; padding:2px 5px; font-size:7.4pt; }
 .prepared { width:8px; height:8px; border:1px solid #333; border-radius:50%; display:inline-block; }
-.prepared.on { background:#173643; }
+.prepared.on { background:#fff; }
 .empty-note { color:#8a8176; font-style:italic; }
 @media print {
   body { background:#fff; }
@@ -193,7 +209,7 @@ body { color:#1c1b19; font-family:Arial,Helvetica,sans-serif; background:#e5e1d8
         </section>
       {% endfor %}
       </div>
-      <section class="player-guide"><h2>Hit Dice &amp; How to Use Them</h2><div class="guide-body"><p><strong>{{ derived.hit_dice_guide.title }}</strong></p><p><strong>Short Rest:</strong> {{ derived.hit_dice_guide.short_rest }}</p><p><strong>Long Rest:</strong> {{ derived.hit_dice_guide.long_rest }}</p><p><strong>Leveling Up:</strong> {{ derived.hit_dice_guide.level_up }}</p></div></section>
+      <section class="player-guide"><h2>Hit Dice &amp; How to Use Them</h2><div class="guide-body"><p class="hit-dice-line"><strong>Hit Dice: {{ derived.hit_dice_guide.title }}</strong><span class="hit-dice-pips">{% for _ in range(character.level) %}<i class="hit-die-pip"></i>{% endfor %}</span></p><p><strong>Short Rest:</strong> {{ derived.hit_dice_guide.short_rest }}</p><p><strong>Long Rest:</strong> {{ derived.hit_dice_guide.long_rest }}</p><p><strong>Leveling Up:</strong> {{ derived.hit_dice_guide.level_up }}</p></div></section>
       <section class="player-guide"><h2>How Do I Roll...</h2><div class="guide-body"><p>For a saving throw, roll a d20 and add the Save value below. For an ability check, roll a d20 and add the base Check modifier; when a listed skill applies, use that skill's modifier instead.</p><table class="roll-guide-table"><thead><tr><th>Ability</th><th>Save</th><th>Check</th><th>Examples</th></tr></thead><tbody>{% for row in derived.roll_reference_rows %}<tr><td>{{ row.ability }}</td><td>{{ row.save }}</td><td>{{ row.check }}</td><td>{{ row.examples }}</td></tr>{% endfor %}</tbody></table>{% for note in derived.roll_reference_notes %}<p class="guide-note">{{ note }}</p>{% endfor %}</div></section>
     </div>
     <div>
@@ -202,12 +218,13 @@ body { color:#1c1b19; font-family:Arial,Helvetica,sans-serif; background:#e5e1d8
         {% if derived.spellcasting_ability %}<tr><td><b>Spell Attack</b></td><td class="num">{{ '%+d'|format(derived.spell_attack_bonus) }}</td><td>Save DC {{ derived.spell_save_dc }} · {{ derived.spellcasting_ability|upper }}</td></tr>{% endif %}
         {% if not derived.attacks and not derived.spellcasting_ability %}<tr><td colspan="3" class="empty-note">No attacks or spellcasting entries selected.</td></tr>{% endif %}
       </tbody></table></div></section>
+      <section class="panel"><h2 class="panel-title">Condition Tracker</h2><div class="panel-body"><div class="condition-grid">{% for condition in derived.core_conditions %}<div class="condition-item"><i class="condition-box"></i><span>{{ condition }}</span></div>{% endfor %}</div></div></section>
       <div class="quick-grid">
         <section class="panel"><h2 class="panel-title">Defenses & Resources</h2><div class="panel-body"><b>Hit Dice:</b> {{ character.level }}d{{ derived.hit_die }}<br><b>Heroic Inspiration:</b> {{ 'Yes' if derived.details.get('inspiration') else 'No' }}{% if derived.stealth_disadvantage %}<br><b>Stealth:</b> Disadvantage from armor{% endif %}{% if derived.strength_requirement %}<br><b>Armor STR:</b> {{ derived.strength_requirement }}{% endif %}</div></section>
         <section class="panel"><h2 class="panel-title">Languages</h2><div class="panel-body">{{ character.languages|join(', ') or 'Common' }}</div></section>
       </div>
       <section class="panel"><h2 class="panel-title">Proficiencies</h2><div class="panel-body">{{ derived.other_proficiencies|join(' · ') or '—' }}</div></section>
-      <section class="panel"><h2 class="panel-title">Currency</h2><div class="panel-body"><div class="currency">{% for coin in ['cp','sp','gp','pp'] %}<div class="coin"><b>{{ coin|upper }}</b><span>{% if derived.currency[coin] %}{{ derived.currency[coin] }}{% else %}&nbsp;{% endif %}</span></div>{% endfor %}</div></div></section>
+      <section class="panel"><h2 class="panel-title split-title"><span>Currency</span><span class="title-note">100 CP = 10 SP = 1 GP (PP = 10 GP)</span></h2><div class="panel-body"><div class="currency">{% for coin in ['cp','sp','gp','pp'] %}<div class="coin"><b>{{ coin|upper }}</b><span>{% if derived.currency[coin] %}{{ derived.currency[coin] }}{% else %}&nbsp;{% endif %}</span></div>{% endfor %}</div></div></section>
       <section class="panel"><h2 class="panel-title">At-a-Glance Features</h2><div class="panel-body"><ul class="clean-list">{% for feature in derived.class_features[:8] %}<li>{{ feature.name }}</li>{% endfor %}{% for feat in derived.feats[:4] %}<li>Feat: {{ feat.name }}</li>{% endfor %}{% if not derived.class_features and not derived.feats %}<li class="empty-note">No features recorded.</li>{% endif %}</ul></div></section>
     </div>
   </div>
@@ -262,7 +279,11 @@ body { color:#1c1b19; font-family:Arial,Helvetica,sans-serif; background:#e5e1d8
 <section class="print-page spell-page">
   <div class="page-title"><h2>Spellcasting</h2><span>{{ derived.class_entity.name if derived.class_entity else character.name }}</span></div>
   <div class="spell-summary"><div class="stat-chip"><span class="k">Ability</span><span class="v">{{ derived.spellcasting_ability|upper if derived.spellcasting_ability else '—' }}</span></div><div class="stat-chip"><span class="k">Save DC</span><span class="v">{{ derived.spell_save_dc or '—' }}</span></div><div class="stat-chip"><span class="k">Attack</span><span class="v">{% if derived.spell_attack_bonus is not none %}{{ '%+d'|format(derived.spell_attack_bonus) }}{% else %}—{% endif %}</span></div><div class="stat-chip"><span class="k">Prepared</span><span class="v">{{ character.prepared_spells|length }}</span></div></div>
-  <div class="spell-columns">{% for level in range(0,10) %}{% set spells = derived.spells_by_level.get(level,[]) %}{% if spells or level <= 1 %}<section class="spell-level"><h3><span>{{ 'Cantrips' if level == 0 else 'Level '~level }}</span><span>{% if level > 0 %}Slots ____ / ____{% endif %}</span></h3>{% for spell in spells %}<div class="spell-line"><i class="prepared {% if spell.prepared %}on{% endif %}"></i><span>{{ spell.entity.name }}</span></div>{% endfor %}{% if not spells %}<div class="spell-line"><i class="prepared"></i><span>&nbsp;</span></div><div class="spell-line"><i class="prepared"></i><span>&nbsp;</span></div>{% endif %}</section>{% endif %}{% endfor %}</div>
+  <div class="spell-columns">{% for level in range(0,10) %}{% set spells = derived.spells_by_level.get(level,[]) %}{% if spells or level <= 1 %}<section class="spell-level"><h3><span>{{ 'Cantrips' if level == 0 else 'Level '~level }}</span><span>{% if level > 0 %}{% set total_slots = derived.spell_slots.get(level,0) %}Slots {% if total_slots %}{{ total_slots }}{% else %}____{% endif %} / ____{% endif %}</span></h3>{% for spell in spells %}<div class="spell-line"><i class="prepared"></i><span>{{ spell.entity.name }}</span></div>{% endfor %}{% if not spells %}<div class="spell-line"><i class="prepared"></i><span>&nbsp;</span></div><div class="spell-line"><i class="prepared"></i><span>&nbsp;</span></div>{% endif %}</section>{% endif %}{% endfor %}</div>
+  <section class="panel spell-usage"><h2 class="panel-title">Spell Usage</h2><div class="panel-body spell-usage-grid">
+    <div><p><b>Cantrips:</b> Level 0 spells do not use spell slots. Cast a listed cantrip whenever its casting time and other requirements are met.</p><p><b>Level 1+ spells:</b> To cast one, expend a slot of that spell's level or higher. A higher-level slot can improve a spell when its description says so.</p><p><b>Your slots:</b> {{ derived.spell_usage_guide.slot_summary }}. Expended {% if derived.spell_usage_guide.pact %}Pact Magic {% endif %}slots return after a {{ derived.spell_usage_guide.recovery }}.</p></div>
+    <div><p><b>Prepared spells:</b> You currently have {{ derived.spell_usage_guide.prepared_count }} level 1+ spell selection(s) marked prepared. Change your list {{ derived.spell_usage_guide.change_when }}; always-prepared spells from features don't count against normal preparation limits.</p><p><b>Your casting math:</b> {{ derived.spell_usage_guide.ability_name }} is your spellcasting ability. Spell save DC {% if derived.spell_usage_guide.save_dc is not none %}{{ derived.spell_usage_guide.save_dc }}{% else %}—{% endif %}; spell attack {% if derived.spell_usage_guide.attack_bonus is not none %}{{ '%+d'|format(derived.spell_usage_guide.attack_bonus) }}{% else %}—{% endif %}.</p><p><b>Concentration:</b> You can maintain only one Concentration effect at a time. Taking damage can require a Constitution save to keep it; being Incapacitated or dying ends Concentration.</p><p><b>Components:</b> A spell can require verbal, somatic, or material components. A spellcasting focus can replace qualifying material components when your class or the spell permits it.</p></div>
+  </div></section>
 </section>
 {% endif %}
 </div>

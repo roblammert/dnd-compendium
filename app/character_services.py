@@ -13,7 +13,7 @@ from app.services import build_weapon_card
 from app.character_rules_2024 import (
     RULESET_SOURCE_KEY, RULESET_GAME_SYSTEM_KEY, CLASS_RULES, BACKGROUND_RULES,
     SPECIES_SUMMARIES, CLASS_SUMMARIES, BACKGROUND_SUMMARIES, DEFAULT_SUBCLASS_PARENTS,
-    class_rule, background_rule, canonical_rule_key, class_gear_rule, background_gear_rule,
+    class_rule, background_rule, canonical_rule_key, class_gear_rule, background_gear_rule, spell_slot_totals,
 )
 
 ABILITIES = ("str", "dex", "con", "int", "wis", "cha")
@@ -384,6 +384,39 @@ def equipment_print_rows(equipment: list[Entity]) -> list[dict[str, Entity | Non
         rows.append({"left": item, "right": right[index] if index < len(right) else None})
     return rows
 
+
+
+CORE_CONDITIONS_2024 = [
+    "Blinded", "Charmed", "Deafened", "Exhaustion", "Frightened",
+    "Grappled", "Incapacitated", "Invisible", "Paralyzed", "Petrified",
+    "Poisoned", "Prone", "Restrained", "Stunned", "Unconscious",
+]
+
+def spell_usage_print_guide(character: Character, class_entity: Entity | None, spell_ability: str | None,
+                            spell_save_dc: int | None, spell_attack: int | None, slots: dict[int, int],
+                            prepared_count: int) -> dict[str, Any]:
+    class_key = canonical_rule_key(class_entity.canonical_key or class_entity.slug or class_entity.name) if class_entity else ""
+    class_name = class_entity.name if class_entity else "your class"
+    ability_name = ABILITY_NAMES.get(spell_ability or "", (spell_ability or "your spellcasting ability").upper())
+    pact = class_key == "warlock"
+    slot_summary = ", ".join(f"L{level}: {count}" for level, count in sorted(slots.items())) or "No spell slots at this level"
+    change_when = {
+        "bard":"when you gain a Bard level (one spell)", "cleric":"after a Long Rest (any prepared spells)",
+        "druid":"after a Long Rest (any prepared spells)", "paladin":"after a Long Rest (one spell)",
+        "ranger":"after a Long Rest (one spell)", "sorcerer":"when you gain a Sorcerer level (one spell)",
+        "warlock":"when you gain a Warlock level (one spell)", "wizard":"after a Long Rest (any prepared spells)",
+    }.get(class_key, "when your class feature allows")
+    return {
+        "class_name": class_name,
+        "ability_name": ability_name,
+        "prepared_count": prepared_count,
+        "slot_summary": slot_summary,
+        "recovery": "Short or Long Rest" if pact else "Long Rest",
+        "change_when": change_when,
+        "save_dc": spell_save_dc,
+        "attack_bonus": spell_attack,
+        "pact": pact,
+    }
 
 def species_bonuses(entity: Entity | None) -> dict[str, int]:
     if not entity:
@@ -964,6 +997,7 @@ def derive_character(db: Session, character: Character) -> dict[str, Any]:
     spell_ability = class_spellcasting_ability(class_entity)
     spell_save_dc = 8 + prof + modifiers.get(spell_ability or "int", 0) if spell_ability else None
     spell_attack = prof + modifiers.get(spell_ability or "int", 0) if spell_ability else None
+    spell_slots = spell_slot_totals(class_entity.name if class_entity else None, character.level)
 
     currency = {coin: int((character.currency or {}).get(coin, 0) or 0) for coin in ("cp", "sp", "ep", "gp", "pp")}
     passive_perception = 10 + modifiers["wis"] + (prof if "Perception" in skills_prof else 0)
@@ -997,6 +1031,9 @@ def derive_character(db: Session, character: Character) -> dict[str, Any]:
         "passive_perception": passive_perception, "equipment": equipment, "attacks": attacks,
         "spells": spells, "spells_by_level": dict(spells_by_level), "spellcasting_ability": spell_ability,
         "spell_save_dc": spell_save_dc, "spell_attack_bonus": spell_attack,
+        "spell_slots": spell_slots,
+        "spell_usage_guide": spell_usage_print_guide(character, class_entity, spell_ability, spell_save_dc, spell_attack, spell_slots, len(prepared_set)),
+        "core_conditions": CORE_CONDITIONS_2024,
         "currency": currency, "details": details, "stealth_disadvantage": stealth_disadvantage,
         "strength_requirement": strength_requirement,
         "point_buy_total": point_buy_total(base_scores), "feats": feats, "class_features": class_features,

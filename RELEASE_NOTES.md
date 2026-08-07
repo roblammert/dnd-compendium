@@ -505,3 +505,12 @@ Every printed page includes `Generated with Rob's D&D Compendium - {version} - {
 - Added species-per-level HP adjustments such as 2024 Dwarven Toughness to derived maximum HP and level-up guidance.
 - Removed Electrum from the printable currency panel and leaves zero-value coin boxes blank for handwriting.
 - Increased the reserved print footer margin and tightened trait fragmentation to prevent content/footer collisions.
+
+## v0.32.3 - Printable play tracking and spell guidance
+- Added printable Hit Dice usage pips beside the character's Hit Dice value.
+- Added all 15 D&D 2024 core conditions as a three-column Condition Tracker.
+- Added the coin-equivalency reminder to the Currency title bar.
+- Spell-level headings are now unfilled/handwriting-friendly and show non-zero slot totals for the character's class and level.
+- Prepared spell pips print empty for manual tracking during play.
+- Added a personalized Spell Usage reference covering cantrips, leveled spells, slots, preparation, spellcasting math, Concentration, and components.
+- Strengthened the footer into one continuous full-width rule while preserving Central-time generation stamps and character/player page numbering.
