@@ -182,16 +182,6 @@ document.addEventListener("submit", async (event) => {
     badge.classList.toggle('over-budget', !valid || total>27);
   }
   document.addEventListener('input', (event) => {
-    const equipmentSearch = event.target.closest?.('[data-character-equipment-search]');
-    if (equipmentSearch) {
-      const q=equipmentSearch.value.trim().toLowerCase();
-      document.querySelectorAll('[data-character-equipment-list] [data-equipment-name]').forEach((row)=>row.hidden=!!q && !row.dataset.equipmentName.includes(q));
-    }
-    const spellSearch = event.target.closest?.('[data-character-spell-search]');
-    if (spellSearch) {
-      const q=spellSearch.value.trim().toLowerCase();
-      document.querySelectorAll('[data-character-spell-list] [data-spell-name]').forEach((row)=>row.hidden=!!q && !row.dataset.spellName.includes(q));
-    }
     const abilityForm = event.target.closest?.('[data-ability-builder]');
     if (abilityForm) refreshPointBuy(abilityForm);
   });
@@ -466,7 +456,7 @@ document.addEventListener("submit", async (event) => {
     };
     const runSearch=debounce(async()=>{
       const url=search?.dataset.filterUrl; if(!url) return;
-      const params=new URLSearchParams({q:(search.value||'').trim()});
+      const params=new URLSearchParams({q:(search.value||'').trim(), kind:(filter?.value||'all')});
       try { const res=await fetch(`${url}?${params}`,{headers:{Accept:'application/json'},cache:'no-store'}); if(res.ok){ const data=await res.json(); serverIds=new Set(data.ids||[]); applyVisibility(); } } catch(_) { applyVisibility(); }
     },450);
     const update=()=>{

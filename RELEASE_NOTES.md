@@ -426,3 +426,12 @@ This release adds generated-result list assignment, modernizes My Lists, and int
 - Fixed Spell level filtering by normalizing cached spell levels in Python before rendering filter metadata.
 - Prevented Enter in Spell search from submitting the step form or navigating backward.
 - Added v0.31.8 regression coverage; full suite: 166 passed.
+
+## v0.31.9
+
+### Character Builder filter rendering hotfix
+- Fixed Equipment and Spell result cards remaining visible after their search/filter state marked them hidden.
+- Added explicit `display: none !important` rules for dynamically hidden Equipment and Spell rows so card layout CSS cannot override the HTML `hidden` state.
+- Removed the older name-only Character Builder search listeners so Equipment and Spell filtering now has a single authoritative implementation.
+- Equipment search now sends the selected type filter to the backend in addition to applying the semantic type filter client-side.
+- Enter in Equipment and Spell search remains intercepted and cannot submit the surrounding Character Builder step form.

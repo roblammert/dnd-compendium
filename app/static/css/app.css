@@ -395,3 +395,9 @@ button:disabled { cursor:not-allowed; opacity:.55; }
   .character-search-toolbar input[data-character-equipment-search],
   .character-search-toolbar input[data-character-spell-search]{max-width:100%}
 }
+
+/* v0.31.9: dynamic Character Builder filters must override card display rules. */
+[data-character-equipment-list] [data-equipment-row][hidden],
+[data-character-spell-list] [data-spell-row][hidden] {
+  display: none !important;
+}
