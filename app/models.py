@@ -132,6 +132,7 @@ class User(Base):
     token_asset_id: Mapped[int | None] = mapped_column(ForeignKey("assets.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    preferred_source_document: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     token_asset: Mapped[Asset | None] = relationship(foreign_keys=[token_asset_id])
     lists: Mapped[list["UserEntityList"]] = relationship(back_populates="owner", cascade="all, delete-orphan")
 

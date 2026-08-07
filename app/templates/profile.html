@@ -22,6 +22,13 @@
         <label>Username<input value="{{ profile_user.username }}" disabled><small>Usernames are managed by an administrator.</small></label>
         <label>Display name<input name="display_name" value="{{ profile_user.display_name }}" required></label>
         <label class="full-span">Email address<input type="email" name="email" value="{{ profile_user.email or '' }}" placeholder="name@example.com"></label>
+        <label class="full-span">Preferred source
+          <select name="preferred_source_document">
+            <option value="">First available source</option>
+            {% for source in preferred_sources %}<option value="{{ source.key }}" {% if profile_user.preferred_source_document == source.key %}selected{% endif %}>{{ source.name }}</option>{% endfor %}
+          </select>
+          <small>When an entity has multiple source variants, this source is selected automatically when available.</small>
+        </label>
       </div>
       <div class="form-section-heading password-heading"><div><p class="eyebrow">Security</p><h2>Change password</h2></div></div>
       <label>New password<input type="password" name="password" minlength="10" autocomplete="new-password" placeholder="Leave blank to keep your current password"><small>Use at least 10 characters.</small></label>

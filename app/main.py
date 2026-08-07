@@ -23,16 +23,18 @@ from app.sync import ACTIVE_SYNC_STATUSES, create_sync_run, recover_interrupted_
 from app.assets import save_upload, save_url
 from app.auth import UserContextMiddleware, can, ensure_default_admin, require_admin, require_editor, require_user
 from app.user_routes import router as user_router, templates as user_templates
+from app.tools_routes import router as tools_router
 from app.visibility import VIEW_LABELS, can_view_type, ensure_visibility_rows, visibility_map, visible_types
 from app.endpoint_defaults import endpoint_default
 
 settings=get_settings(); base=Path(__file__).parent
 settings.asset_root.mkdir(parents=True, exist_ok=True)
-APP_VERSION = "0.27.4"
+APP_VERSION = "0.28.0"
 app=FastAPI(title=settings.app_name, version=APP_VERSION)
 app.add_middleware(UserContextMiddleware)
 app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, session_cookie=settings.session_cookie_name, max_age=settings.session_max_age, same_site="lax", https_only=settings.session_https_only)
 app.include_router(user_router)
+app.include_router(tools_router)
 app.mount("/static", StaticFiles(directory=base/"static"), name="static")
 app.mount("/assets", StaticFiles(directory=settings.asset_root), name="assets")
 templates=Jinja2Templates(directory=base/"templates")
@@ -361,7 +363,11 @@ def entity_detail(
             Entity.entity_type == entity_type, Entity.canonical_key == resolved_key, Entity.is_active == True
         ).order_by(Entity.source_display_name, Entity.id)
     ).all()) or variants
-    entity = next((item for item in variants if item.public_id == source), variants[0])
+    if source:
+        entity = next((item for item in variants if item.public_id == source), variants[0])
+    else:
+        preferred_source = getattr(request.state.user, "preferred_source_document", None) if request.state.user else None
+        entity = next((item for item in variants if preferred_source and item.source_document == preferred_source), variants[0])
 
     shared_assets = []
     seen_asset_ids = set()

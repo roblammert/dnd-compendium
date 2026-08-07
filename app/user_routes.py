@@ -14,7 +14,7 @@ from app.models import Entity, User, UserEntityList, UserEntityListItem
 from app.visibility import visible_types
 
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-templates.env.globals["app_version"] = "0.27.4"
+templates.env.globals["app_version"] = "0.28.0"
 templates.env.globals["app_name"] = get_settings().app_name
 router = APIRouter()
 
@@ -52,14 +52,24 @@ def logout(request: Request):
 @router.get("/profile", response_class=HTMLResponse)
 def profile(request: Request, user: User = Depends(require_user), db: Session = Depends(get_db)):
     current = db.get(User, user.id)
-    return templates.TemplateResponse(request, "profile.html", {"profile_user": current})
+    source_rows = db.execute(
+        select(Entity.source_document, Entity.source_display_name)
+        .where(Entity.is_active == True, Entity.source_document.is_not(None))
+        .distinct().order_by(Entity.source_display_name, Entity.source_document)
+    ).all()
+    preferred_sources = [
+        {"key": key, "name": display or key}
+        for key, display in source_rows if key
+    ]
+    return templates.TemplateResponse(request, "profile.html", {"profile_user": current, "preferred_sources": preferred_sources})
 
 
 @router.post("/profile")
-def update_profile(request: Request, display_name: str = Form(...), email: str = Form(""), password: str = Form(""), user: User = Depends(require_user), db: Session = Depends(get_db)):
+def update_profile(request: Request, display_name: str = Form(...), email: str = Form(""), password: str = Form(""), preferred_source_document: str = Form(""), user: User = Depends(require_user), db: Session = Depends(get_db)):
     current = db.get(User, user.id)
     current.display_name = display_name.strip() or current.username
     current.email = email.strip() or None
+    current.preferred_source_document = preferred_source_document.strip() or None
     if password:
         try: current.password_hash = hash_password(password)
         except ValueError as exc: raise HTTPException(400, str(exc))

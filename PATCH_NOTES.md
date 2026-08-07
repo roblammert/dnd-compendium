@@ -1,7 +1,8 @@
-# v0.27.2 — Weapon Variant Fallback Matching
+## v0.28.0 — Preferred Sources and Tools
 
-- Match Weapon and Item variants by source document first, then game system.
-- Derive source and game-system keys from nested Open5e `document` metadata when indexed columns are blank.
-- When only one Item variant exists, reuse its Cost and Weight for every matching Weapon variant.
-- Keep the Item record unchanged and apply the values only while rendering the Weapon card.
-- Add regression coverage for one-item/many-weapon and multi-source matching.
+- Added a user-profile preferred source setting used automatically on multi-source entity cards.
+- Added a public Tools section with General, Player, and Dungeon Master navigation groups.
+- Added a working coin converter with themed PP, GP, SP, and CP indicators.
+- Added an encounter builder supporting CR randomization, XP-threshold budgets, manual search, variable scaling previews, and the Lazy DM benchmark.
+- Added a loot generator with configurable categories, rarity filters, value limits, and keepable entity rows.
+- Added regression coverage for preferred-source selection and public tool routes.

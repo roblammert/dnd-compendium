@@ -98,3 +98,7 @@ This repository contains application code only. Open5e records and downloaded ar
 The compendium includes dedicated presentations for all Open5e v2 content types currently imported by the synchronizer. In addition to Monsters, Magic Items, Species, Items, Weapons, Spells, and rules-reference cards, v0.25.0 adds tailored cards for abilities, alignments, armor, backgrounds, classes, conditions, creature sets and types, damage types, source documents, environments, feats, game systems, images, item categories and rarities, item sets, licenses, publishers, rules, and rule sets.
 
 Card builders normalize nested Open5e references into readable metadata and preserve the original source JSON for authorized users.
+
+## Tools
+
+The public Tools area includes a coin converter, encounter builder, and loot generator. Authenticated users can also select a preferred Open5e source in their profile.

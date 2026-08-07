@@ -56,3 +56,8 @@ def ensure_schema_columns() -> None:
         # Existing records become grouped by their original slug. The application
         # performs a more complete name-based backfill at startup.
         connection.execute(text("UPDATE entities SET canonical_key = slug WHERE canonical_key IS NULL OR canonical_key = ''"))
+
+        user_columns = {column["name"] for column in inspect(connection).get_columns("users")}
+        if "preferred_source_document" not in user_columns:
+            connection.execute(text("ALTER TABLE users ADD COLUMN preferred_source_document VARCHAR(120)"))
+        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_users_preferred_source_document ON users(preferred_source_document)"))
