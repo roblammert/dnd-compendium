@@ -215,3 +215,11 @@ Character Builder step forms track a client-side baseline of persistent form con
 Equipment search remains backed by SQLite wildcard matching against entity names, summaries, and cached JSON text, while the Armor/Item/Weapon/All Selected selector is applied immediately in the browser using a normalized semantic type supplied by `equipment_reference_rows()`. Spell search is likewise server-backed; the level selector is client-side and uses a normalized numeric level generated in Python rather than template coercion.
 
 Search controls intercept Enter and never submit the containing character step form. This prevents Equipment search from moving to Background and Spell search from moving to Equipment.
+
+## v0.32.0 Printable Sheet Architecture
+
+The printable character sheet was fully redesigned in v0.32.0 after a survey of official and community 5e/2024 character-sheet patterns. See `CHARACTER_SHEET_PRINT_RESEARCH.md` for the reviewed approaches and design conclusions.
+
+The print renderer now uses CSS paged media instead of fixed-height content boxes. Page 1 is a deterministic core-play dashboard. Inventory, traits, features, feats, story content, and spellcasting use content-driven pagination so long sections flow to additional US Letter pages instead of clipping or shrinking. Table headers repeat when inventory crosses a page boundary, Markdown rules content is rendered, and spellcasting is emitted only for characters that actually use it.
+
+Every printed page includes the footer `Generated with Rob's D&D Compendium - {version} - {YYYYMMDD}`.

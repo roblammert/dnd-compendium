@@ -477,3 +477,11 @@ This release restructures the printable/PDF character sheet for US Letter output
 - The old combined Features & Traits region is split into full-width Traits and Features boxes.
 - Traits and Features render Markdown emphasis, lists, blockquotes, and tables.
 - Printable panels are allowed to grow naturally; WeasyPrint retains US Letter page sizing and can paginate longer content instead of clipping it.
+
+## v0.32.0 - Printable Character Sheet Rework
+
+The Character Builder print/PDF subsystem has been redesigned from the ground up after reviewing more than twenty official and community D&D 5e/2024 character-sheet approaches. The new layout prioritizes at-the-table scan speed, complete information, printer efficiency, and safe content pagination.
+
+The first page is a combat-first dashboard with identity, core statistics, grouped ability/skill cards, attacks, defenses, languages, proficiencies, currency, and feature names. Inventory and detailed rules content move to reference sections where Markdown can render without compression. Narrative information uses content-driven sizing, and spellcasting is included only when relevant. Long content continues onto additional US Letter pages instead of overflowing or being clipped.
+
+Every printed page includes `Generated with Rob's D&D Compendium - {version} - {YYYYMMDD}`.

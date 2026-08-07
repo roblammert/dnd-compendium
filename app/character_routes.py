@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import uuid
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -33,7 +34,7 @@ from app.character_rules_2024 import (
 
 router = APIRouter(prefix="/tools/character-builder")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-templates.env.globals["app_version"] = "0.31.11"
+templates.env.globals["app_version"] = "0.32.0"
 templates.env.globals["app_name"] = get_settings().app_name
 _md = MarkdownIt("commonmark", {"html": False, "linkify": True}).enable("table")
 templates.env.filters["render_markdown"] = lambda value: Markup(_md.render(str(value or "")))
@@ -531,14 +532,14 @@ def spell_filter(public_id: str, q: str = "", user: User = Depends(require_user)
 @router.get("/{public_id}/print", response_class=HTMLResponse)
 def print_character(request: Request, public_id: str, user: User = Depends(require_user), db: Session = Depends(get_db)):
     row = _character_or_404(db, public_id, user)
-    return templates.TemplateResponse(request, "character_print.html", {"derived": derive_character(db, row), "character": row})
+    return templates.TemplateResponse(request, "character_print.html", {"derived": derive_character(db, row), "character": row, "generated_date": date.today().strftime("%Y%m%d"), "app_version": request.app.version})
 
 
 @router.get("/{public_id}/pdf")
 def character_pdf(request: Request, public_id: str, user: User = Depends(require_user), db: Session = Depends(get_db)):
     row = _character_or_404(db, public_id, user)
     derived = derive_character(db, row)
-    html = templates.get_template("character_print.html").render(request=request, derived=derived, character=row, pdf_mode=True)
+    html = templates.get_template("character_print.html").render(request=request, derived=derived, character=row, pdf_mode=True, generated_date=date.today().strftime("%Y%m%d"), app_version=request.app.version)
     try:
         from weasyprint import HTML
         pdf = HTML(string=html, base_url=str(Path(__file__).parent)).write_pdf()

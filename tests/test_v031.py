@@ -53,9 +53,9 @@ def test_v031_character_builder_navigation_and_pdf_template_present():
     print_template = (root / "app/templates/character_print.html").read_text()
     routes = (root / "app/character_routes.py").read_text()
     assert 'href="/tools/character-builder"' in tools_layout
-    assert print_template.count('class="sheet"') == 3
+    assert print_template.count('class="print-page') >= 3
     assert "Attacks & Spellcasting" in print_template
     assert "Character Backstory" in print_template
-    assert "Spell Save DC" in print_template
+    assert "Save DC" in print_template
     assert '@router.get("/{public_id}/pdf")' in routes
     assert "Depends(require_user)" in routes

@@ -139,3 +139,7 @@ Character Builder navigation now warns before leaving a dirty step and offers **
 ### Character Builder v0.31.12
 
 Reopening a saved character now always starts at **01 Identity** unless an explicit internal workflow step is requested. The Review & Character Sheet step has been simplified to core derived statistics, Identity, Ability Scores, export actions, and a contained Character Status panel. Saving any actual change on Steps 1–8 automatically returns a previously completed character to Draft until the user explicitly marks it complete again on Step 9.
+
+### Printable Character Sheets
+
+Character Builder characters can be rendered as print-ready US Letter HTML or downloaded directly as PDF. v0.32.0 introduces a full print-layout redesign with combat-first core information, ability-grouped skills, content-driven feature/story pages, conditional spellcasting, Markdown rendering, and safe continuation pages for long character data. See `CHARACTER_SHEET_PRINT_RESEARCH.md` for the design research behind the layout.

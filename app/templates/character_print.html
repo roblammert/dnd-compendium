@@ -1,120 +1,268 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><title>{{ character.name }} Character Sheet</title><style>
-@page{size:Letter;margin:.28in}
-*{box-sizing:border-box}
-body{margin:0;color:#171513;font-family:Arial,sans-serif;background:#ddd}
-.sheet{width:8in;min-height:10.4in;margin:0 auto .25in;background:#fff;padding:.18in;page-break-after:always}
-.sheet:last-child{page-break-after:auto}
-.printbar{width:8in;margin:.2in auto;display:flex;gap:.5rem;justify-content:flex-end}
-.printbar a,.printbar button{padding:.5rem .8rem;border:1px solid #333;background:#fff;color:#111;text-decoration:none}
-.band{border:2px solid #24211e;padding:8px 12px;margin-bottom:8px;display:grid;grid-template-columns:1.3fr 2fr;gap:12px}
-.namebox h1{font-family:Georgia,serif;font-size:25px;margin:8px 0 0}
-.label{font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#514c46}
-.identity-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.field{border-bottom:1px solid #8a8379;min-height:28px;padding:2px}
-.field b{display:block;font-size:10px;margin-top:2px}
-.panel{border:2px solid #2b2824;border-radius:7px;padding:7px;background:#fff;min-width:0;overflow-wrap:anywhere}
-.panel h2{font-size:9px;text-transform:uppercase;text-align:center;margin:2px 0 6px;letter-spacing:.05em}
-.page1{display:grid;grid-template-columns:1.28fr 2.08fr;gap:8px;align-items:start}
-.page1-left{min-width:0}
-.page1-right{min-width:0}
-.left-core{display:grid;grid-template-columns:.72fr 1.28fr;gap:6px;align-items:start}
-.save-skill-column{min-width:0}
-.ability-column{display:grid;gap:5px}
-.ability{border:2px solid #2b2824;border-radius:8px;text-align:center;padding:3px}
-.ability .score{font-size:15px;font-weight:700}
-.ability .mod{display:inline-block;border:1px solid #333;border-radius:50%;padding:2px 7px;font-size:13px;margin-top:2px}
-.compact-row{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:6px}
-.compact-row.two{grid-template-columns:1fr 1fr}
-.compact-stat{text-align:center;border:2px solid #2b2824;border-radius:7px;padding:5px}
-.compact-stat strong{display:block;font-size:17px}
-.page1-top-grid{display:grid;grid-template-columns:1fr 1.08fr;gap:8px;align-items:start}
-.hp-row{display:grid;grid-template-columns:1fr 1fr;gap:5px}
-.hpbox{min-height:62px;text-align:center}
-.hpbox .hp-label{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
-.hpbox .hp-max{font-size:8px;color:#655f58;margin-top:2px}
-.hpbox .hp-value{font-size:20px;font-weight:700;margin-top:7px}
-.skills{font-size:7px}
-.skill-row,.save-row{display:grid;grid-template-columns:8px 22px 1fr;gap:2px;align-items:center;padding:0}
-.dot{width:7px;height:7px;border:1px solid #111;border-radius:50%}
-.dot.on{background:#111}
-.modnum{text-align:right;font-weight:700}
-.text-area{white-space:pre-wrap;font-size:9px;line-height:1.35;overflow-wrap:anywhere}
-.dynamic-text{min-height:2.7em}
-.personality-stack{display:grid;gap:5px}
-.personality-stack .panel{padding:6px 7px}
-.personality-stack .panel h2{margin-bottom:4px}
-.attack-equipment-row{display:grid;grid-template-columns:1fr 1.08fr;gap:8px;align-items:start;margin-top:6px}
-.attacks-panel{min-height:0}
-.equipment-panel{min-height:190px}
-.attack-table{width:100%;border-collapse:collapse;font-size:8px}
-.attack-table td,.attack-table th{border-bottom:1px solid #aaa;padding:3px}
-.equipment-list{font-size:8px;columns:2;column-gap:10px}
-.currency{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin-bottom:6px}
-.coin{text-align:center;border:1px solid #777;padding:3px;font-size:8px}
-.full-width-sections{display:grid;gap:6px;margin-top:8px}
-.flow-panel{break-inside:auto;page-break-inside:auto}
-.flow-panel .flow-content{min-height:2.7em;font-size:8.5px;line-height:1.32}
-.print-rich p{margin:.2em 0 .45em}
-.print-rich ul,.print-rich ol{margin:.25em 0 .5em 1.25em;padding:0}
-.print-rich li{margin:.12em 0}
-.print-rich h1,.print-rich h2,.print-rich h3,.print-rich h4{font-family:Georgia,serif;text-transform:none;text-align:left;letter-spacing:0;margin:.45em 0 .2em}
-.print-rich h3{font-size:10px}
-.print-rich strong{font-weight:700}
-.print-rich em{font-style:italic}
-.print-rich table{width:100%;border-collapse:collapse;margin:.45em 0;font-size:7.5px;break-inside:auto}
-.print-rich th,.print-rich td{border:1px solid #8a8379;padding:3px;vertical-align:top}
-.print-rich th{background:#eee9df}
-.print-rich blockquote{margin:.4em 0;padding:.15em .5em;border-left:3px solid #8a8379;color:#4f4942}
-.trait-entry,.feature-entry{break-inside:avoid;margin:0 0 5px}
-.trait-entry:last-child,.feature-entry:last-child{margin-bottom:0}
-.trait-entry h3,.feature-entry h3{font-size:9px;margin:0 0 2px;font-family:Arial,sans-serif}
-.page2-top{display:grid;grid-template-columns:1fr 2fr;gap:8px;align-items:start}
-.page2-bottom{display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:8px;align-items:start}
-.right-stack{display:grid;gap:8px;align-items:start}
-.page2-top .panel,.page2-bottom .panel,.right-stack .panel{min-height:0;break-inside:auto;page-break-inside:auto}
-.page2-top .text-area,.page2-bottom .text-area,.right-stack .text-area{min-height:2.7em}
-.spell-head{grid-template-columns:1.3fr 2fr}
-.spell-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
-.spell-summary .compact-stat{padding:7px}
-.spell-columns{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.spell-level{border:2px solid #2b2824;border-radius:7px;padding:6px;break-inside:avoid;margin-bottom:8px;min-height:155px}
-.spell-level h2{display:flex;justify-content:space-between;font-size:10px;margin:0 0 4px;border-bottom:1px solid #777;padding-bottom:3px}
-.spell-line{font-size:8px;border-bottom:1px solid #bbb;padding:3px 0;display:grid;grid-template-columns:10px 1fr}
-.spell-line .prepared{width:6px;height:6px;border:1px solid #111;border-radius:50%;margin-top:2px}
-.spell-line .prepared.on{background:#111}
-.muted{color:#6d6862}
-@media print{body{background:#fff}.printbar{display:none}.sheet{margin:0;width:auto;min-height:auto;padding:0}}
-</style></head><body>{% if not pdf_mode %}<div class="printbar"><a href="/tools/character-builder/{{ character.public_id }}">Back to Builder</a><button onclick="window.print()">Print / Save as PDF</button><a href="/tools/character-builder/{{ character.public_id }}/pdf">Download PDF</a></div>{% endif %}
-<section class="sheet"><header class="band"><div class="namebox"><span class="label">Character Name</span><h1>{{ character.name }}</h1></div><div class="identity-grid"><div class="field"><span class="label">Class & Level</span><b>{{ derived.class_entity.name if derived.class_entity else '—' }} {{ character.level }}</b></div><div class="field"><span class="label">Background</span><b>{{ derived.background.name if derived.background else '—' }}</b></div><div class="field"><span class="label">Player Name</span><b>{{ derived.details.get('player_name','') }}</b></div><div class="field"><span class="label">Species / Race</span><b>{{ derived.species.name if derived.species else '—' }}</b></div><div class="field"><span class="label">Alignment</span><b>{{ derived.alignment.name if derived.alignment else '—' }}</b></div><div class="field"><span class="label">Experience Points</span><b>{{ character.experience_points }}</b></div></div></header>
-<div class="page1">
-  <div class="page1-left">
-    <div class="left-core"><div class="ability-column">{% for save in derived.saves %}<div class="ability"><span class="label">{{ save.name }}</span><div class="score">{{ derived.scores[save.ability] }}</div><div class="mod">{{ '%+d'|format(derived.modifiers[save.ability]) }}</div></div>{% endfor %}</div><div class="save-skill-column"><div class="panel"><h2>Saving Throws</h2>{% for save in derived.saves %}<div class="save-row"><i class="dot {% if save.proficient %}on{% endif %}"></i><span class="modnum">{{ '%+d'|format(save.modifier) }}</span><span>{{ save.name }}</span></div>{% endfor %}</div><div class="panel skills" style="margin-top:6px"><h2>Skills</h2>{% for skill in derived.skills %}<div class="skill-row"><i class="dot {% if skill.proficient %}on{% endif %}"></i><span class="modnum">{{ '%+d'|format(skill.modifier) }}</span><span>{{ skill.name }} <small>({{ skill.ability|upper }})</small></span></div>{% endfor %}</div></div></div>
-    <div class="panel" style="margin-top:6px"><h2>Passive Wisdom (Perception)</h2><div style="text-align:center;font-size:16px;font-weight:700">{{ derived.passive_perception }}</div></div>
-    <div class="panel" style="margin-top:6px"><h2>Other Proficiencies & Languages</h2><div class="text-area dynamic-text"><b>Languages:</b> {{ character.languages|join(', ') or '—' }}<br><br><b>Proficiencies:</b> {{ derived.other_proficiencies|join(', ') or '—' }}</div></div>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ character.name }} - Character Sheet</title>
+<style>
+@page { size: Letter; margin: .36in .38in .68in; }
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { color:#1c1b19; font-family: Arial, Helvetica, sans-serif; background:#e5e1d8; font-size:8.6pt; line-height:1.28; }
+.printbar { width:7.74in; margin:.18in auto; display:flex; justify-content:flex-end; gap:.4rem; }
+.printbar a,.printbar button { border:1px solid #273d47; background:#fff; color:#172c35; padding:.48rem .72rem; font-weight:700; text-decoration:none; border-radius:4px; cursor:pointer; }
+.print-document { width:7.74in; margin:0 auto .3in; }
+.print-page { background:#fff; padding:.02in 0; }
+.core-page { break-after:page; page-break-after:always; }
+
+.page-title { display:flex; justify-content:space-between; align-items:flex-end; border-bottom:2px solid #173643; padding:0 0 5px; margin:0 0 7px; }
+.page-title h2 { margin:0; font:700 15pt Georgia,serif; color:#173643; }
+.page-title span { color:#6f675d; font-size:7pt; text-transform:uppercase; letter-spacing:.08em; }
+.identity-header { border:1.5px solid #173643; background:#fbfaf6; padding:7px 9px; margin-bottom:7px; display:grid; grid-template-columns:1.45fr 2.55fr; gap:9px; break-inside:avoid; }
+.character-name .eyebrow,.eyebrow { color:#806029; font-size:6.8pt; font-weight:800; text-transform:uppercase; letter-spacing:.09em; }
+.character-name h1 { margin:2px 0 0; font:700 20pt Georgia,serif; color:#2d2018; line-height:1.05; }
+.identity-fields { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px 8px; }
+.identity-field { border-bottom:1px solid #cbb992; padding:0 1px 3px; min-width:0; }
+.identity-field .k { color:#6f675d; font-size:6.4pt; font-weight:800; text-transform:uppercase; }
+.identity-field .v { display:block; font-size:9pt; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.combat-ribbon { display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); gap:4px; margin-bottom:7px; break-inside:avoid; }
+.stat-chip { border:1.5px solid #466771; background:#f2f7f6; padding:4px 3px; text-align:center; min-width:0; }
+.stat-chip .k { display:block; color:#496069; font-size:6.2pt; font-weight:800; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap; }
+.stat-chip .v { display:block; color:#173643; font:700 14pt Georgia,serif; line-height:1.05; margin-top:1px; }
+.stat-chip.hp { grid-column:span 2; background:#f8f3ec; border-color:#906d38; }
+.core-grid { display:grid; grid-template-columns:2.15fr 2.85fr; gap:7px; align-items:start; }
+.ability-board { display:grid; grid-template-columns:1fr 1fr; gap:5px; }
+.ability-card { border:1px solid #b9a77f; background:#fffdf8; break-inside:avoid; }
+.ability-head { display:grid; grid-template-columns:42px 1fr 38px; align-items:center; border-bottom:1px solid #d9ccb2; min-height:34px; }
+.ability-abbr { font-weight:900; font-size:9pt; text-align:center; color:#5d4930; }
+.ability-score { font:700 18pt Georgia,serif; color:#173643; text-align:center; }
+.ability-mod { font-weight:800; font-size:10pt; text-align:center; border-left:1px solid #d9ccb2; padding:6px 0; }
+.ability-save { display:grid; grid-template-columns:9px 32px 1fr; align-items:center; gap:3px; padding:3px 5px; background:#f4f0e7; font-size:7.2pt; }
+.dot { width:7px; height:7px; border:1px solid #1e2527; border-radius:50%; display:inline-block; }
+.dot.on { background:#173643; }
+.ability-skills { padding:3px 5px 4px; }
+.skill-line { display:grid; grid-template-columns:9px 29px 1fr; gap:3px; align-items:center; min-height:13px; font-size:7pt; }
+.skill-line .num,.ability-save .num { text-align:right; font-weight:800; }
+.panel { border:1px solid #b9a77f; background:#fff; margin-bottom:6px; break-inside:avoid-page; }
+.panel-title { margin:0; padding:4px 6px; background:#173643; color:#fff; font-size:7pt; text-transform:uppercase; letter-spacing:.08em; font-weight:800; }
+.panel-body { padding:6px; }
+.attack-table,.inventory-table { width:100%; border-collapse:collapse; font-size:7.3pt; }
+.attack-table thead,.inventory-table thead { display:table-header-group; }
+.attack-table th,.inventory-table th { color:#5e5448; font-size:6.4pt; text-transform:uppercase; letter-spacing:.04em; text-align:left; border-bottom:1.5px solid #806029; padding:2px 3px; }
+.attack-table td,.inventory-table td { border-bottom:1px solid #e1d6bf; padding:3px; vertical-align:top; }
+.attack-table .num { text-align:center; font-weight:800; white-space:nowrap; }
+.quick-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.clean-list { margin:0; padding-left:15px; }
+.clean-list li { margin:1px 0; }
+.currency { display:grid; grid-template-columns:repeat(5,1fr); gap:3px; }
+.coin { border:1px solid #d0c09d; background:#faf7ef; text-align:center; padding:3px; }
+.coin b { display:block; color:#806029; font-size:6.4pt; }
+.coin span { font-weight:800; font-size:9pt; }
+.section-banner { border-top:2px solid #173643; border-bottom:1px solid #b9a77f; padding:5px 2px 4px; margin:9px 0 6px; break-after:avoid; }
+.section-banner h2 { margin:0; font:700 13pt Georgia,serif; color:#173643; }
+.section-banner p { margin:1px 0 0; color:#6f675d; font-size:7pt; }
+.two-col { display:grid; grid-template-columns:1fr 1fr; gap:7px; align-items:start; }
+.rich-card { border:1px solid #cabb9c; background:#fffdf9; padding:6px 7px; margin-bottom:6px; break-inside:avoid-page; page-break-inside:avoid; }
+.rich-card h3 { margin:0 0 3px; font:700 10pt Georgia,serif; color:#39291d; }
+.rich-card .meta { color:#806029; font-size:6.4pt; text-transform:uppercase; font-weight:800; letter-spacing:.04em; margin-bottom:3px; }
+.rich p { margin:.18em 0 .42em; }
+.rich ul,.rich ol { margin:.2em 0 .45em 1.15em; padding:0; }
+.rich li { margin:.08em 0; }
+.rich strong { font-weight:800; }
+.rich em { font-style:italic; }
+.rich h1,.rich h2,.rich h3,.rich h4 { color:#39291d; font-family:Georgia,serif; text-transform:none; letter-spacing:0; text-align:left; margin:.4em 0 .18em; }
+.rich table { width:100%; border-collapse:collapse; margin:.35em 0; font-size:7pt; break-inside:auto; }
+.rich th,.rich td { border:1px solid #b9a77f; padding:2px 3px; vertical-align:top; }
+.rich th { background:#f1ece1; }
+.rich blockquote { margin:.3em 0; padding:.12em .45em; border-left:3px solid #806029; color:#51493f; }
+.flow-block { break-inside:auto; page-break-inside:auto; }
+.inventory-summary { display:grid; grid-template-columns:1.25fr .75fr; gap:7px; align-items:start; }
+.equipment-note { color:#6f675d; font-size:6.7pt; margin:4px 0 0; }
+.story-grid { display:block; }
+.story-pair { width:100%; border-collapse:separate; border-spacing:0 7px; table-layout:fixed; }
+.story-pair td { width:50%; vertical-align:top; padding:0 3px; }
+.story-pair td:first-child { padding-left:0; }
+.story-pair td:last-child { padding-right:0; }
+.story-card { border:1px solid #cabb9c; background:#fff; padding:7px; margin-bottom:7px; break-inside:avoid-page; page-break-inside:avoid; }
+.story-card h3 { margin:0 0 4px; color:#173643; font:700 10pt Georgia,serif; }
+.story-content { white-space:pre-wrap; overflow-wrap:anywhere; min-height:2.55em; padding:1px 0 2px; }
+.story-content:empty::after { content:"\00a0\A\00a0"; white-space:pre; }
+
+.spell-summary { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-bottom:7px; break-inside:avoid; }
+.spell-columns { display:grid; grid-template-columns:1fr 1fr; gap:7px; align-items:start; }
+.spell-level { display:inline-block; width:100%; border:1px solid #b9a77f; margin:0 0 7px; break-inside:avoid-page; page-break-inside:avoid; }
+.spell-level h3 { display:flex; justify-content:space-between; align-items:center; margin:0; padding:4px 6px; background:#173643; color:#fff; font-size:7pt; text-transform:uppercase; letter-spacing:.06em; }
+.spell-line { display:grid; grid-template-columns:11px 1fr; gap:4px; align-items:center; border-bottom:1px dotted #d2c5ad; min-height:17px; padding:2px 5px; font-size:7.4pt; }
+.prepared { width:8px; height:8px; border:1px solid #333; border-radius:50%; display:inline-block; }
+.prepared.on { background:#173643; }
+.empty-note { color:#8a8176; font-style:italic; }
+.print-footer { color:#5f5b54; border-top:1px solid #b9a77f; padding-top:2px; text-align:center; font-size:6.5pt; letter-spacing:.02em; }
+@media print {
+  body { background:#fff; }
+  .printbar { display:none!important; }
+  .print-document { width:auto; margin:0; }
+  .print-page { padding:0; }
+  .print-footer { position:fixed; left:.38in; right:.38in; bottom:.18in; z-index:10; background:#fff; }
+}
+@media screen {
+  .print-page { padding:.18in; margin-bottom:.22in; box-shadow:0 1px 8px #999; }
+  .print-footer { width:7.74in; margin:0 auto .25in; background:#fff; padding:4px; }
+}
+</style>
+</head>
+<body>
+{% if not pdf_mode %}<div class="printbar"><button onclick="window.print()">Print / Save as PDF</button><a href="/tools/character-builder/{{ character.public_id }}/pdf">Download PDF</a></div>{% endif %}
+<div class="print-document">
+
+<section class="print-page core-page">
+  <header class="identity-header">
+    <div class="character-name"><span class="eyebrow">Character</span><h1>{{ character.name }}</h1></div>
+    <div class="identity-fields">
+      <div class="identity-field"><span class="k">Class & Level</span><span class="v">{{ derived.class_entity.name if derived.class_entity else '—' }} {{ character.level }}</span></div>
+      <div class="identity-field"><span class="k">Subclass</span><span class="v">{{ derived.subclass.name if derived.subclass else '—' }}</span></div>
+      <div class="identity-field"><span class="k">Background</span><span class="v">{{ derived.background.name if derived.background else '—' }}</span></div>
+      <div class="identity-field"><span class="k">Species</span><span class="v">{{ derived.species.name if derived.species else '—' }}</span></div>
+      <div class="identity-field"><span class="k">Alignment</span><span class="v">{{ derived.alignment.name if derived.alignment else '—' }}</span></div>
+      <div class="identity-field"><span class="k">XP</span><span class="v">{{ '{:,}'.format(character.experience_points or 0) }}</span></div>
+    </div>
+  </header>
+
+  <div class="combat-ribbon">
+    <div class="stat-chip"><span class="k">AC</span><span class="v">{{ derived.armor_class }}</span></div>
+    <div class="stat-chip hp"><span class="k">HP Current / Max</span><span class="v">{{ derived.current_hp }} / {{ derived.hp_max }}</span></div>
+    <div class="stat-chip"><span class="k">Temp HP</span><span class="v">{{ derived.temp_hp }}</span></div>
+    <div class="stat-chip"><span class="k">Initiative</span><span class="v">{{ '%+d'|format(derived.initiative) }}</span></div>
+    <div class="stat-chip"><span class="k">Speed</span><span class="v">{{ derived.speed }}</span></div>
+    <div class="stat-chip"><span class="k">Prof</span><span class="v">+{{ derived.proficiency_bonus }}</span></div>
+    <div class="stat-chip"><span class="k">Passive Per.</span><span class="v">{{ derived.passive_perception }}</span></div>
   </div>
-  <div class="page1-right">
-    <div class="page1-top-grid">
-      <div class="combat-summary">
-        <div class="compact-row"><div class="compact-stat"><span class="label">AC</span><strong>{{ derived.armor_class }}</strong></div><div class="compact-stat"><span class="label">Initiative</span><strong>{{ '%+d'|format(derived.initiative) }}</strong></div><div class="compact-stat"><span class="label">Speed</span><strong>{{ derived.speed }}</strong></div></div>
-        <div class="compact-row two"><div class="compact-stat"><span class="label">Hit Dice</span><strong>{{ character.level }}d{{ derived.hit_die }}</strong></div><div class="compact-stat"><span class="label">Proficiency Bonus</span><strong>+{{ derived.proficiency_bonus }}</strong></div></div>
-        <div class="hp-row"><div class="panel hpbox"><div class="hp-label">Current HP</div><div class="hp-max">Maximum {{ derived.hp_max }}</div><div class="hp-value">{{ derived.current_hp }}</div></div><div class="panel hpbox"><div class="hp-label">Temp HP</div><div class="hp-max">Temporary</div><div class="hp-value">{{ derived.temp_hp }}</div></div></div>
-      </div>
-      <div class="personality-stack">
-        <div class="panel"><h2>Personality Traits</h2><div class="text-area dynamic-text">{{ derived.details.get('personality_traits','') }}</div></div>
-        <div class="panel"><h2>Ideals</h2><div class="text-area dynamic-text">{{ derived.details.get('ideals','') }}</div></div>
-        <div class="panel"><h2>Bonds</h2><div class="text-area dynamic-text">{{ derived.details.get('bonds','') }}</div></div>
-        <div class="panel"><h2>Flaws</h2><div class="text-area dynamic-text">{{ derived.details.get('flaws','') }}</div></div>
+
+  <div class="core-grid">
+    <div>
+      <div class="ability-board">
+      {% for save in derived.saves %}
+        <section class="ability-card">
+          <div class="ability-head"><div class="ability-abbr">{{ save.ability|upper }}</div><div class="ability-score">{{ derived.scores[save.ability] }}</div><div class="ability-mod">{{ '%+d'|format(derived.modifiers[save.ability]) }}</div></div>
+          <div class="ability-save"><i class="dot {% if save.proficient %}on{% endif %}"></i><span class="num">{{ '%+d'|format(save.modifier) }}</span><span>Saving Throw</span></div>
+          <div class="ability-skills">
+          {% set ns = namespace(found=false) %}
+          {% for skill in derived.skills if skill.ability == save.ability %}
+            {% set ns.found = true %}<div class="skill-line"><i class="dot {% if skill.proficient %}on{% endif %}"></i><span class="num">{{ '%+d'|format(skill.modifier) }}</span><span>{{ skill.name }}</span></div>
+          {% endfor %}
+          {% if not ns.found %}<div class="skill-line"><span></span><span></span><span class="empty-note">No associated skills</span></div>{% endif %}
+          </div>
+        </section>
+      {% endfor %}
       </div>
     </div>
-    <div class="attack-equipment-row">
-      <div class="panel attacks-panel"><h2>Attacks & Spellcasting</h2><table class="attack-table"><thead><tr><th>Name</th><th>Atk</th><th>Damage / Type</th></tr></thead><tbody>{% for attack in derived.attacks %}<tr><td>{{ attack.name }}</td><td>{{ '%+d'|format(attack.attack_bonus) }}</td><td>{{ attack.damage }}</td></tr>{% endfor %}{% if derived.spellcasting_ability %}<tr><td>Spell Attack</td><td>{{ '%+d'|format(derived.spell_attack_bonus) }}</td><td>Save DC {{ derived.spell_save_dc }}</td></tr>{% endif %}{% if not derived.attacks and not derived.spellcasting_ability %}<tr><td>&nbsp;</td><td></td><td></td></tr><tr><td>&nbsp;</td><td></td><td></td></tr>{% endif %}</tbody></table></div>
-      <div class="panel equipment-panel"><h2>Equipment</h2><div class="currency">{% for coin in ['cp','sp','ep','gp','pp'] %}<div class="coin"><b>{{ coin|upper }}</b><br>{{ derived.currency[coin] }}</div>{% endfor %}</div><div class="equipment-list">{% for item in derived.equipment %}{{ item.name }}<br>{% endfor %}</div></div>
+    <div>
+      <section class="panel"><h2 class="panel-title">Attacks & Spellcasting</h2><div class="panel-body">
+        <table class="attack-table"><thead><tr><th>Attack</th><th>Bonus</th><th>Damage / Effect</th></tr></thead><tbody>
+        {% for attack in derived.attacks %}<tr><td><b>{{ attack.name }}</b></td><td class="num">{{ '%+d'|format(attack.attack_bonus) }}</td><td>{{ attack.damage }}</td></tr>{% endfor %}
+        {% if derived.spellcasting_ability %}<tr><td><b>Spell Attack</b></td><td class="num">{{ '%+d'|format(derived.spell_attack_bonus) }}</td><td>Save DC {{ derived.spell_save_dc }} · {{ derived.spellcasting_ability|upper }}</td></tr>{% endif %}
+        {% if not derived.attacks and not derived.spellcasting_ability %}<tr><td colspan="3" class="empty-note">No attacks or spellcasting entries selected.</td></tr>{% endif %}
+        </tbody></table>
+      </div></section>
+
+      <div class="quick-grid">
+        <section class="panel"><h2 class="panel-title">Defenses & Resources</h2><div class="panel-body">
+          <b>Hit Dice:</b> {{ character.level }}d{{ derived.hit_die }}<br>
+          <b>Heroic Inspiration:</b> {{ 'Yes' if derived.details.get('inspiration') else 'No' }}<br>
+          {% if derived.stealth_disadvantage %}<b>Stealth:</b> Disadvantage from armor<br>{% endif %}
+          {% if derived.strength_requirement %}<b>Armor STR:</b> {{ derived.strength_requirement }}{% endif %}
+        </div></section>
+        <section class="panel"><h2 class="panel-title">Languages</h2><div class="panel-body">{{ character.languages|join(', ') or 'Common' }}</div></section>
+      </div>
+
+      <section class="panel"><h2 class="panel-title">Proficiencies</h2><div class="panel-body">{{ derived.other_proficiencies|join(' · ') or '—' }}</div></section>
+      <section class="panel"><h2 class="panel-title">Currency</h2><div class="panel-body"><div class="currency">{% for coin in ['cp','sp','ep','gp','pp'] %}<div class="coin"><b>{{ coin|upper }}</b><span>{{ derived.currency[coin] }}</span></div>{% endfor %}</div></div></section>
+      <section class="panel"><h2 class="panel-title">At-a-Glance Features</h2><div class="panel-body"><ul class="clean-list">
+        {% for feature in derived.class_features[:8] %}<li>{{ feature.name }}</li>{% endfor %}
+        {% for feat in derived.feats[:4] %}<li>Feat: {{ feat.name }}</li>{% endfor %}
+        {% if not derived.class_features and not derived.feats %}<li class="empty-note">No features recorded.</li>{% endif %}
+      </ul></div></section>
     </div>
   </div>
+</section>
+
+<section class="print-page detail-page">
+  <div class="page-title"><h2>Inventory & Character Features</h2><span>Reference during play and advancement</span></div>
+  <div class="inventory-summary">
+    <section class="panel flow-block"><h2 class="panel-title">Equipment</h2><div class="panel-body">
+      <table class="inventory-table"><thead><tr><th>Item</th><th>Type</th></tr></thead><tbody>
+      {% for item in derived.equipment %}<tr><td>{{ item.name }}</td><td>{{ item.entity_type|replace('_',' ')|title }}</td></tr>{% else %}<tr><td colspan="2" class="empty-note">No equipment selected.</td></tr>{% endfor %}
+      </tbody></table><p class="equipment-note">Currency is summarized on the core page. Automatically granted and selected equipment are shown together here.</p>
+    </div></section>
+    <div>
+      <section class="panel"><h2 class="panel-title">Skill Proficiencies</h2><div class="panel-body">{{ derived.skill_proficiencies|join(' · ') or '—' }}</div></section>
+      <section class="panel"><h2 class="panel-title">Saving Throw Proficiencies</h2><div class="panel-body">{% for save in derived.saves if save.proficient %}{{ save.name }}{% if not loop.last %} · {% endif %}{% else %}—{% endfor %}</div></section>
+    </div>
+  </div>
+
+  <div class="section-banner"><h2>Traits</h2><p>Species, background, class, and subclass identity information.</p></div>
+  <div class="two-col">
+    <div>
+      {% if derived.species %}<article class="rich-card"><h3>{{ derived.species.name }}</h3><div class="meta">Species</div><div class="rich">{{ entity_summary(derived.species)|render_markdown }}</div></article>{% endif %}
+      {% if derived.background %}<article class="rich-card"><h3>{{ derived.background.name }}</h3><div class="meta">Background</div><div class="rich">{{ entity_summary(derived.background)|render_markdown }}</div></article>{% endif %}
+    </div>
+    <div>
+      {% if derived.class_entity %}<article class="rich-card"><h3>{{ derived.class_entity.name }}</h3><div class="meta">Class</div><div class="rich">{{ entity_summary(derived.class_entity)|render_markdown }}</div></article>{% endif %}
+      {% if derived.subclass %}<article class="rich-card"><h3>{{ derived.subclass.name }}</h3><div class="meta">Subclass</div><div class="rich">{{ entity_summary(derived.subclass)|render_markdown }}</div></article>{% endif %}
+    </div>
+  </div>
+
+  <div class="section-banner"><h2>Features</h2><p>Rules text is preserved and Markdown tables/emphasis are rendered for print.</p></div>
+  <div class="two-col">
+    <div>{% for feature in derived.class_features %}{% if loop.index0 % 2 == 0 %}<article class="rich-card flow-block"><h3>{{ feature.name }}</h3><div class="rich">{% if feature.description %}{{ feature.description|render_markdown }}{% else %}<span class="empty-note">No description available.</span>{% endif %}</div></article>{% endif %}{% endfor %}</div>
+    <div>{% for feature in derived.class_features %}{% if loop.index0 % 2 == 1 %}<article class="rich-card flow-block"><h3>{{ feature.name }}</h3><div class="rich">{% if feature.description %}{{ feature.description|render_markdown }}{% else %}<span class="empty-note">No description available.</span>{% endif %}</div></article>{% endif %}{% endfor %}</div>
+  </div>
+
+  <div class="section-banner"><h2>Feats</h2><p>Selected feats are separated from class features for quick reference.</p></div>
+  <div class="two-col">
+    <div>{% for feat in derived.feats %}{% if loop.index0 % 2 == 0 %}<article class="rich-card flow-block"><h3>{{ feat.name }}</h3><div class="rich">{{ entity_summary(feat)|render_markdown }}</div></article>{% endif %}{% endfor %}</div>
+    <div>{% for feat in derived.feats %}{% if loop.index0 % 2 == 1 %}<article class="rich-card flow-block"><h3>{{ feat.name }}</h3><div class="rich">{{ entity_summary(feat)|render_markdown }}</div></article>{% endif %}{% endfor %}</div>
+  </div>
+  {% if not derived.feats %}<div class="story-card"><div class="story-content"></div></div>{% endif %}
+</section>
+
+<section class="print-page story-page">
+  <div class="page-title"><h2>Character & Story</h2><span>Roleplay, history, affiliations, and notes</span></div>
+  <div class="identity-header">
+    <div class="character-name"><span class="eyebrow">Character</span><h1>{{ character.name }}</h1></div>
+    <div class="identity-fields">
+      {% for key,label in [('age','Age'),('height','Height'),('weight','Weight'),('eyes','Eyes'),('skin','Skin'),('hair','Hair')] %}<div class="identity-field"><span class="k">{{ label }}</span><span class="v">{{ derived.details.get(key,'') or '—' }}</span></div>{% endfor %}
+    </div>
+  </div>
+  <div class="story-grid">
+    <table class="story-pair"><tr><td><article class="story-card"><h3>Personality Traits</h3><div class="story-content">{{ derived.details.get('personality_traits','') }}</div></article></td><td><article class="story-card"><h3>Ideals</h3><div class="story-content">{{ derived.details.get('ideals','') }}</div></article></td></tr><tr><td><article class="story-card"><h3>Bonds</h3><div class="story-content">{{ derived.details.get('bonds','') }}</div></article></td><td><article class="story-card"><h3>Flaws</h3><div class="story-content">{{ derived.details.get('flaws','') }}</div></article></td></tr></table>
+    <table class="story-pair"><tr><td><article class="story-card"><h3>Appearance</h3><div class="story-content">{{ derived.details.get('appearance','') }}</div></article></td><td><article class="story-card"><h3>Allies & Organizations</h3><div class="story-content">{{ derived.details.get('allies','') }}</div>{% if derived.details.get('symbol') %}<h3 style="margin-top:8px">Symbol / Affiliation</h3><div class="story-content">{{ derived.details.get('symbol','') }}</div>{% endif %}</article></td></tr></table>
+    <article class="story-card"><h3>Character Backstory</h3><div class="story-content">{{ derived.details.get('backstory','') }}</div></article>
+    <article class="story-card"><h3>Additional Features & Traits</h3><div class="story-content rich">{{ derived.details.get('additional_features','')|render_markdown }}</div></article>
+    <table class="story-pair"><tr><td><article class="story-card"><h3>Treasure</h3><div class="story-content">{{ derived.details.get('treasure','') }}</div></article></td><td><article class="story-card"><h3>Notes</h3><div class="story-content">{{ derived.details.get('notes','') }}</div></article></td></tr></table>
+  </div>
+</section>
+
+{% if derived.spellcasting_ability or derived.spells %}
+<section class="print-page spell-page">
+  <div class="page-title"><h2>Spellcasting</h2><span>{{ derived.class_entity.name if derived.class_entity else character.name }}</span></div>
+  <div class="spell-summary">
+    <div class="stat-chip"><span class="k">Ability</span><span class="v">{{ derived.spellcasting_ability|upper if derived.spellcasting_ability else '—' }}</span></div>
+    <div class="stat-chip"><span class="k">Save DC</span><span class="v">{{ derived.spell_save_dc or '—' }}</span></div>
+    <div class="stat-chip"><span class="k">Attack</span><span class="v">{% if derived.spell_attack_bonus is not none %}{{ '%+d'|format(derived.spell_attack_bonus) }}{% else %}—{% endif %}</span></div>
+    <div class="stat-chip"><span class="k">Prepared</span><span class="v">{{ character.prepared_spells|length }}</span></div>
+  </div>
+  <div class="spell-columns">
+  {% for level in range(0,10) %}
+    {% set spells = derived.spells_by_level.get(level,[]) %}
+    {% if spells or level <= 1 %}<section class="spell-level"><h3><span>{{ 'Cantrips' if level == 0 else 'Level '~level }}</span><span>{% if level > 0 %}Slots ____ / ____{% endif %}</span></h3>
+      {% for spell in spells %}<div class="spell-line"><i class="prepared {% if spell.prepared %}on{% endif %}"></i><span>{{ spell.entity.name }}</span></div>{% endfor %}
+      {% if not spells %}<div class="spell-line"><i class="prepared"></i><span>&nbsp;</span></div><div class="spell-line"><i class="prepared"></i><span>&nbsp;</span></div>{% endif %}
+    </section>{% endif %}
+  {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 </div>
-<div class="full-width-sections">
-  <div class="panel flow-panel"><h2>Traits</h2><div class="flow-content print-rich">{% if derived.species %}<section class="trait-entry"><h3>{{ derived.species.name }}</h3>{{ (derived.species.summary or '')|render_markdown }}</section>{% endif %}{% if derived.background %}<section class="trait-entry"><h3>{{ derived.background.name }}</h3>{{ (derived.background.summary or '')|render_markdown }}</section>{% endif %}{% if derived.class_entity %}<section class="trait-entry"><h3>{{ derived.class_entity.name }}</h3>{{ (derived.class_entity.summary or '')|render_markdown }}</section>{% endif %}{% if not derived.species and not derived.background and not derived.class_entity %}<br><br>{% endif %}</div></div>
-  <div class="panel flow-panel"><h2>Features</h2><div class="flow-content print-rich">{% for feature in derived.class_features %}<section class="feature-entry"><h3>{{ feature.name }}</h3>{% if feature.description %}{{ feature.description|render_markdown }}{% endif %}</section>{% endfor %}{% for feat in derived.feats %}<section class="feature-entry"><h3>Feat: {{ feat.name }}</h3>{% if feat.summary %}{{ feat.summary|render_markdown }}{% endif %}</section>{% endfor %}{% if not derived.class_features and not derived.feats %}<br><br>{% endif %}</div></div>
-</div></section>
-<section class="sheet"><header class="band"><div class="namebox"><span class="label">Character Name</span><h1>{{ character.name }}</h1></div><div class="identity-grid"><div class="field"><span class="label">Age</span><b>{{ derived.details.get('age','') }}</b></div><div class="field"><span class="label">Height</span><b>{{ derived.details.get('height','') }}</b></div><div class="field"><span class="label">Weight</span><b>{{ derived.details.get('weight','') }}</b></div><div class="field"><span class="label">Eyes</span><b>{{ derived.details.get('eyes','') }}</b></div><div class="field"><span class="label">Skin</span><b>{{ derived.details.get('skin','') }}</b></div><div class="field"><span class="label">Hair</span><b>{{ derived.details.get('hair','') }}</b></div></div></header><div class="page2-top"><div class="panel appearance"><h2>Character Appearance</h2><div class="text-area dynamic-text">{{ derived.details.get('appearance','') }}</div></div><div class="panel allies"><h2>Allies & Organizations</h2><div class="text-area dynamic-text">{{ derived.details.get('allies','') }}</div><hr><h2>Symbol / Affiliation</h2><div class="text-area dynamic-text">{{ derived.details.get('symbol','') }}</div></div></div><div class="page2-bottom"><div class="panel backstory"><h2>Character Backstory</h2><div class="text-area dynamic-text">{{ derived.details.get('backstory','') }}</div></div><div class="right-stack"><div class="panel"><h2>Additional Features & Traits</h2><div class="text-area dynamic-text print-rich">{{ derived.details.get('additional_features','')|render_markdown }}</div></div><div class="panel"><h2>Treasure</h2><div class="text-area dynamic-text">{{ derived.details.get('treasure','') }}</div></div></div></div></section>
-<section class="sheet"><header class="band spell-head"><div class="namebox"><span class="label">Spellcasting Class</span><h1>{{ derived.class_entity.name if derived.class_entity else character.name }}</h1></div><div class="spell-summary"><div class="compact-stat"><span class="label">Spellcasting Ability</span><strong>{{ derived.spellcasting_ability|upper if derived.spellcasting_ability else '—' }}</strong></div><div class="compact-stat"><span class="label">Spell Save DC</span><strong>{{ derived.spell_save_dc or '—' }}</strong></div><div class="compact-stat"><span class="label">Spell Attack Bonus</span><strong>{% if derived.spell_attack_bonus is not none %}{{ '%+d'|format(derived.spell_attack_bonus) }}{% else %}—{% endif %}</strong></div></div></header><div class="spell-columns">{% for column in [[0,1,2],[3,4,5],[6,7,8,9]] %}<div>{% for level in column %}<section class="spell-level"><h2><span>{{ 'Cantrips' if level==0 else 'Level '~level }}</span><span class="muted">{% if level>0 %}Slots ____ / ____{% endif %}</span></h2>{% for spell in derived.spells_by_level.get(level,[]) %}<div class="spell-line"><i class="prepared {% if spell.prepared %}on{% endif %}"></i><span>{{ spell.entity.name }}</span></div>{% else %}<div class="spell-line"><i class="prepared"></i><span>&nbsp;</span></div><div class="spell-line"><i class="prepared"></i><span>&nbsp;</span></div><div class="spell-line"><i class="prepared"></i><span>&nbsp;</span></div>{% endfor %}</section>{% endfor %}</div>{% endfor %}</div></section></body></html>
+<footer class="print-footer">Generated with Rob's D&amp;D Compendium - {{ app_version }} - {{ generated_date }}</footer>
+</body>
+</html>
