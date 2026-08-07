@@ -297,3 +297,17 @@ This release refines Alignment, Background, Class, Condition, Creature Type, Dam
 - Applied Target Monster Count to XP Threshold, 2014 Adjusted XP, Story-First Benchmark, and CR Band generation.
 - Counted kept monsters against the requested target and generated only the remaining slots.
 - Rebuilt Loot Generator with the tactical workbench header, workflow navigation, structured panels, metrics dashboard, sticky generation dock, and matching roster table.
+# D&D Compendium v0.30.0 Patch
+
+This release adds generated-result list assignment, modernizes My Lists, and introduces the first complete Player tool suite.
+
+## Included
+
+- Bulk list assignment endpoint and reusable Add to List modal
+- Encounter and Loot Generator Add to List actions
+- Modal-only list creation and public list discovery sections
+- Loadout Generator
+- Feat Evaluator
+- Weapon & Martial Arts Evaluator
+- Tactical workbench CSS for Player tools
+- Regression tests

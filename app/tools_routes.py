@@ -10,12 +10,12 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.db import get_db
-from app.models import Entity, LexiconTerm
+from app.models import Entity, LexiconTerm, UserEntityList
 from app.services import build_monster_card, build_weapon_card, format_cost, format_weight, _numeric_value
 
 router = APIRouter(prefix="/tools")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-templates.env.globals["app_version"] = "0.29.1"
+templates.env.globals["app_version"] = "0.30.0"
 templates.env.globals["app_name"] = get_settings().app_name
 
 XP_THRESHOLDS = {
@@ -53,9 +53,98 @@ def tools_home(): return RedirectResponse("/tools/coin-converter",303)
 def coin_converter(request: Request):
     return templates.TemplateResponse(request,"tools_coin_converter.html",_tool_context("coin-converter"))
 
+def _owned_lists(request: Request, db: Session):
+    user = getattr(request.state, "user", None)
+    if not user: return []
+    return list(db.scalars(select(UserEntityList).where(UserEntityList.owner_id == user.id).order_by(UserEntityList.name)).all())
+
+
+def _extract_named(value):
+    if isinstance(value, dict): return value.get("name") or value.get("key") or ""
+    return value or ""
+
+
+def _loadout_row(entity: Entity, *, kept=False, item_index=None):
+    data = entity.data_json or {}
+    fallback = None
+    if entity.entity_type == "weapon" and item_index is not None:
+        fallback = _select_item_fallback(entity, _matching_item_candidates(entity, item_index))
+    card = build_weapon_card(entity, fallback_item=fallback) if entity.entity_type == "weapon" else None
+    cost_raw = _equipment_value(data, "cost")
+    weight_raw = _equipment_value(data, "weight")
+    if fallback is not None:
+        fdata = fallback.data_json or {}
+        if _numeric_value(cost_raw) in (None, 0): cost_raw = _equipment_value(fdata, "cost")
+        if _numeric_value(weight_raw) in (None, 0): weight_raw = _equipment_value(fdata, "weight")
+    cost = format_cost(cost_raw, present=cost_raw not in (None, "", [], {}))
+    weight = format_weight(weight_raw, present=weight_raw not in (None, "", [], {}))
+    armor = data.get("armor") if isinstance(data.get("armor"), dict) else data
+    ac = _number(armor.get("base_ac", armor.get("armor_class", armor.get("ac", 0)))) if isinstance(armor, dict) else 0
+    stealth = bool(armor.get("stealth_disadvantage") or armor.get("stealth_disadvantage_override")) if isinstance(armor, dict) else False
+    strength = _number(armor.get("strength_requirement", armor.get("strength_score", 0))) if isinstance(armor, dict) else 0
+    return {"entity":entity,"kept":kept,"cost":cost.get("value", "Unknown"),"cost_tooltip":cost.get("tooltip", ""),"cost_gp":_numeric_value(cost_raw) or 0,"weight":weight,"weight_value":_numeric_value(weight_raw) or 0,"ac":int(ac) if ac else "—","stealth":stealth,"strength":int(strength) if strength else "—"}
+
+
 @router.get("/loadout-generator", response_class=HTMLResponse)
-def loadout_generator(request: Request):
-    return templates.TemplateResponse(request,"tools_deferred.html",_tool_context("loadout-generator",title="Loadout Generator",description="Player loadout generation is reserved for a later release."))
+def loadout_generator(request: Request, generate: int = 0, count: int = 8, max_cost_gp: float = 100, max_weight: float = 100, generation_basis: str = "both", include_weapons: int | None = None, include_equipment: int | None = None, keep: list[str] = Query(default=[]), db: Session = Depends(get_db)):
+    initial = not bool(generate)
+    include_weapons = True if initial else bool(include_weapons)
+    include_equipment = True if initial else bool(include_equipment)
+    count=max(1,min(30,count)); max_cost_gp=max(0,max_cost_gp); max_weight=max(0,max_weight)
+    generation_basis = generation_basis if generation_basis in {"cost","weight","both"} else "both"
+    item_entities=list(db.scalars(select(Entity).where(Entity.entity_type=="item",Entity.is_active.is_(True))).all()); item_index=_build_item_index(item_entities)
+    entities=list(db.scalars(select(Entity).where(Entity.entity_type.in_(["item","weapon"]),Entity.is_active.is_(True)).order_by(func.random()).limit(1500)).all())
+    by_id={e.public_id:e for e in entities}; rows=[]; seen=set()
+    for pid in keep:
+        if pid in by_id and pid not in seen: rows.append(_loadout_row(by_id[pid],kept=True,item_index=item_index)); seen.add(pid)
+    if generate:
+        for entity in entities:
+            if len(rows)>=count: break
+            if entity.public_id in seen: continue
+            if entity.entity_type=="weapon" and not include_weapons: continue
+            if entity.entity_type=="item" and not include_equipment: continue
+            row=_loadout_row(entity,item_index=item_index)
+            if generation_basis in {"cost","both"} and row["cost_gp"]>max_cost_gp: continue
+            if generation_basis in {"weight","both"} and row["weight_value"]>max_weight: continue
+            rows.append(row); seen.add(entity.public_id)
+    params={"count":count,"max_cost_gp":max_cost_gp,"max_weight":max_weight,"generation_basis":generation_basis,"include_weapons":include_weapons,"include_equipment":include_equipment}
+    return templates.TemplateResponse(request,"tools_loadout_generator.html",_tool_context("loadout-generator",rows=rows,params=params,total_weight=sum(r["weight_value"] for r in rows),total_cost=sum(r["cost_gp"] for r in rows),best_ac=max([r["ac"] for r in rows if isinstance(r["ac"],int)] or [0]),stealth_count=sum(1 for r in rows if r["stealth"]),user_lists=_owned_lists(request,db)))
+
+
+@router.get("/feat-evaluator", response_class=HTMLResponse)
+def feat_evaluator(request: Request, character_level: int = 1, strength: int = 10, dexterity: int = 10, constitution: int = 10, intelligence: int = 10, wisdom: int = 10, charisma: int = 10, proficiency: str = "", db: Session = Depends(get_db)):
+    scores={"strength":strength,"dexterity":dexterity,"constitution":constitution,"intelligence":intelligence,"wisdom":wisdom,"charisma":charisma}
+    feats=list(db.scalars(select(Entity).where(Entity.entity_type=="feat",Entity.is_active.is_(True)).order_by(Entity.name)).all()); rows=[]
+    for feat in feats:
+        data=feat.data_json or {}; prereq=data.get("prerequisites") or data.get("prerequisite") or []
+        text=json.dumps(prereq).casefold() if prereq else ""; eligible=True; reasons=[]
+        level_match=re.search(r"level[^0-9]*(\d+)",text)
+        if level_match and character_level<int(level_match.group(1)): eligible=False; reasons.append(f"Level {level_match.group(1)}")
+        for ability,score in scores.items():
+            m=re.search(rf"{ability}[^0-9]*(\d+)",text)
+            if m and score<int(m.group(1)): eligible=False; reasons.append(f"{ability.title()} {m.group(1)}")
+        if proficiency and "proficien" in text and proficiency.casefold() not in text: eligible=False; reasons.append(proficiency)
+        benefits=data.get("benefits") or data.get("desc") or data.get("description") or ""
+        rows.append({"entity":feat,"eligible":eligible,"requirements":", ".join(reasons) if reasons else ("None detected" if not text else str(prereq)),"summary":str(benefits)[:280]})
+    return templates.TemplateResponse(request,"tools_feat_evaluator.html",_tool_context("feat-evaluator",rows=rows,params={"character_level":character_level,**scores,"proficiency":proficiency}))
+
+
+@router.get("/weapon-evaluator", response_class=HTMLResponse)
+def weapon_evaluator(request: Request, search: str = "", compare: list[str] = Query(default=[]), db: Session = Depends(get_db)):
+    weapons=list(db.scalars(select(Entity).where(Entity.entity_type=="weapon",Entity.is_active.is_(True)).order_by(Entity.name)).all()); item_entities=list(db.scalars(select(Entity).where(Entity.entity_type=="item",Entity.is_active.is_(True))).all()); item_index=_build_item_index(item_entities)
+    if search: weapons=[w for w in weapons if search.casefold() in w.name.casefold()]
+    chosen=[w for w in weapons if w.public_id in compare][:6] if compare else weapons[:4]
+    rows=[]
+    for entity in chosen:
+        data=entity.data_json or {}; fallback=_select_item_fallback(entity,_matching_item_candidates(entity,item_index)); card=build_weapon_card(entity,fallback_item=fallback)
+        damage=data.get("damage_dice") or _equipment_value(data,"damage_dice") or "—"; damage_type=_extract_named(data.get("damage_type") or _equipment_value(data,"damage_type"))
+        props=data.get("properties") or _equipment_value(data,"properties") or []; prop_names=[]
+        for prop in props if isinstance(props,list) else [props]:
+            pobj=prop.get("property",prop) if isinstance(prop,dict) else prop; prop_names.append(str(_extract_named(pobj)))
+        cost=_summary_value(card,"Cost") or {}; cost_value=cost.get("value") if isinstance(cost,dict) else cost
+        if isinstance(cost_value,dict): cost_value=cost_value.get("value") or cost_value.get("text")
+        rows.append({"entity":entity,"damage":f"{damage} {damage_type}".strip(),"properties":", ".join(filter(None,prop_names)) or "—","range":f"{data.get('range',0)}/{data.get('long_range',0)} {data.get('distance_unit','feet')}","cost":cost_value or "Unknown","cost_tooltip":cost.get("tooltip","") if isinstance(cost,dict) else ""})
+    return templates.TemplateResponse(request,"tools_weapon_evaluator.html",_tool_context("weapon-evaluator",weapons=weapons,rows=rows,search=search,compare=compare))
 
 @router.get("/encounter-builder", response_class=HTMLResponse)
 def encounter_builder(
@@ -240,7 +329,7 @@ def encounter_builder(
         adjusted_xp=adjusted_total,encounter_multiplier=multiplier,total_cr=total_cr,lazy_limit=lazy_limit,lazy_status=lazy_status,
         ratio=ratio,party_size=party_size,total_party_levels=total_party_levels,average_level=average_level,params=params,
         creature_types=creature_types,objective_note=objective_notes[objective],terrain_note=terrain_notes[terrain],
-        pace_target=pace_targets[pace]))
+        pace_target=pace_targets[pace],user_lists=_owned_lists(request,db)))
 
 
 @router.get("/loot-generator", response_class=HTMLResponse)
@@ -348,6 +437,7 @@ def loot_generator(
             rows=rows,
             total_value_gp=running_total_gp,
             params=params,
+            user_lists=_owned_lists(request,db),
         ),
     )
 

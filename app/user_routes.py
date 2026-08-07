@@ -14,7 +14,7 @@ from app.models import Entity, User, UserEntityList, UserEntityListItem
 from app.visibility import visible_types
 
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-templates.env.globals["app_version"] = "0.29.1"
+templates.env.globals["app_version"] = "0.30.0"
 templates.env.globals["app_name"] = get_settings().app_name
 router = APIRouter()
 
@@ -192,6 +192,41 @@ def add_to_list(entity_public_id:str,list_id:str=Form(""),new_list_name:str=Form
     position=(db.scalar(select(func.coalesce(func.max(UserEntityListItem.position),0)).where(UserEntityListItem.list_id==target.id)) or 0)+10
     db.add(UserEntityListItem(list_id=target.id,entity_id=entity.id,entity_type=entity.entity_type,canonical_key=canonical,position=position)); db.commit()
     return RedirectResponse(f"{destination}{separator}list_status=added",303)
+
+
+
+
+@router.post("/lists/bulk-add")
+async def bulk_add_to_list(request: Request, user: User = Depends(require_user), db: Session = Depends(get_db)):
+    form = await request.form()
+    entity_ids = [str(value) for value in form.getlist("entity_id") if str(value).strip()]
+    list_id = str(form.get("list_id", "")).strip()
+    new_list_name = str(form.get("new_list_name", "")).strip()
+    new_list_public = bool(form.get("new_list_public"))
+    return_to = _safe_next(str(form.get("return_to", "/lists")))
+    if not entity_ids:
+        separator = "&" if "?" in return_to else "?"
+        return RedirectResponse(f"{return_to}{separator}list_status=no_items", 303)
+    if new_list_name:
+        target = UserEntityList(public_id=_uid("lst"), owner_id=user.id, name=new_list_name, is_public=new_list_public)
+        db.add(target); db.flush()
+    else:
+        target = db.scalar(select(UserEntityList).where(UserEntityList.public_id == list_id, UserEntityList.owner_id == user.id))
+        if not target: raise HTTPException(404, "List not found")
+    entities = list(db.scalars(select(Entity).where(Entity.public_id.in_(entity_ids), Entity.is_active.is_(True))).all())
+    existing = {(row.entity_type, row.canonical_key) for row in db.scalars(select(UserEntityListItem).where(UserEntityListItem.list_id == target.id)).all()}
+    position = (db.scalar(select(func.coalesce(func.max(UserEntityListItem.position), 0)).where(UserEntityListItem.list_id == target.id)) or 0)
+    added = 0
+    for entity in entities:
+        canonical = entity.canonical_key or entity.slug
+        key = (entity.entity_type, canonical)
+        if key in existing: continue
+        position += 10
+        db.add(UserEntityListItem(list_id=target.id, entity_id=entity.id, entity_type=entity.entity_type, canonical_key=canonical, position=position))
+        existing.add(key); added += 1
+    db.commit()
+    separator = "&" if "?" in return_to else "?"
+    return RedirectResponse(f"{return_to}{separator}list_status=added&list_items_added={added}", 303)
 
 
 @router.post("/lists/{public_id}/items/{item_id}/remove")
