@@ -1,3 +1,10 @@
+## v0.30.1 — Loot Generator Layout Hotfix
+
+- Corrects the Content Profile layout shown in the supplied screenshot.
+- Keeps checkbox labels inside their tiles and fieldsets.
+- Uses stable responsive columns for Include and Magic Item Rarity options.
+- Adds wrapping and minimum sizing for multi-word labels.
+
 # Release Notes
 
 Cumulative release history for D&D Compendium. New patch installers append their release section to this file.
