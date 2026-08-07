@@ -13,7 +13,7 @@ from app.services import build_weapon_card
 from app.character_rules_2024 import (
     RULESET_SOURCE_KEY, RULESET_GAME_SYSTEM_KEY, CLASS_RULES, BACKGROUND_RULES,
     SPECIES_SUMMARIES, CLASS_SUMMARIES, BACKGROUND_SUMMARIES, DEFAULT_SUBCLASS_PARENTS,
-    class_rule, background_rule, canonical_rule_key,
+    class_rule, background_rule, canonical_rule_key, class_gear_rule, background_gear_rule,
 )
 
 ABILITIES = ("str", "dex", "con", "int", "wis", "cha")
@@ -422,6 +422,164 @@ def background_other_proficiencies(entity: Entity | None) -> list[str]:
         result.append(str(fallback))
     return result
 
+
+def background_uses_2024_adjustment(entity: Entity | None) -> bool:
+    """Only exact 5e 2024 Rules backgrounds use the 2024 background ASI widget."""
+    return bool(entity and entity.source_document == RULESET_SOURCE_KEY)
+
+def _norm_equipment_name(value: str | None) -> str:
+    text = canonical_rule_key(value)
+    # normalize common Open5e singular/plural/name variants used by package rules
+    aliases = {
+        "handaxes":"handaxe", "daggers":"dagger", "javelins":"javelin",
+        "arrows":"arrow", "pouches":"pouch", "travelers-clothes":"traveler-s-clothes",
+        "traveler-s-clothes":"traveler-s-clothes", "chainmail":"chain-mail",
+        "studded-leather":"studded-leather-armor", "thieves-tools":"thieves-tools",
+    }
+    return aliases.get(text, text)
+
+def _starting_names_from_entity(entity: Entity | None) -> list[str]:
+    if not entity:
+        return []
+    data = entity.data_json or {}
+    raw = _nested(data, "starting_equipment", "equipment", "core_traits.starting_equipment")
+    result: list[str] = []
+    def add(value):
+        if isinstance(value, dict):
+            # Ignore coin-only entries and option wrappers where possible.
+            name = _text(value.get("name") or value.get("item") or value.get("equipment") or value.get("choice"))
+            if name and not re.search(r"\b[pgsc]p\b", name, re.I): result.append(name)
+            for key in ("items","equipment","contents","option_a","a"):
+                if key in value: add(value[key])
+        elif isinstance(value, list):
+            for item in value: add(item)
+        elif isinstance(value, str):
+            # Extract comma-separated textual package A before an alternate "or" gold option.
+            text=value.split(" or ")[0]
+            for part in re.split(r",| and ", text):
+                part=re.sub(r"^\s*(?:\(A\)\s*)?\d+\s+", "", part).strip(" .()")
+                if part and not re.search(r"\b\d+\s*(?:PP|GP|SP|CP)\b", part, re.I): result.append(part)
+    add(raw)
+    return list(dict.fromkeys(result))
+
+def starting_equipment_names(class_entity: Entity | None, background_entity: Entity | None, species_entity: Entity | None = None) -> dict[str, list[str]]:
+    class_names = _starting_names_from_entity(class_entity)
+    if not class_names and class_entity:
+        class_names = list(class_gear_rule(class_entity.canonical_key or class_entity.slug or class_entity.name).get("equipment", []))
+    background_names = _starting_names_from_entity(background_entity)
+    if not background_names and background_entity and background_uses_2024_adjustment(background_entity):
+        background_names = list(background_gear_rule(background_entity.canonical_key or background_entity.slug or background_entity.name).get("equipment", []))
+    species_names = _starting_names_from_entity(species_entity)
+    return {"class": class_names, "background": background_names, "species": species_names}
+
+def class_armor_training(entity: Entity | None) -> list[str]:
+    if not entity: return []
+    data=entity.data_json or {}
+    raw=_nested(data,"armor_training","armor_proficiencies","proficiencies.armor","core_traits.armor_training")
+    text=_text(raw).casefold()
+    result=[]
+    for key in ("light","medium","heavy","shield"):
+        if key in text: result.append(key)
+    if result: return result
+    return list(class_gear_rule(entity.canonical_key or entity.slug or entity.name).get("armor", []))
+
+def class_weapon_training(entity: Entity | None) -> list[str]:
+    if not entity: return []
+    data=entity.data_json or {}
+    raw=_nested(data,"weapon_proficiencies","proficiencies.weapons","core_traits.weapon_proficiencies")
+    text=_text(raw).casefold()
+    result=[]
+    if "simple" in text: result.append("simple")
+    if "martial" in text: result.append("martial")
+    if result: return result
+    return list(class_gear_rule(entity.canonical_key or entity.slug or entity.name).get("weapons", []))
+
+def equipment_armor_kind(entity: Entity) -> str:
+    if entity.entity_type != "armor" and "armor" not in entity.name.casefold() and "shield" not in entity.name.casefold():
+        data=entity.data_json or {}; nested=data.get("armor")
+        if not isinstance(nested,dict): return ""
+    data=entity.data_json or {}; armor=data.get("armor") if isinstance(data.get("armor"),dict) else data
+    text=_text(armor.get("category") or armor.get("armor_category") or data.get("category") or entity.name).casefold()
+    if "shield" in text or "shield" in entity.name.casefold(): return "shield"
+    for kind in ("light","medium","heavy"):
+        if kind in text: return kind
+    return "armor" if entity.entity_type=="armor" else ""
+
+def _equipment_value_local(data: dict, *keys: str):
+    for key in keys:
+        value=data.get(key)
+        if value not in (None,"",[],{}): return value
+    for wrapper in ("weapon","item","equipment","armor"):
+        nested=data.get(wrapper)
+        if isinstance(nested,dict):
+            for key in keys:
+                value=nested.get(key)
+                if value not in (None,"",[],{}): return value
+    return None
+
+def _item_candidates_for_weapon(db: Session, weapon: Entity) -> list[Entity]:
+    rows=list(db.scalars(select(Entity).where(Entity.entity_type=="item",Entity.is_active.is_(True))).all())
+    keys={_norm_equipment_name(weapon.name),_norm_equipment_name(weapon.canonical_key),_norm_equipment_name(weapon.slug)}
+    return [r for r in rows if {_norm_equipment_name(r.name),_norm_equipment_name(r.canonical_key),_norm_equipment_name(r.slug)} & keys]
+
+def weapon_item_fallback(db: Session, weapon: Entity) -> Entity | None:
+    rows=_item_candidates_for_weapon(db,weapon)
+    if not rows: return None
+    same=[r for r in rows if r.source_document==weapon.source_document]
+    if same: return same[0]
+    same_system=[r for r in rows if r.game_system_key==weapon.game_system_key]
+    if same_system: return same_system[0]
+    return rows[0] if len(rows)==1 else rows[0]
+
+def equipment_cost_data(db: Session, entity: Entity) -> dict[str, Any]:
+    from app.services import format_cost, _numeric_value
+    data=entity.data_json or {}; fallback=None
+    raw=_equipment_value_local(data,"cost","price","value")
+    if entity.entity_type=="weapon" and _numeric_value(raw) in (None,0):
+        fallback=weapon_item_fallback(db,entity)
+        if fallback: raw=_equipment_value_local(fallback.data_json or {},"cost","price","value")
+    display=format_cost(raw,present=raw not in (None,"",[],{}))
+    return {"value":display.get("value") or "—","tooltip":display.get("tooltip") or "","gp":_numeric_value(raw) or 0.0}
+
+def equipment_reference_rows(db: Session, character: Character, endpoint_labels: dict[str,str] | None=None) -> list[dict[str,Any]]:
+    endpoint_labels=endpoint_labels or {}
+    raw=entities_for_character(db,["equipment","item","weapon","armor"],character)
+    # Hide generic item records when a dedicated weapon/armor with the same canonical identity exists.
+    dedicated={_norm_equipment_name(e.canonical_key or e.name) for e in raw if e.entity_type in {"weapon","armor"}}
+    rows=[]
+    for entity in raw:
+        if entity.entity_type=="item" and _norm_equipment_name(entity.canonical_key or entity.name) in dedicated:
+            continue
+        rows.append(entity)
+    class_entity=find_character_entity(db,character,["class","classe"],character.class_key)
+    background=find_any_character_entity(db,["background"],character.background_key)
+    species=find_character_entity(db,character,["species","race"],character.species_key)
+    packages=starting_equipment_names(class_entity,background,species)
+    lock_names={source:{_norm_equipment_name(v) for v in names} for source,names in packages.items()}
+    armor_training=set(class_armor_training(class_entity)); weapon_training=class_weapon_training(class_entity)
+    result=[]
+    for entity in rows:
+        norm={_norm_equipment_name(entity.name),_norm_equipment_name(entity.canonical_key),_norm_equipment_name(entity.slug)}
+        locked_source=next((src for src,names in lock_names.items() if norm & names),"")
+        kind=equipment_armor_kind(entity)
+        trained=(not kind) or kind in armor_training or (kind=="armor" and bool(armor_training))
+        data=entity.data_json or {}; blob=_text(_nested(data,"properties","weapon.properties","category","weapon.category")).casefold()+" "+entity.name.casefold()
+        if entity.entity_type=="weapon":
+            if "martial" in blob:
+                weapon_prof="martial" in weapon_training or ("martial-light" in weapon_training and "light" in blob) or ("martial-finesse-light" in weapon_training and ("light" in blob or "finesse" in blob))
+            else:
+                weapon_prof="simple" in weapon_training
+        else: weapon_prof=True
+        cost=equipment_cost_data(db,entity)
+        result.append({
+            "entity":entity,"type_label":endpoint_labels.get(entity.entity_type,entity.entity_type.replace('_',' ').replace('-',' ').title()),
+            "locked":bool(locked_source),"locked_source":locked_source,"armor_kind":kind,"armor_trained":trained,
+            "weapon_proficient":weapon_prof,"cost":cost["value"],"cost_tooltip":cost["tooltip"],"cost_gp":cost["gp"],
+            "summary":builder_summary(entity,entity.entity_type),
+        })
+    return result
+
+
 def point_buy_total(scores: dict[str, int]) -> int | None:
     total = 0
     for ability in ABILITIES:
@@ -477,7 +635,7 @@ def derive_character(db: Session, character: Character) -> dict[str, Any]:
     class_entity = find_character_entity(db, character, ["class", "classe"], character.class_key)
     background = find_any_character_entity(db, ["background"], character.background_key)
     alignment = find_any_character_entity(db, ["alignment"], character.alignment_key)
-    subclass = find_character_entity(db, character, ["subclass", "subclasse"], character.subclass_key)
+    subclass = find_character_entity(db, character, ["subclass", "subclasse", "class", "classe"], character.subclass_key)
 
     base_scores = {ability: int((character.ability_scores or {}).get(ability, 10)) for ability in ABILITIES}
     bonuses: dict[str, int] = defaultdict(int)
@@ -512,7 +670,9 @@ def derive_character(db: Session, character: Character) -> dict[str, Any]:
     hp_current = int(details.get("current_hp", hp_max) or hp_max)
     temp_hp = int(details.get("temp_hp", 0) or 0)
 
-    equipment = resolve_selected(db, list(character.selected_equipment or []))
+    gear_rows = equipment_reference_rows(db, character)
+    auto_ids = [row["entity"].public_id for row in gear_rows if row["locked"]]
+    equipment = resolve_selected(db, list(dict.fromkeys(list(character.selected_equipment or []) + auto_ids)))
     ac = 10 + modifiers["dex"]
     stealth_disadvantage = False
     strength_requirement = 0

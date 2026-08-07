@@ -369,68 +369,42 @@ document.addEventListener("submit", async (event) => {
     form.dataset.identityReady='1';
     const levelInput=form.querySelector('input[name="level"]');
     const xpInput=form.querySelector('input[name="experience_points"]');
+    const note=form.querySelector('[data-identity-sync-note]');
     let table={};
     try { table=JSON.parse(form.dataset.levelXp || '{}'); } catch (_) {}
     const minXp=(level)=>Number(table[String(level)] ?? table[level] ?? 0);
     const levelForXp=(xp)=>{ let result=1; Object.entries(table).forEach(([level,minimum])=>{ if(Number(xp)>=Number(minimum)) result=Math.max(result,Number(level)); }); return Math.min(20,result); };
-    levelInput?.addEventListener('input',()=>{ const level=Math.max(1,Math.min(20,Number(levelInput.value||1))); if(xpInput && Number(xpInput.value||0)<minXp(level)) xpInput.value=String(minXp(level)); });
-    xpInput?.addEventListener('input',()=>{ if(levelInput) levelInput.value=String(levelForXp(Math.max(0,Number(xpInput.value||0)))); });
+    const syncFromLevel=()=>{ if(!levelInput||!xpInput)return; const level=Math.max(1,Math.min(20,Number(levelInput.value||1))); levelInput.value=String(level); const minimum=minXp(level); if(Number(xpInput.value||0)<minimum) xpInput.value=String(minimum); if(note) note.textContent=`Level ${level} requires at least ${minimum.toLocaleString()} XP.`; };
+    const syncFromXp=()=>{ if(!levelInput||!xpInput)return; const xp=Math.max(0,Number(xpInput.value||0)); xpInput.value=String(xp); const level=levelForXp(xp); levelInput.value=String(level); if(note) note.textContent=`${xp.toLocaleString()} XP corresponds to Level ${level}.`; };
+    ['input','change'].forEach(evt=>levelInput?.addEventListener(evt,syncFromLevel));
+    ['input','change'].forEach(evt=>xpInput?.addEventListener(evt,syncFromXp));
   }
 
   function initBackgroundBuilder(root=document) {
     const form = root.querySelector?.('[data-background-builder]');
-    if (!form) return;
+    if (!form || form.dataset.backgroundReady==='1') return;
+    form.dataset.backgroundReady='1';
     const select = form.querySelector('[data-background-select]');
     const preview = form.querySelector('[data-background-preview]');
     const title = form.querySelector('[data-background-title]');
     const summary = form.querySelector('[data-background-summary]');
     const source = form.querySelector('[data-background-source]');
     const more = form.querySelector('[data-background-more]');
+    const asiPanel=form.querySelector('[data-background-ability-panel]');
     const status = form.querySelector('[data-background-bonus-status]');
     const bonusSelects = Array.from(form.querySelectorAll('[data-background-bonus]'));
+    const languageRows=Array.from(form.querySelectorAll('[data-language-choice]'));
+    const languageCounter=form.querySelector('[data-language-counter]');
 
-    const allowed = () => (select?.selectedOptions[0]?.dataset.abilities || abilities.join(',')).split(',').filter(Boolean);
-    const updatePreview = () => {
-      const option = select?.selectedOptions[0];
-      const has = !!option?.value;
-      if (preview) preview.hidden = !has;
-      if (!has) return;
-      if (title) title.textContent = option.textContent.split(' · ')[0];
-      if (summary) { const text=option.dataset.summary || 'No cached description is available.'; summary.textContent = text.length > 220 ? `${text.slice(0,217).trimEnd()}…` : text; }
-      if (source) source.textContent = option.dataset.source || '';
-      if (more) {
-        more.dataset.referenceTitle = title?.textContent || 'Background';
-        more.dataset.referenceSummary = option.dataset.summary || '';
-        more.dataset.referenceUrl = option.dataset.infoUrl || '#';
-      }
-      const permitted = allowed();
-      const grantedSkills=(option.dataset.skills || '').split('|').filter(Boolean);
-      const grantedProfs=(option.dataset.proficiencies || '').split('|').filter(Boolean);
-      form.querySelectorAll('[data-skill-choice]').forEach((label)=>{
-        const input=label.querySelector('input'); const locked=grantedSkills.includes(label.dataset.skillChoice);
-        label.classList.toggle('background-granted',locked); if(input){ input.disabled=locked; if(locked) input.checked=true; }
-        const lock=label.querySelector('.grant-lock'); if(lock) lock.hidden=!locked;
-      });
-      form.querySelectorAll('[data-proficiency-choice]').forEach((label)=>{
-        const input=label.querySelector('input'); const locked=grantedProfs.includes(label.dataset.proficiencyChoice);
-        label.classList.toggle('background-granted',locked); if(input){ input.disabled=locked; if(locked) input.checked=true; }
-        const lock=label.querySelector('.grant-lock'); if(lock) lock.hidden=!locked;
-      });
-      form.querySelectorAll('[data-background-ability]').forEach((label) => {
-        const enabled = permitted.includes(label.dataset.backgroundAbility);
-        label.classList.toggle('is-disabled', !enabled);
-        const control = label.querySelector('select');
-        control.disabled = !enabled;
-        if (!enabled) control.value = '0';
-      });
-      updateBonuses();
+    const allowed = () => (select?.selectedOptions[0]?.dataset.abilities || '').split(',').filter(Boolean);
+    const is2024=()=>select?.selectedOptions[0]?.dataset.is2024==='1';
+    const updateLanguages=()=>{
+      const chosen=languageRows.filter(r=>r.dataset.languageChoice!=='Common' && r.querySelector('input')?.checked);
+      languageRows.forEach(r=>{ const input=r.querySelector('input'); if(!input||r.dataset.languageChoice==='Common')return; input.disabled=!input.checked && chosen.length>=2; });
+      if(languageCounter) languageCounter.textContent=`${chosen.length}/2 additional languages selected.`;
     };
     const updateBonuses = () => {
-      const scores = {};
-      let total=0; const values=[];
-      // On first run, derive the pre-background score from the server-rendered
-      // final score minus the currently saved background bonus. Subsequent
-      // changes always recompute from that stable baseline.
+      const scores = {}; let total=0; const values=[];
       bonusSelects.forEach((control) => {
         const key=control.closest('[data-background-ability]')?.dataset.backgroundAbility;
         if (!key) return;
@@ -438,27 +412,66 @@ document.addEventListener("submit", async (event) => {
         const currentAmount=control.disabled ? 0 : Number(control.value || 0);
         if (card && !card.dataset.persistedBase) card.dataset.persistedBase=String(Number(card.dataset.score || 10)-currentAmount);
       });
-      abilities.forEach((key)=>{
-        const card=document.querySelector(`[data-rail-ability="${key}"]`);
-        scores[key]=Number(card?.dataset.persistedBase || card?.dataset.score || 10);
-      });
-      bonusSelects.forEach((control) => {
-        if (control.disabled) return;
-        const amount=Number(control.value || 0); total += amount; if(amount) values.push(amount);
-        const key=control.closest('[data-background-ability]')?.dataset.backgroundAbility;
-        if (key) scores[key]=Number(document.querySelector(`[data-rail-ability="${key}"]`)?.dataset.persistedBase || scores[key] || 10)+amount;
-      });
-      const valid = total===3 && (values.sort().join(',')==='1,2' || values.sort().join(',')==='1,1,1');
+      abilities.forEach((key)=>{ const card=document.querySelector(`[data-rail-ability="${key}"]`); scores[key]=Number(card?.dataset.persistedBase || card?.dataset.score || 10); });
+      if(is2024()) bonusSelects.forEach((control) => { if (control.disabled) return; const amount=Number(control.value || 0); total += amount; if(amount) values.push(amount); const key=control.closest('[data-background-ability]')?.dataset.backgroundAbility; if (key) scores[key]=Number(document.querySelector(`[data-rail-ability="${key}"]`)?.dataset.persistedBase || scores[key] || 10)+amount; });
+      const valid = total===3 && (values.slice().sort().join(',')==='1,2' || values.slice().sort().join(',')==='1,1,1');
       if (status) { status.textContent = valid ? 'Valid 2024 adjustment: 3 points assigned.' : `Assign exactly 3 points (+2/+1 or +1/+1/+1). Current total: ${total}.`; status.classList.toggle('is-valid',valid); status.classList.toggle('is-invalid',!valid); }
       railApplyScores(scores,true);
     };
+    const updatePreview = () => {
+      const option = select?.selectedOptions[0]; const has = !!option?.value;
+      if (preview) preview.hidden = !has;
+      if (asiPanel) asiPanel.hidden=!has || !is2024();
+      if (!has) { bonusSelects.forEach(c=>{c.value='0';c.disabled=true;}); updateBonuses(); return; }
+      if (title) title.textContent = option.textContent.split(' · ')[0];
+      if (summary) { const text=option.dataset.summary || 'No cached description is available.'; summary.textContent = text.length > 220 ? `${text.slice(0,217).trimEnd()}…` : text; }
+      if (source) source.textContent = option.dataset.source || '';
+      if (more) { more.dataset.referenceTitle = title?.textContent || 'Background'; more.dataset.referenceSummary = option.dataset.summary || ''; more.dataset.referenceUrl = option.dataset.infoUrl || '#'; }
+      const permitted = allowed(); const grantedSkills=(option.dataset.skills || '').split('|').filter(Boolean); const grantedProfs=(option.dataset.proficiencies || '').split('|').filter(Boolean);
+      form.querySelectorAll('[data-skill-choice]').forEach((row)=>{ const input=row.querySelector('input'); const locked=grantedSkills.includes(row.dataset.skillChoice); row.classList.toggle('background-granted',locked); if(input){ input.disabled=locked; if(locked) input.checked=true; } const lock=row.querySelector('.grant-lock'); if(lock) lock.hidden=!locked; });
+      form.querySelectorAll('[data-proficiency-choice]').forEach((row)=>{ const input=row.querySelector('input'); const locked=grantedProfs.includes(row.dataset.proficiencyChoice); row.classList.toggle('background-granted',locked); if(input){ input.disabled=locked; if(locked) input.checked=true; } const lock=row.querySelector('.grant-lock'); if(lock) lock.hidden=!locked; });
+      form.querySelectorAll('[data-background-ability]').forEach((label) => { const enabled=is2024() && permitted.includes(label.dataset.backgroundAbility); label.classList.toggle('is-disabled', !enabled); const control=label.querySelector('select'); control.disabled=!enabled; if(!enabled) control.value='0'; });
+      updateBonuses(); updateLanguages();
+    };
     select?.addEventListener('change', updatePreview);
     bonusSelects.forEach((control)=>control.addEventListener('change',updateBonuses));
-    updatePreview();
+    languageRows.forEach(row=>row.querySelector('input')?.addEventListener('change',updateLanguages));
+    updatePreview(); updateLanguages();
+  }
+
+  function initGearBuilder(root=document) {
+    const form=root.querySelector?.('[data-gear-builder]');
+    if(!form || form.dataset.gearReady==='1') return;
+    form.dataset.gearReady='1';
+    const rows=Array.from(form.querySelectorAll('[data-equipment-row]'));
+    const totalNode=form.querySelector('[data-equipment-cost]');
+    const armorStatus=form.querySelector('[data-armor-limit-status]');
+    const message=form.querySelector('[data-gear-rule-message]');
+    const search=form.querySelector('[data-character-equipment-search]');
+    const update=()=>{
+      const selected=rows.filter(r=>r.querySelector('input')?.checked);
+      const purchased=selected.filter(r=>r.dataset.equipmentLocked!=='1');
+      const total=purchased.reduce((sum,r)=>sum+Number(r.dataset.equipmentCostGp||0),0);
+      if(totalNode) totalNode.textContent=total ? `${Number.isInteger(total)?total:total.toFixed(2)} GP` : '0 GP';
+      const suit=selected.find(r=>['light','medium','heavy','armor'].includes(r.dataset.armorKind));
+      const shield=selected.find(r=>r.dataset.armorKind==='shield');
+      rows.forEach(r=>{
+        const input=r.querySelector('input'); if(!input || r.dataset.equipmentLocked==='1' || r.dataset.armorTrained==='0') return;
+        const kind=r.dataset.armorKind;
+        const blocked=(['light','medium','heavy','armor'].includes(kind)&&!!suit&&!input.checked)||(kind==='shield'&&!!shield&&!input.checked);
+        input.disabled=blocked;
+        r.classList.toggle('is-limit-disabled',blocked);
+      });
+      if(armorStatus) armorStatus.textContent=suit ? (shield ? 'Suit + Shield selected' : 'Armor suit selected') : (shield ? 'Shield selected' : 'Ready');
+      if(message) message.textContent=(suit||shield) ? 'Armor limit reached where applicable; conflicting armor choices are greyed out.' : 'Armor limits and training are enforced as you make selections.';
+    };
+    rows.forEach(r=>r.querySelector('input')?.addEventListener('change',update));
+    search?.addEventListener('input',()=>{ const q=(search.value||'').trim().toLowerCase(); rows.forEach(r=>{r.hidden=!!q && !(r.dataset.equipmentName||'').includes(q);}); });
+    update();
   }
 
   function initCharacterEnhancements(root=document) {
-    initIdentityBuilder(root); initClassBuilder(root); initBackgroundBuilder(root);
+    initIdentityBuilder(root); initClassBuilder(root); initBackgroundBuilder(root); initGearBuilder(root);
     const abilityForm = root.querySelector?.('[data-ability-builder]');
     if (abilityForm) updateAbilityInputs(abilityForm);
   }

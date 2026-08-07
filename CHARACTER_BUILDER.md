@@ -194,3 +194,8 @@ The application rules engine itself remains fixed to D&D 2024. Broader backgroun
 The post-Ability-Score workflow keeps one sticky right-side live rail. It contains HP, AC, proficiency bonus, and compact STR/DEX/CON/INT/WIS/CHA score/modifier rows. HTMX step responses carry a compact live-state payload instead of rendering another rail, preventing duplicate rails from appearing below the form.
 
 Identity keeps Level and XP coherent using the bundled 2024 XP threshold table. Background variants are source-specific, background-granted skills/tools are locked in the UI, and selected background ability adjustments immediately update the live ability rail and dependent HP/AC preview.
+
+
+## v0.31.6 rules-aware interaction notes
+
+The equipment workflow now treats Open5e as the local item catalog while bundled 2024 mechanical metadata supplies missing class armor/weapon training and Package A starting-equipment facts. Exact cached structured values remain preferred. Common is always granted, backgrounds from the exact `srd-2024` source expose the 2024 three-point ability adjustment, and legacy backgrounds do not.

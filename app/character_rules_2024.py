@@ -179,6 +179,40 @@ STANDARD_LANGUAGES = [
     "Giant", "Gnomish", "Goblin", "Halfling", "Orc",
 ]
 
+
+# 2024 Basic Rules mechanical metadata used by the Character Builder's gear step.
+# These are compact facts, not copied descriptive rules text. Package A is used
+# as the automatic starting-equipment package when the cached Open5e class or
+# background does not expose structured starting-equipment data.
+CLASS_GEAR_RULES: dict[str, dict] = {
+    "barbarian": {"armor": ["light", "medium", "shield"], "weapons": ["simple", "martial"], "equipment": ["Greataxe", "Handaxe", "Explorer's Pack"], "gp": 15},
+    "bard": {"armor": ["light"], "weapons": ["simple"], "equipment": ["Leather Armor", "Dagger", "Entertainer's Pack"], "gp": 19},
+    "cleric": {"armor": ["light", "medium", "shield"], "weapons": ["simple"], "equipment": ["Chain Shirt", "Shield", "Mace", "Holy Symbol", "Priest's Pack"], "gp": 7},
+    "druid": {"armor": ["light", "shield"], "weapons": ["simple"], "equipment": ["Leather Armor", "Shield", "Sickle", "Quarterstaff", "Explorer's Pack", "Herbalism Kit"], "gp": 9},
+    "fighter": {"armor": ["light", "medium", "heavy", "shield"], "weapons": ["simple", "martial"], "equipment": ["Chain Mail", "Greatsword", "Flail", "Javelin", "Dungeoneer's Pack"], "gp": 4},
+    "monk": {"armor": [], "weapons": ["simple", "martial-light"], "equipment": ["Spear", "Dagger", "Explorer's Pack"], "gp": 11},
+    "paladin": {"armor": ["light", "medium", "heavy", "shield"], "weapons": ["simple", "martial"], "equipment": ["Chain Mail", "Shield", "Longsword", "Javelin", "Holy Symbol", "Priest's Pack"], "gp": 9},
+    "ranger": {"armor": ["light", "medium", "shield"], "weapons": ["simple", "martial"], "equipment": ["Studded Leather Armor", "Scimitar", "Shortsword", "Longbow", "Arrow", "Quiver", "Explorer's Pack"], "gp": 7},
+    "rogue": {"armor": ["light"], "weapons": ["simple", "martial-finesse-light"], "equipment": ["Leather Armor", "Dagger", "Shortsword", "Shortbow", "Arrow", "Quiver", "Thieves' Tools", "Burglar's Pack"], "gp": 8},
+    "sorcerer": {"armor": [], "weapons": ["simple"], "equipment": ["Spear", "Dagger", "Arcane Focus", "Dungeoneer's Pack"], "gp": 28},
+    "warlock": {"armor": ["light"], "weapons": ["simple"], "equipment": ["Leather Armor", "Sickle", "Dagger", "Arcane Focus", "Book", "Scholar's Pack"], "gp": 15},
+    "wizard": {"armor": [], "weapons": ["simple"], "equipment": ["Dagger", "Quarterstaff", "Robe", "Spellbook", "Scholar's Pack"], "gp": 5},
+}
+
+BACKGROUND_GEAR_RULES: dict[str, dict] = {
+    "acolyte": {"equipment": ["Calligrapher's Supplies", "Book", "Holy Symbol", "Parchment", "Robe"], "gp": 8},
+    "criminal": {"equipment": ["Dagger", "Thieves' Tools", "Crowbar", "Pouch", "Traveler's Clothes"], "gp": 16},
+    "sage": {"equipment": ["Quarterstaff", "Calligrapher's Supplies", "Book", "Parchment", "Robe"], "gp": 8},
+    "soldier": {"equipment": ["Spear", "Shortbow", "Arrow", "Gaming Set", "Healer's Kit", "Quiver", "Traveler's Clothes"], "gp": 14},
+}
+
+def class_gear_rule(name_or_key: str | None) -> dict:
+    return CLASS_GEAR_RULES.get(canonical_rule_key(name_or_key), {})
+
+def background_gear_rule(name_or_key: str | None) -> dict:
+    return BACKGROUND_GEAR_RULES.get(canonical_rule_key(name_or_key), {})
+
+
 # Minimum XP for each character level under the 2024 rules.
 LEVEL_XP = {
     1: 0, 2: 300, 3: 900, 4: 2700, 5: 6500, 6: 14000, 7: 23000,

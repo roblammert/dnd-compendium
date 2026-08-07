@@ -124,6 +124,6 @@ Character Builder navigation is progressively enhanced: HTMX provides in-place s
 The Player Character Builder now provides guided descriptions, parent-aware subclass selection, auto-generated ability scores, broader 2024-compatible background handling, selectable languages/proficiencies, and a live ability-score rail that shows character-impacting choices in real time.
 
 
-### Character Builder v0.31.5
+### Character Builder v0.31.6
 
 The Character Builder now includes a compact right-side Live Stats/Live Abilities rail, Level↔XP synchronization, source-specific background variants, locked background-granted skills and tools, and a reformatted Background & Proficiencies workflow with responsive non-overflowing choice grids.

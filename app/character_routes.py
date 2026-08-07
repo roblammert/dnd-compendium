@@ -19,11 +19,12 @@ from app.character_services import (
     class_save_proficiencies, class_skill_choices, derive_character,
     entities_for_character, entity_summary, find_character_entity, builder_summary,
     subclass_parent_key, background_allowed_abilities, background_skills,
-    background_other_proficiencies, split_class_catalog,
+    background_other_proficiencies, split_class_catalog, primary_class_key,
+    background_uses_2024_adjustment, equipment_reference_rows,
 )
 from app.config import get_settings
 from app.db import get_db
-from app.models import Character, Entity, User
+from app.models import Character, Entity, User, LexiconTerm
 from app.character_rules_2024 import (
     RULESET_SOURCE_KEY, RULESET_SOURCE_LABEL, RULESET_GAME_SYSTEM_KEY,
     RULESET_GAME_SYSTEM_LABEL, RULESET_DISPLAY_NAME, STANDARD_LANGUAGES, LEVEL_XP,
@@ -31,7 +32,7 @@ from app.character_rules_2024 import (
 
 router = APIRouter(prefix="/tools/character-builder")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-templates.env.globals["app_version"] = "0.31.5"
+templates.env.globals["app_version"] = "0.31.6"
 templates.env.globals["app_name"] = get_settings().app_name
 _md = MarkdownIt("commonmark", {"html": False, "linkify": True}).enable("table")
 templates.env.filters["render_markdown"] = lambda value: Markup(_md.render(str(value or "")))
@@ -158,6 +159,7 @@ def _step_context(db: Session, character: Character, step: str) -> dict[str, Any
         context["subclass_rows"] = subclass_rows
         context["selected_class"] = find_character_entity(db, character, ["class", "classe"], character.class_key)
         context["subclass_parents"] = subclass_parents
+        context["class_keys"] = {row.public_id: primary_class_key(row) or (row.canonical_key or row.slug) for row in class_rows}
     elif step == "background":
         # 2024 characters may use backgrounds from older books. Prefer the 2024
         # variant when duplicates exist, but expose distinct legacy backgrounds too.
@@ -177,8 +179,13 @@ def _step_context(db: Session, character: Character, step: str) -> dict[str, Any
         context["class_saves"] = class_save_proficiencies(class_entity)
         suggested = list(dict.fromkeys(list(character.other_proficiencies or []) + context["background_locked_proficiencies"]))
         context["proficiency_options"] = sorted(set(suggested + ["Light Armor", "Medium Armor", "Heavy Armor", "Shields", "Simple Weapons", "Martial Weapons", "Thieves' Tools", "Calligrapher's Supplies", "Gaming Set"]))
+        context["selected_background_is_2024"] = background_uses_2024_adjustment(context["selected_background"])
+        ref_rows = _dedupe_prefer_2024(_all_active_entities(db, ["skill", "language", "equipment", "item", "weapon", "armor", "weaponpropertie", "rule"]))
+        context["reference_by_name"] = {r.name.casefold(): r for r in ref_rows}
     elif step == "gear":
-        context["equipment_rows"] = entities_for_character(db, ["equipment", "item", "weapon", "armor"], character)
+        lexicon = {row.original_term.casefold(): row.display_term for row in db.scalars(select(LexiconTerm)).all()}
+        context["equipment_rows"] = equipment_reference_rows(db, character, lexicon)
+        context["equipment_locked_ids"] = [r["entity"].public_id for r in context["equipment_rows"] if r["locked"]]
     elif step == "spells":
         all_spells = entities_for_character(db, ["spell"], character)
         context["spell_rows"] = [s for s in all_spells if _spell_matches_class(s, derived["class_entity"], character.level)]
@@ -292,7 +299,8 @@ async def save_step(request: Request, public_id: str, step: str, user: User = De
         row.background_key = str(form.get("background_key") or "") or None
         row.alignment_key = str(form.get("alignment_key") or "") or None
         row.skill_proficiencies = list(dict.fromkeys(str(v) for v in form.getlist("skills") if v))
-        row.languages = list(dict.fromkeys(str(v).strip() for v in form.getlist("languages") if str(v).strip()))
+        posted_languages = [str(v).strip() for v in form.getlist("languages") if str(v).strip() and str(v).strip() != "Common"][:2]
+        row.languages = ["Common"] + list(dict.fromkeys(posted_languages))
         row.other_proficiencies = list(dict.fromkeys(str(v).strip() for v in form.getlist("other_proficiencies") if str(v).strip()))
         choices = dict(row.choices_json or {})
         bonuses = {}
@@ -300,16 +308,35 @@ async def save_step(request: Request, public_id: str, step: str, user: User = De
             amount = int(form.get(f"background_bonus_{ability}") or 0)
             if amount:
                 bonuses[ability] = amount
-        # Enforce the 2024 three-point background adjustment shape. Legacy
-        # backgrounds may place the points on any abilities; current backgrounds
-        # are constrained in the browser and validated by the total here.
-        if sum(bonuses.values()) == 3 and sorted(bonuses.values()) in ([1, 1, 1], [1, 2]):
+        selected_background = next((r for r in _all_active_entities(db,["background"]) if r.public_id == row.background_key or (r.canonical_key or r.slug) == row.background_key), None)
+        # Background ASIs are only part of the exact 5e 2024 Rules background model.
+        # Legacy backgrounds keep their proficiencies but do not expose or persist
+        # this widget in the builder.
+        if background_uses_2024_adjustment(selected_background) and sum(bonuses.values()) == 3 and sorted(bonuses.values()) in ([1, 1, 1], [1, 2]):
             choices["background_ability_bonuses"] = bonuses
         else:
             choices.pop("background_ability_bonuses", None)
         row.choices_json = choices
     elif step == "gear":
-        row.selected_equipment = list(dict.fromkeys(str(v) for v in form.getlist("equipment") if v))
+        lexicon = {item.original_term.casefold(): item.display_term for item in db.scalars(select(LexiconTerm)).all()}
+        gear_rows = equipment_reference_rows(db, row, lexicon)
+        by_id = {item["entity"].public_id:item for item in gear_rows}
+        posted = list(dict.fromkeys(str(v) for v in form.getlist("equipment") if v))
+        locked = [pid for pid,item in by_id.items() if item["locked"]]
+        accepted=[]; armor_suit=False; shield=False
+        for pid in list(dict.fromkeys(locked + posted)):
+            item=by_id.get(pid)
+            if not item: continue
+            kind=item["armor_kind"]
+            if kind and not item["armor_trained"] and not item["locked"]: continue
+            if kind=="shield":
+                if shield and not item["locked"]: continue
+                shield=True
+            elif kind in {"light","medium","heavy","armor"}:
+                if armor_suit and not item["locked"]: continue
+                armor_suit=True
+            accepted.append(pid)
+        row.selected_equipment = accepted
         row.currency = {coin: max(0, int(form.get(coin) or 0)) for coin in ("cp","sp","ep","gp","pp")}
     elif step == "spells":
         row.selected_spells = list(dict.fromkeys(str(v) for v in form.getlist("spells") if v))

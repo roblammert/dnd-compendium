@@ -391,3 +391,15 @@ This release adds generated-result list assignment, modernizes My Lists, and int
 - Background-granted skills and tool proficiencies are shown checked, locked, and read-only and are included in derived character output.
 - Background selections preserve the exact source variant by public ID while legacy canonical selections continue to resolve.
 - Removed class saving-throw abbreviations from the Other Proficiencies picker.
+
+
+## v0.31.6 — Character Builder live rules and equipment workflow
+
+- Compacts the right-side Live Stats / Live Abilities rail so HP, AC, PB, ability score, and modifier information uses much less horizontal space.
+- Synchronizes Level and XP immediately in both directions while editing Identity.
+- Normalizes the class key used by the subclass filter so only subclasses belonging to the selected primary class are shown.
+- Shows and persists Background Ability Adjustment only for exact `srd-2024` / 5e 2024 Rules backgrounds; legacy backgrounds no longer receive that ASI widget.
+- Locks Common as the universal language and limits the normal origin language picker to two additional languages.
+- Makes skills, languages, and other proficiency rows open read-only reference information inside the Character Builder modal when cached endpoint data exists.
+- Rebuilds Equipment & Attacks with automatic class/background/species starting-equipment grants, locked granted rows, duplicate generic Item suppression when a dedicated Weapon/Armor exists, Endpoint Management display labels as pills, source-aware Weapon→Item cost fallback, live purchased-equipment cost, armor training checks, and one-suit/one-shield enforcement.
+- Adds compact 2024 Basic Rules fallback metadata for class armor/weapon training and Package A starting equipment when Open5e does not expose structured values.
