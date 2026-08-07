@@ -15,7 +15,7 @@ from app.services import build_monster_card, build_weapon_card, format_cost, for
 
 router = APIRouter(prefix="/tools")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-templates.env.globals["app_version"] = "0.28.1"
+templates.env.globals["app_version"] = "0.28.2"
 templates.env.globals["app_name"] = get_settings().app_name
 
 XP_THRESHOLDS = {
@@ -58,30 +58,165 @@ def loadout_generator(request: Request):
     return templates.TemplateResponse(request,"tools_deferred.html",_tool_context("loadout-generator",title="Loadout Generator",description="Player loadout generation is reserved for a later release."))
 
 @router.get("/encounter-builder", response_class=HTMLResponse)
-def encounter_builder(request: Request, mode:str="random_cr", cr_min:float=0, cr_max:float=5, monster_count:int=4, party_level:int=5, party_size:int=4, difficulty:str="medium", scale_mode:str="none", baseline_party_size:int=4, manual_q:str="", db:Session=Depends(get_db)):
-    monsters=list(db.scalars(select(Entity).where(Entity.entity_type=="monster",Entity.is_active==True).order_by(Entity.name)).all())
-    rows=[_monster_row(e) for e in monsters]
-    selected=[]; budget=None
-    if mode=="random_cr":
-        pool=[r for r in rows if cr_min <= r["cr"] <= cr_max]
-        selected=random.sample(pool,min(max(monster_count,1),len(pool))) if pool else []
-    elif mode=="xp_budget":
-        level=max(1,min(20,party_level)); diff=difficulty if difficulty in DIFFICULTY_INDEX else "medium"
-        budget=XP_THRESHOLDS[level][DIFFICULTY_INDEX[diff]]*max(1,party_size)
-        pool=[r for r in rows if r["xp"]>0 and r["xp"]<=budget]
-        random.shuffle(pool); total=0
-        for row in sorted(pool,key=lambda r:r["xp"],reverse=True):
-            if total+row["xp"]<=budget and len(selected)<20:
-                selected.append(row); total+=row["xp"]
-    elif mode=="manual" and manual_q.strip():
-        term=manual_q.casefold(); selected=[r for r in rows if term in r["entity"].name.casefold()][:50]
-    ratio=max(1,party_size)/max(1,baseline_party_size)
+def encounter_builder(
+    request: Request,
+    generate: int = 0,
+    mode: str = "random_cr",
+    cr_min: float = 0,
+    cr_max: float = 5,
+    monster_count: int = 4,
+    party_size: int = 4,
+    average_party_level: int = 5,
+    party_level: list[int] = Query(default=[]),
+    difficulty: str = "medium",
+    scale_mode: str = "none",
+    baseline_party_size: int = 4,
+    keep: list[str] = Query(default=[]),
+    db: Session = Depends(get_db),
+):
+    valid_modes = {"random_cr", "xp_budget"}
+    mode = mode if mode in valid_modes else "random_cr"
+    difficulty = difficulty if difficulty in {"medium", "hard", "deadly"} else "medium"
+    scale_mode = scale_mode if scale_mode in {"none", "variable", "lazy_dm"} else "none"
+
+    # Preserve a practical default roster on first visit. Repeated party_level
+    # query parameters are used so mixed-level parties are represented exactly.
+    submitted_levels = [max(1, min(20, int(level))) for level in party_level if int(level) > 0]
+    if mode == "xp_budget":
+        levels = submitted_levels or [5, 5, 5, 5]
+    else:
+        party_size = max(1, min(20, party_size))
+        average_party_level = max(1, min(20, average_party_level))
+        levels = [average_party_level] * party_size
+
+    monsters = list(
+        db.scalars(
+            select(Entity)
+            .where(Entity.entity_type == "monster", Entity.is_active.is_(True))
+            .order_by(Entity.name)
+        ).all()
+    )
+    all_rows = [_monster_row(entity) for entity in monsters]
+    row_by_id = {row["entity"].public_id: row for row in all_rows}
+
+    selected: list[dict] = []
+    seen: set[str] = set()
+    for public_id in keep:
+        row = row_by_id.get(public_id)
+        if row and public_id not in seen:
+            selected.append(dict(row, kept=True))
+            seen.add(public_id)
+
+    budget = None
+    budget_breakdown: list[dict] = []
+    if mode == "xp_budget":
+        difficulty_index = DIFFICULTY_INDEX[difficulty]
+        for index, level in enumerate(levels, start=1):
+            threshold = XP_THRESHOLDS[level][difficulty_index]
+            budget_breakdown.append({"member": index, "level": level, "xp": threshold})
+        budget = sum(entry["xp"] for entry in budget_breakdown)
+
+    if generate:
+        if mode == "random_cr":
+            pool = [
+                row for row in all_rows
+                if cr_min <= row["cr"] <= cr_max
+                and row["entity"].public_id not in seen
+            ]
+            needed = max(0, max(1, min(30, monster_count)) - len(selected))
+            if pool and needed:
+                for row in random.sample(pool, min(needed, len(pool))):
+                    selected.append(dict(row, kept=False))
+                    seen.add(row["entity"].public_id)
+        else:
+            committed_xp = sum(row["xp"] for row in selected)
+            remaining = max(0, (budget or 0) - committed_xp)
+            pool = [
+                row for row in all_rows
+                if row["xp"] > 0
+                and row["xp"] <= remaining
+                and row["entity"].public_id not in seen
+            ]
+            random.shuffle(pool)
+            # Prefer useful budget coverage without always producing the same
+            # highest-XP composition. Candidates are sampled in broad XP bands.
+            pool.sort(key=lambda row: row["xp"], reverse=True)
+            while pool and remaining > 0 and len(selected) < 30:
+                eligible = [row for row in pool if row["xp"] <= remaining]
+                if not eligible:
+                    break
+                window = eligible[: min(8, len(eligible))]
+                row = random.choice(window)
+                selected.append(dict(row, kept=False))
+                seen.add(row["entity"].public_id)
+                remaining -= row["xp"]
+                pool.remove(row)
+
+    party_size = len(levels)
+    ratio = party_size / max(1, baseline_party_size)
+    total_party_levels = sum(levels)
+    average_level = total_party_levels / max(1, party_size)
+    lazy_multiplier = 0.25 if average_level < 5 else 0.5
+    lazy_limit = lazy_multiplier * total_party_levels
+
     for row in selected:
-        row["scaled_hp"] = round(_number(row["hp"])*ratio) if scale_mode=="variable" and _number(row["hp"]) else row["hp"]
-        row["scaled_ac"] = round(_number(row["ac"])+(ratio-1)/0.5) if scale_mode=="variable" and _number(row["ac"]) else row["ac"]
-    total_cr=sum(r["cr"] for r in selected); total_levels=max(1,party_size)*max(1,party_level)
-    lazy_limit=(0.25 if party_level<=4 else 0.5)*total_levels
-    return templates.TemplateResponse(request,"tools_encounter_builder.html",_tool_context("encounter-builder",selected=selected,budget=budget,total_xp=sum(r["xp"] for r in selected),total_cr=total_cr,lazy_limit=lazy_limit,ratio=ratio,params={"mode":mode,"cr_min":cr_min,"cr_max":cr_max,"monster_count":monster_count,"party_level":party_level,"party_size":party_size,"difficulty":difficulty,"scale_mode":scale_mode,"baseline_party_size":baseline_party_size,"manual_q":manual_q}))
+        row["scaled_hp"] = row["hp"]
+        row["scaled_ac"] = row["ac"]
+        row["scale_note"] = "Original"
+        if scale_mode == "variable":
+            hp = _number(row["hp"])
+            ac = _number(row["ac"])
+            row["scaled_hp"] = round(hp * ratio) if hp else row["hp"]
+            row["scaled_ac"] = round(ac + ((ratio - 1) / 0.5)) if ac else row["ac"]
+            row["scale_note"] = f"R {ratio:.2f}"
+        elif scale_mode == "lazy_dm":
+            row["scale_note"] = "CR-limit check"
+
+    total_xp = sum(row["xp"] for row in selected)
+    total_cr = sum(row["cr"] for row in selected)
+    lazy_status = "Within benchmark" if total_cr <= lazy_limit else "Above benchmark"
+    budget_status = None
+    if budget is not None:
+        if total_xp > budget:
+            budget_status = "Over budget"
+        elif total_xp >= budget * 0.85:
+            budget_status = "On target"
+        else:
+            budget_status = "Under budget"
+
+    params = {
+        "mode": mode,
+        "cr_min": cr_min,
+        "cr_max": cr_max,
+        "monster_count": monster_count,
+        "party_size": party_size,
+        "average_party_level": average_party_level,
+        "party_levels": levels,
+        "difficulty": difficulty,
+        "scale_mode": scale_mode,
+        "baseline_party_size": baseline_party_size,
+    }
+    return templates.TemplateResponse(
+        request,
+        "tools_encounter_builder.html",
+        _tool_context(
+            "encounter-builder",
+            selected=selected,
+            budget=budget,
+            budget_breakdown=budget_breakdown,
+            budget_status=budget_status,
+            total_xp=total_xp,
+            total_cr=total_cr,
+            lazy_limit=lazy_limit,
+            lazy_status=lazy_status,
+            ratio=ratio,
+            party_size=party_size,
+            total_party_levels=total_party_levels,
+            average_level=average_level,
+            params=params,
+        ),
+    )
+
 
 @router.get("/loot-generator", response_class=HTMLResponse)
 def loot_generator(
@@ -89,11 +224,8 @@ def loot_generator(
     generate: int = 0,
     count_min: int = 8,
     count_max: int = 12,
-    max_value_gp: float = 500,
-    include_pp: int | None = None,
-    include_gp: int | None = None,
-    include_sp: int | None = None,
-    include_cp: int | None = None,
+    max_value_gp: float = 40,
+    max_total_value_gp: float = 600,
     include_equipment: int | None = None,
     include_items: int | None = None,
     include_magicitems: int | None = None,
@@ -102,20 +234,18 @@ def loot_generator(
     keep: list[str] = Query(default=[]),
     db: Session = Depends(get_db),
 ):
-    # On the first visit, start with every inclusion option selected. On a
-    # generated request, an omitted checkbox means false rather than reverting
-    # to the route's defaults.
     initial = not bool(generate)
     selected = {
-        "include_pp": True if initial else bool(include_pp),
-        "include_gp": True if initial else bool(include_gp),
-        "include_sp": True if initial else bool(include_sp),
-        "include_cp": True if initial else bool(include_cp),
         "include_equipment": True if initial else bool(include_equipment),
         "include_items": True if initial else bool(include_items),
         "include_magicitems": True if initial else bool(include_magicitems),
         "include_weapons": True if initial else bool(include_weapons),
     }
+    count_min = max(1, min(100, count_min))
+    count_max = max(count_min, min(100, count_max))
+    max_value_gp = max(0, max_value_gp)
+    max_total_value_gp = max(0, max_total_value_gp)
+
     lexicon = {
         row.original_term.casefold(): row.display_term
         for row in db.scalars(select(LexiconTerm)).all()
@@ -138,8 +268,9 @@ def loot_generator(
         _loot_row(entity, kept=True, item_index=item_index, lexicon=lexicon)
         for entity in kept
     ]
+    running_total_gp = sum(row["cost_gp"] or 0 for row in rows)
 
-    target = random.randint(max(1, count_min), max(count_min, count_max)) if generate else 0
+    target = random.randint(count_min, count_max) if generate else 0
     types: list[str] = []
     if selected["include_items"] or selected["include_equipment"]:
         types.append("item")
@@ -153,7 +284,7 @@ def loot_generator(
             select(Entity)
             .where(Entity.entity_type.in_(types or ["__none__"]), Entity.is_active.is_(True))
             .order_by(func.random())
-            .limit(500)
+            .limit(1000)
         ).all()
     )
     seen = {row["public_id"] for row in rows}
@@ -167,47 +298,32 @@ def loot_generator(
             if not any(value.casefold() in raw for value in rarity):
                 continue
         row = _loot_row(entity, item_index=item_index, lexicon=lexicon)
-        if row["cost_gp"] is not None and row["cost_gp"] > max_value_gp:
+        row_value = row["cost_gp"] or 0
+        if row["cost_gp"] is not None and row_value > max_value_gp:
+            continue
+        if running_total_gp + row_value > max_total_value_gp:
             continue
         rows.append(row)
         seen.add(entity.public_id)
-
-    coin_types = []
-    if selected["include_pp"]:
-        coin_types.append(("PP", 10))
-    if selected["include_gp"]:
-        coin_types.append(("GP", 1))
-    if selected["include_sp"]:
-        coin_types.append(("SP", .1))
-    if selected["include_cp"]:
-        coin_types.append(("CP", .01))
-    while len(rows) < target and coin_types:
-        coin, multiplier = random.choice(coin_types)
-        amount = random.randint(1, max(1, int(max_value_gp / max(multiplier, .01))))
-        rows.append({
-            "public_id": "",
-            "name": f"{amount:,} {coin}",
-            "type": "Coin",
-            "cost": f"{amount:,} {coin}",
-            "cost_tooltip": "",
-            "cost_gp": amount * multiplier,
-            "weight": "",
-            "rarity": "",
-            "url": "",
-            "kept": False,
-        })
+        running_total_gp += row_value
 
     params = {
         "count_min": count_min,
         "count_max": count_max,
         "max_value_gp": max_value_gp,
+        "max_total_value_gp": max_total_value_gp,
         "rarity": rarity,
         **selected,
     }
     return templates.TemplateResponse(
         request,
         "tools_loot_generator.html",
-        _tool_context("loot-generator", rows=rows, params=params),
+        _tool_context(
+            "loot-generator",
+            rows=rows,
+            total_value_gp=running_total_gp,
+            params=params,
+        ),
     )
 
 

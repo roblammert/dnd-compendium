@@ -273,3 +273,12 @@ This release refines Alignment, Background, Class, Condition, Creature Type, Dam
 - Apply Endpoint Management display labels to the Type column.
 - Add D&D coin-conversion tooltips to populated Cost cells.
 - Add regression coverage for Battleaxe Item fallback and form-state preservation.
+
+
+## v0.28.2 — Encounter Console and Loot Value Controls
+
+- Rebuilds Encounter Builder with CR Range and Character XP Threshold modes.
+- Adds mixed-level party entry, Medium/Hard/Deadly budgets, preserved settings, and Keep rows.
+- Moves Lazy DM limiting into the scaling selector and adds high-tech metrics and analysis.
+- Removes coin categories from Loot Generator.
+- Adds 40 GP per-entry and 600 GP total-list value sliders.

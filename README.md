@@ -102,3 +102,7 @@ Card builders normalize nested Open5e references into readable metadata and pres
 ## Tools
 
 The public Tools area includes a coin converter, encounter builder, and loot generator. Authenticated users can also select a preferred Open5e source in their profile.
+
+### Encounter intelligence console
+
+The public Dungeon Master tools include a mode-aware Encounter Builder with CR-band randomization, exact mixed-level XP budgets, variable party-size scaling previews, Lazy DM limiting analysis, preserved settings, and keepable monster rows. The Loot Generator uses separate per-entry and total-list GP limits and supports keepable compendium entities.

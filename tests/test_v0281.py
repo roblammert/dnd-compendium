@@ -59,11 +59,8 @@ def test_loot_template_disables_rarities_and_preserves_options():
     params = {
         "count_min": 4,
         "count_max": 7,
-        "max_value_gp": 250,
-        "include_pp": False,
-        "include_gp": True,
-        "include_sp": False,
-        "include_cp": True,
+        "max_value_gp": 40,
+        "max_total_value_gp": 600,
         "include_equipment": False,
         "include_items": True,
         "include_magicitems": False,
@@ -71,10 +68,13 @@ def test_loot_template_disables_rarities_and_preserves_options():
         "rarity": ["Rare"],
     }
     html = templates.get_template("tools_loot_generator.html").render(
-        tools_section="loot-generator", rows=[], params=params
+        tools_section="loot-generator", rows=[], params=params, total_value_gp=0
     )
     assert 'id="rarityFieldset" disabled' in html
     assert 'name="include_magicitems" value="1" checked' not in html
-    assert 'name="include_gp" value="1" checked' in html
-    assert 'name="include_pp" value="1" checked' not in html
-    assert 'value="4"' in html and 'value="7"' in html
+    assert 'name="include_items" value="1" checked' in html
+    assert 'name="include_equipment" value="1" checked' not in html
+    assert 'name="include_pp"' not in html
+    assert 'name="include_gp"' not in html
+    assert 'name="max_total_value_gp"' in html
+    assert 'value="40"' in html and 'value="600"' in html
