@@ -106,3 +106,7 @@ The public Tools area includes a coin converter, encounter builder, and loot gen
 ### Encounter intelligence console
 
 The public Dungeon Master tools include a mode-aware Encounter Builder with CR-band randomization, exact mixed-level XP budgets, variable party-size scaling previews, Lazy DM limiting analysis, preserved settings, and keepable monster rows. The Loot Generator uses separate per-entry and total-list GP limits and supports keepable compendium entities.
+
+### Character Builder reliability
+
+Character Builder navigation is progressively enhanced: HTMX provides in-place step transitions, while every step also has a normal POST fallback. Direct fragment URLs redirect to the full application shell, and static assets are cache-busted by application version.

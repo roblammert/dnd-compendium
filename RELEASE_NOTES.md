@@ -354,3 +354,11 @@ This release adds generated-result list assignment, modernizes My Lists, and int
 - Existing Character Builder records from another edition are normalized to the 2024 rules and incompatible source-specific choices are cleared once.
 - Character reference lookups never fall through to 2014 data; exact `srd-2024` entities are preferred, with `5e-2024` records as the only fallback.
 - Added bundled SRD 5.2.1 mechanical fallback metadata for core class hit dice, saving throws, skill choices, spellcasting abilities, and Free Rules background mechanics when cached Open5e records omit structured fields.
+
+## v0.31.2 - Character Builder Navigation & Asset Reliability
+
+- Makes every Character Builder step form progressively enhanced with both normal POST and HTMX submission paths.
+- Fixes Save & Continue returning to Identity when HTMX is unavailable or fails to initialize.
+- Redirects direct `/step/{step}` browser requests to the full Character Builder page instead of rendering a fragment without site CSS/navigation.
+- Adds application-version cache busting to CSS, HTMX, and JavaScript asset URLs.
+- Adds regression coverage for all Character Builder step forms and fragment routing.

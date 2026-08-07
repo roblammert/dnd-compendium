@@ -29,7 +29,7 @@ from app.character_rules_2024 import (
 
 router = APIRouter(prefix="/tools/character-builder")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-templates.env.globals["app_version"] = "0.31.1"
+templates.env.globals["app_version"] = "0.31.2"
 templates.env.globals["app_name"] = get_settings().app_name
 _md = MarkdownIt("commonmark", {"html": False, "linkify": True}).enable("table")
 templates.env.filters["render_markdown"] = lambda value: Markup(_md.render(str(value or "")))
@@ -192,7 +192,16 @@ def get_step(request: Request, public_id: str, step: str, user: User = Depends(r
         raise HTTPException(404)
     row = _character_or_404(db, public_id, user)
     _enforce_2024_rules(row)
-    row.current_step = step; db.commit()
+    row.current_step = step
+    db.commit()
+
+    # Step endpoints are HTMX fragments. If HTMX is unavailable, disabled, or a
+    # pushed fragment URL is loaded directly, send the browser back through the
+    # full Character Builder shell so the site chrome, CSS, and scripts are
+    # always present. This also makes the workflow progressively enhanced.
+    if request.headers.get("HX-Request") != "true":
+        return RedirectResponse(f"/tools/character-builder/{row.public_id}?step={step}", 303)
+
     return _render_stage(request, db, row, step)
 
 
