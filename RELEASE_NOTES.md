@@ -414,3 +414,15 @@ This release adds generated-result list assignment, modernizes My Lists, and int
 - All-source spell/feat reference choices with source pills and More Info modals.
 - 2024 spell selection/preparation limits and feat prerequisite enforcement.
 - Locked background grants remain persisted server-side.
+
+## v0.31.8 — Character Builder guarded navigation and reliable filtering
+
+- Added dirty-state tracking to Character Builder steps. Previous and Up/Down movement now warns when the current step has unsaved changes and offers Save & Move, Discard & Move, or Cancel.
+- Updated HTMX step responses to keep the Up/Down controls synchronized with the currently rendered step and its completion state.
+- Rebuilt Languages and Other Proficiencies as full-width readable rows with no internal scroll areas.
+- Fixed Equipment filtering by normalizing every displayed row to a semantic Armor, Item, or Weapon filter type and applying dropdown changes immediately in the browser.
+- Preserved SQLite wildcard Equipment search across entity name, summary, and cached JSON/description content.
+- Prevented Enter in Equipment search from submitting the step form or navigating backward.
+- Fixed Spell level filtering by normalizing cached spell levels in Python before rendering filter metadata.
+- Prevented Enter in Spell search from submitting the step form or navigating backward.
+- Added v0.31.8 regression coverage; full suite: 166 passed.

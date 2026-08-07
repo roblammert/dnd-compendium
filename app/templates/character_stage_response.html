@@ -1,2 +1,2 @@
 {% include "character_steps/" ~ step ~ ".html" %}
-<template data-character-live-state data-step="{{ step }}" data-hp="{{ derived.hp_max }}" data-ac="{{ derived.armor_class }}" data-pb="{{ derived.proficiency_bonus }}" data-level="{{ character.level }}" data-scores='{{ derived.scores|tojson }}'></template>
+<template data-character-live-state data-step="{{ step }}" data-hp="{{ derived.hp_max }}" data-ac="{{ derived.armor_class }}" data-pb="{{ derived.proficiency_bonus }}" data-level="{{ character.level }}" data-scores='{{ derived.scores|tojson }}' data-prev-step="{{ previous_step or '' }}" data-next-step="{{ next_step_key or '' }}" data-can-prev="{{ '1' if can_step_previous else '0' }}" data-can-next="{{ '1' if can_step_next else '0' }}"></template>

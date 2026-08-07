@@ -131,3 +131,7 @@ The Character Builder now includes a compact right-side Live Stats/Live Abilitie
 ### Character Builder v0.31.7
 
 Character creation now uses guarded sequential navigation, non-scrolling proficiency pickers, server-backed live Equipment and Spell search, class-specific all-source spell availability, 2024 spell limits, and prerequisite-aware all-source feats.
+
+### Character Builder v0.31.8
+
+Character Builder navigation now warns before leaving a dirty step and offers **Save & Move**, **Discard & Move**, or **Cancel**. Background language and proficiency choices render as readable rows without internal scrolling. Equipment and Spell search controls are explicitly non-submitting, Enter performs filtering rather than step navigation, Equipment filters use semantic Armor/Item/Weapon categories, and Spell level filtering uses normalized cached spell levels.

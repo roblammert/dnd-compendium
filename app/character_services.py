@@ -571,8 +571,10 @@ def equipment_reference_rows(db: Session, character: Character, endpoint_labels:
                 weapon_prof="simple" in weapon_training
         else: weapon_prof=True
         cost=equipment_cost_data(db,entity)
+        semantic_type = "armor" if kind else ("weapon" if entity.entity_type == "weapon" else "item")
         result.append({
             "entity":entity,"type_label":endpoint_labels.get(entity.entity_type,entity.entity_type.replace('_',' ').replace('-',' ').title()),
+            "filter_type": semantic_type,
             "locked":bool(locked_source),"locked_source":locked_source,"armor_kind":kind,"armor_trained":trained,
             "weapon_proficient":weapon_prof,"cost":cost["value"],"cost_tooltip":cost["tooltip"],"cost_gp":cost["gp"],
             "summary":builder_summary(entity,entity.entity_type),

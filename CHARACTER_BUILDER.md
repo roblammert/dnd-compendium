@@ -207,3 +207,11 @@ The step rail is intentionally informational rather than directly navigable. Pla
 Equipment and Spell searches are debounced browser requests backed by SQLite wildcard matching against name and cached content. Equipment can also filter by endpoint type or selected state. Spells can filter by currently available spell level or selected state.
 
 Spell choices are allowed from any cached source only when the record explicitly identifies the selected primary class in its class/spell-list/Available-To metadata. Selection counts are then constrained by the pinned 2024 rules layer for the character's class and level.
+
+## v0.31.8 guarded workflow and filter behavior
+
+Character Builder step forms track a client-side baseline of persistent form controls. Previous and Up/Down navigation checks that baseline before moving. When the active step is dirty, a modal offers three explicit actions: save the current form and move to the requested step, discard unsaved browser changes and move, or cancel navigation. Search and filter controls are marked non-persistent so using them does not make the character dirty.
+
+Equipment search remains backed by SQLite wildcard matching against entity names, summaries, and cached JSON text, while the Armor/Item/Weapon/All Selected selector is applied immediately in the browser using a normalized semantic type supplied by `equipment_reference_rows()`. Spell search is likewise server-backed; the level selector is client-side and uses a normalized numeric level generated in Python rather than template coercion.
+
+Search controls intercept Enter and never submit the containing character step form. This prevents Equipment search from moving to Background and Spell search from moving to Equipment.

@@ -466,7 +466,7 @@ document.addEventListener("submit", async (event) => {
     };
     const runSearch=debounce(async()=>{
       const url=search?.dataset.filterUrl; if(!url) return;
-      const params=new URLSearchParams({q:(search.value||'').trim(),kind:(filter?.value||'all')==='selected'?'all':(filter?.value||'all')});
+      const params=new URLSearchParams({q:(search.value||'').trim()});
       try { const res=await fetch(`${url}?${params}`,{headers:{Accept:'application/json'},cache:'no-store'}); if(res.ok){ const data=await res.json(); serverIds=new Set(data.ids||[]); applyVisibility(); } } catch(_) { applyVisibility(); }
     },450);
     const update=()=>{
@@ -490,7 +490,8 @@ document.addEventListener("submit", async (event) => {
       applyVisibility();
     };
     rows.forEach(r=>r.querySelector('input')?.addEventListener('change',update));
-    search?.addEventListener('input',runSearch); filter?.addEventListener('change',runSearch);
+    search?.addEventListener('input',runSearch); filter?.addEventListener('change',()=>{ applyVisibility(); runSearch(); });
+    search?.addEventListener('keydown',(event)=>{ if(event.key==='Enter'){ event.preventDefault(); event.stopPropagation(); runSearch(); } });
     update(); runSearch();
   }
 
@@ -523,6 +524,7 @@ document.addEventListener("submit", async (event) => {
     const runSearch=debounce(async()=>{ const url=search?.dataset.filterUrl; if(!url)return; const params=new URLSearchParams({q:(search.value||'').trim()}); try{const res=await fetch(`${url}?${params}`,{headers:{Accept:'application/json'},cache:'no-store'});if(res.ok){const data=await res.json();serverIds=new Set(data.ids||[]);applyVisibility();}}catch(_){applyVisibility();}},450);
     rows.forEach(r=>{r.querySelector('input[name="spells"]')?.addEventListener('change',()=>{applyLimits();applyVisibility();});r.querySelector('input[name="prepared"]')?.addEventListener('change',applyLimits);});
     search?.addEventListener('input',runSearch); levelFilter?.addEventListener('change',applyVisibility);
+    search?.addEventListener('keydown',(event)=>{ if(event.key==='Enter'){ event.preventDefault(); event.stopPropagation(); runSearch(); } });
     applyLimits(); applyVisibility(); runSearch();
   }
 
@@ -551,5 +553,93 @@ document.addEventListener("submit", async (event) => {
       const shell=document.querySelector('.character-builder-shell');
       shell?.classList.toggle('with-ability-rail',['background','gear','spells','details','review'].includes(step));
     }
+  });
+})();
+
+
+// v0.31.8 Character Builder guarded navigation and filter-submit protection.
+(() => {
+  let pendingTarget = null;
+  let baseline = '';
+
+  const currentForm = () => document.querySelector('#character-builder-stage .character-step-form');
+  const serializableFields = (form) => Array.from(form?.elements || []).filter((el) => {
+    if (!el.name || el.disabled || el.matches('[data-nonpersistent-control]')) return false;
+    if (el.type === 'submit' || el.type === 'button') return false;
+    return true;
+  });
+  const snapshot = (form) => {
+    if (!form) return '';
+    return serializableFields(form).map((el) => {
+      if (el.type === 'checkbox' || el.type === 'radio') return `${el.name}:${el.value}:${el.checked ? 1 : 0}`;
+      return `${el.name}:${el.value}`;
+    }).sort().join('|');
+  };
+  const captureBaseline = () => { baseline = snapshot(currentForm()); };
+  const syncMoverState = (root=document) => {
+    const state = root.querySelector?.('[data-character-live-state]');
+    if (!state) return;
+    const characterId = document.querySelector('.character-builder-shell')?.dataset.characterId;
+    [['previous', state.dataset.prevStep, state.dataset.canPrev], ['next', state.dataset.nextStep, state.dataset.canNext]].forEach(([kind,target,can]) => {
+      const button=document.querySelector(`[data-character-move=\"${kind}\"]`);
+      if(!button)return; const enabled=can==='1' && !!target;
+      button.classList.toggle('disabled',!enabled);
+      button.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+      if(enabled){ button.dataset.characterNavTarget=target; button.href=`/tools/character-builder/${characterId}?step=${encodeURIComponent(target)}`; }
+      else { delete button.dataset.characterNavTarget; button.removeAttribute('href'); }
+    });
+  };
+  const isDirty = () => {
+    const form = currentForm();
+    return !!form && snapshot(form) !== baseline;
+  };
+  const destinationUrl = (target) => {
+    const shell = document.querySelector('.character-builder-shell');
+    const publicId = shell?.dataset.characterId || location.pathname.split('/').filter(Boolean).pop();
+    return `/tools/character-builder/${publicId}?step=${encodeURIComponent(target)}`;
+  };
+  const dialog = () => document.getElementById('character-unsaved-dialog');
+  const moveWithoutSaving = (target) => { window.location.assign(destinationUrl(target)); };
+  const saveAndMove = (target) => {
+    const form = currentForm();
+    if (!form) return moveWithoutSaving(target);
+    let hidden = form.querySelector('input[data-dirty-nav-target]');
+    if (!hidden) {
+      hidden = document.createElement('input');
+      hidden.type = 'hidden'; hidden.name = 'next_step'; hidden.dataset.dirtyNavTarget = '1';
+      form.appendChild(hidden);
+    }
+    hidden.value = target;
+    baseline = snapshot(form);
+    form.requestSubmit();
+  };
+  const requestMove = (target) => {
+    if (!target) return;
+    if (!isDirty()) return moveWithoutSaving(target);
+    pendingTarget = target;
+    dialog()?.showModal();
+  };
+
+  document.addEventListener('click', (event) => {
+    const nav = event.target.closest?.('[data-character-nav-target]');
+    if (nav && !nav.classList.contains('disabled') && nav.getAttribute('aria-disabled') !== 'true') {
+      event.preventDefault(); requestMove(nav.dataset.characterNavTarget); return;
+    }
+    if (event.target.closest?.('[data-dirty-cancel]')) { event.preventDefault(); pendingTarget = null; dialog()?.close(); return; }
+    if (event.target.closest?.('[data-dirty-discard]')) { event.preventDefault(); const target=pendingTarget; pendingTarget=null; dialog()?.close(); if(target) moveWithoutSaving(target); return; }
+    if (event.target.closest?.('[data-dirty-save]')) { event.preventDefault(); const target=pendingTarget; pendingTarget=null; dialog()?.close(); if(target) saveAndMove(target); return; }
+  });
+
+  // Search boxes are workflow controls, never form submission controls.
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return;
+    if (event.target.closest?.('[data-character-equipment-search], [data-character-spell-search]')) {
+      event.preventDefault(); event.stopPropagation();
+    }
+  }, true);
+
+  document.addEventListener('DOMContentLoaded', captureBaseline);
+  document.addEventListener('htmx:afterSwap', (event) => {
+    if (event.target?.id === 'character-builder-stage') window.setTimeout(()=>{ syncMoverState(event.target); captureBaseline(); }, 0);
   });
 })();

@@ -32,7 +32,7 @@ from app.character_rules_2024 import (
 
 router = APIRouter(prefix="/tools/character-builder")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-templates.env.globals["app_version"] = "0.31.7"
+templates.env.globals["app_version"] = "0.31.8"
 templates.env.globals["app_name"] = get_settings().app_name
 _md = MarkdownIt("commonmark", {"html": False, "linkify": True}).enable("table")
 templates.env.filters["render_markdown"] = lambda value: Markup(_md.render(str(value or "")))
@@ -263,8 +263,12 @@ def _step_context(db: Session, character: Character, step: str) -> dict[str, Any
         # designate the selected primary class as available.
         all_spells = _all_active_entities(db, ["spell"])
         spell_rows = [s for s in all_spells if _spell_matches_class_explicit(s, derived["class_entity"], character.level)]
-        context["spell_rows"] = sorted(spell_rows, key=lambda e: (int(re.search(r"\d+", str((e.data_json or {}).get("level",0))).group()) if re.search(r"\d+", str((e.data_json or {}).get("level",0))) else 0, e.name.casefold(), e.source_display_name or ""))
-        context["spell_levels"] = sorted({int(re.search(r"\d+", str((s.data_json or {}).get("level",0))).group()) if re.search(r"\d+", str((s.data_json or {}).get("level",0))) else 0 for s in spell_rows})
+        def _spell_level(entity: Entity) -> int:
+            match = re.search(r"\d+", str((entity.data_json or {}).get("level", 0)))
+            return int(match.group()) if match else 0
+        context["spell_row_levels"] = {entity.public_id: _spell_level(entity) for entity in spell_rows}
+        context["spell_rows"] = sorted(spell_rows, key=lambda e: (context["spell_row_levels"][e.public_id], e.name.casefold(), e.source_display_name or ""))
+        context["spell_levels"] = sorted(set(context["spell_row_levels"].values()))
         class_key = primary_class_key(derived["class_entity"]) or (derived["class_entity"].canonical_key if derived["class_entity"] else None)
         context["spell_limits"] = spell_selection_limits(class_key, character.level)
         feats=[]
