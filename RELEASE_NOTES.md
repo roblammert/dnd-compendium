@@ -464,3 +464,16 @@ This release adds generated-result list assignment, modernizes My Lists, and int
 - Tightened the Step 9 Ability Scores row grid so the ability abbreviation, score, and modifier all remain inside each tile.
 - Preserved the existing score and modifier font sizes while reducing only spacing and reserved column width.
 - Added overflow safeguards for narrow Review layouts.
+
+## v0.31.14 - Printable Character Sheet Layout
+
+This release restructures the printable/PDF character sheet for US Letter output.
+
+- Printable `Armor Class` is shortened to `AC`.
+- Hit Dice and Proficiency Bonus now sit above the HP row.
+- Current HP and Temp HP share a single row and use compact `HP` labels.
+- Personality Traits, Ideals, Bonds, Flaws, and page-two narrative boxes size to their content with a two-line minimum instead of large fixed empty regions.
+- Equipment moved into the third column beneath Flaws, aligned with the top of Attacks & Spellcasting.
+- The old combined Features & Traits region is split into full-width Traits and Features boxes.
+- Traits and Features render Markdown emphasis, lists, blockquotes, and tables.
+- Printable panels are allowed to grow naturally; WeasyPrint retains US Letter page sizing and can paginate longer content instead of clipping it.
