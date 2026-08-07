@@ -164,3 +164,46 @@ document.addEventListener("submit", async (event) => {
     const status=form.querySelector(".row-save-status"); if(status) status.textContent="Save failed";
   } finally { if (button) button.disabled = false; }
 });
+
+// v0.31 Character Builder interactions: filters and point-buy feedback remain client-side.
+(() => {
+  const pointBuyCost = {8:0,9:1,10:2,11:3,12:4,13:5,14:7,15:9};
+  function refreshPointBuy(form) {
+    if (!form) return;
+    const method = form.querySelector('input[name="ability_method"]:checked')?.value;
+    const badge = form.querySelector('[data-point-buy-status]');
+    if (!badge) return;
+    if (method !== 'point_buy') { badge.textContent = method === 'standard_array' ? 'STANDARD ARRAY' : 'CUSTOM'; return; }
+    let total=0, valid=true;
+    form.querySelectorAll('[data-ability-input]').forEach((input) => {
+      const score=Number(input.value); if (!(score in pointBuyCost)) valid=false; else total += pointBuyCost[score];
+    });
+    badge.textContent = valid ? `${total}/27 POINTS` : '8–15 REQUIRED';
+    badge.classList.toggle('over-budget', !valid || total>27);
+  }
+  document.addEventListener('input', (event) => {
+    const equipmentSearch = event.target.closest?.('[data-character-equipment-search]');
+    if (equipmentSearch) {
+      const q=equipmentSearch.value.trim().toLowerCase();
+      document.querySelectorAll('[data-character-equipment-list] [data-equipment-name]').forEach((row)=>row.hidden=!!q && !row.dataset.equipmentName.includes(q));
+    }
+    const spellSearch = event.target.closest?.('[data-character-spell-search]');
+    if (spellSearch) {
+      const q=spellSearch.value.trim().toLowerCase();
+      document.querySelectorAll('[data-character-spell-list] [data-spell-name]').forEach((row)=>row.hidden=!!q && !row.dataset.spellName.includes(q));
+    }
+    const abilityForm = event.target.closest?.('[data-ability-builder]');
+    if (abilityForm) refreshPointBuy(abilityForm);
+  });
+  document.addEventListener('change', (event) => {
+    const form = event.target.closest?.('[data-ability-builder]');
+    if (form) refreshPointBuy(form);
+  });
+  document.addEventListener('htmx:afterSwap', (event) => {
+    if (event.target?.id !== 'character-builder-stage') return;
+    const step = new URL(location.href).searchParams.get('step');
+    document.querySelectorAll('[data-character-step]').forEach((link)=>link.classList.toggle('active',link.dataset.characterStep===step));
+    refreshPointBuy(document.querySelector('[data-ability-builder]'));
+  });
+  document.addEventListener('DOMContentLoaded', ()=>refreshPointBuy(document.querySelector('[data-ability-builder]')));
+})();

@@ -135,6 +135,7 @@ class User(Base):
     preferred_source_document: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     token_asset: Mapped[Asset | None] = relationship(foreign_keys=[token_asset_id])
     lists: Mapped[list["UserEntityList"]] = relationship(back_populates="owner", cascade="all, delete-orphan")
+    characters: Mapped[list["Character"]] = relationship(back_populates="owner", cascade="all, delete-orphan")
 
 class UserEntityList(Base):
     __tablename__ = "user_entity_lists"
@@ -162,3 +163,39 @@ class UserEntityListItem(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     entity_list: Mapped[UserEntityList] = relationship(back_populates="items")
     entity: Mapped[Entity] = relationship()
+
+
+class Character(Base):
+    __tablename__ = "characters"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    public_id: Mapped[str] = mapped_column(String(40), unique=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(255), default="New Character")
+    source_document: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    game_system_key: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    current_step: Mapped[str] = mapped_column(String(40), default="identity")
+    level: Mapped[int] = mapped_column(Integer, default=1)
+    experience_points: Mapped[int] = mapped_column(Integer, default=0)
+    species_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    heritage_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    class_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    subclass_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    background_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    alignment_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    ability_method: Mapped[str] = mapped_column(String(30), default="standard_array")
+    ability_scores: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    selected_spells: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    prepared_spells: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    selected_equipment: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    feats: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    skill_proficiencies: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    save_proficiencies: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    languages: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    other_proficiencies: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    currency: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    details_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    choices_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    is_complete: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    owner: Mapped[User] = relationship(back_populates="characters")

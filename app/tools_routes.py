@@ -17,7 +17,7 @@ from app.services import build_monster_card, build_weapon_card, format_cost, for
 
 router = APIRouter(prefix="/tools")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-templates.env.globals["app_version"] = "0.30.3"
+templates.env.globals["app_version"] = "0.31.0"
 templates.env.globals["app_name"] = get_settings().app_name
 
 _tool_markdown = MarkdownIt("commonmark", {"html": False, "linkify": True, "typographer": False}).enable("table")

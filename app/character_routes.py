@@ -1,0 +1,258 @@
+from __future__ import annotations
+
+import re
+import uuid
+from pathlib import Path
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.templating import Jinja2Templates
+from markdown_it import MarkdownIt
+from markupsafe import Markup
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.auth import require_user
+from app.character_services import (
+    ABILITIES, ABILITY_NAMES, SKILL_ABILITIES, STANDARD_ARRAY,
+    class_save_proficiencies, class_skill_choices, derive_character,
+    entities_for_character, entity_summary, find_character_entity,
+)
+from app.config import get_settings
+from app.db import get_db
+from app.models import Character, Entity, User
+
+router = APIRouter(prefix="/tools/character-builder")
+templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
+templates.env.globals["app_version"] = "0.31.0"
+templates.env.globals["app_name"] = get_settings().app_name
+_md = MarkdownIt("commonmark", {"html": False, "linkify": True}).enable("table")
+templates.env.filters["render_markdown"] = lambda value: Markup(_md.render(str(value or "")))
+templates.env.globals["entity_summary"] = entity_summary
+
+STEPS = [
+    ("identity", "Identity & Rules"),
+    ("species", "Species / Race"),
+    ("class", "Class & Subclass"),
+    ("abilities", "Ability Scores"),
+    ("background", "Background & Proficiencies"),
+    ("gear", "Equipment & Attacks"),
+    ("spells", "Spells & Feats"),
+    ("details", "Character Details"),
+    ("review", "Review & Sheet"),
+]
+STEP_KEYS = {key for key, _ in STEPS}
+
+
+def _uid() -> str:
+    return f"chr_{uuid.uuid4().hex[:24]}"
+
+
+def _character_or_404(db: Session, public_id: str, user: User) -> Character:
+    row = db.scalar(select(Character).where(Character.public_id == public_id, Character.user_id == user.id))
+    if not row:
+        raise HTTPException(404, "Character not found")
+    return row
+
+
+def _source_options(db: Session) -> list[dict[str, str]]:
+    rows = db.execute(
+        select(Entity.source_document, Entity.source_display_name, Entity.game_system_key, Entity.game_system_name)
+        .where(Entity.is_active.is_(True), Entity.source_document.is_not(None))
+        .distinct().order_by(Entity.source_display_name)
+    ).all()
+    seen, result = set(), []
+    for source, display, system, system_name in rows:
+        if not source or source in seen:
+            continue
+        seen.add(source)
+        result.append({"key": source, "name": display or source, "game_system_key": system or "", "game_system_name": system_name or system or ""})
+    return result
+
+
+def _spell_matches_class(spell: Entity, class_entity: Entity | None, level: int) -> bool:
+    data = spell.data_json or {}
+    spell_level = int(re.search(r"\d+", str(data.get("level", 0))).group()) if re.search(r"\d+", str(data.get("level", 0))) else 0
+    if spell_level > max(1, min(9, (level + 1) // 2)) and spell_level != 0:
+        return False
+    if not class_entity:
+        return True
+    class_name = class_entity.name.casefold()
+    blob = " ".join(str(data.get(key, "")) for key in ("classes", "class", "spell_lists", "spell_list")).casefold()
+    return not blob or class_name in blob
+
+
+def _step_context(db: Session, character: Character, step: str) -> dict[str, Any]:
+    derived = derive_character(db, character)
+    context: dict[str, Any] = {
+        "character": character, "step": step, "steps": STEPS, "derived": derived,
+        "ability_names": ABILITY_NAMES, "abilities": ABILITIES, "skill_abilities": SKILL_ABILITIES,
+        "standard_array": STANDARD_ARRAY,
+    }
+    if step == "identity":
+        context["sources"] = _source_options(db)
+    elif step == "species":
+        context["species_rows"] = entities_for_character(db, ["species", "race"], character)
+        context["selected_species"] = find_character_entity(db, character, ["species", "race"], character.species_key)
+    elif step == "class":
+        context["class_rows"] = entities_for_character(db, ["class", "classe"], character)
+        context["subclass_rows"] = entities_for_character(db, ["subclass", "subclasse"], character)
+        context["selected_class"] = find_character_entity(db, character, ["class", "classe"], character.class_key)
+    elif step == "background":
+        context["background_rows"] = entities_for_character(db, ["background"], character)
+        context["alignment_rows"] = entities_for_character(db, ["alignment"], character)
+        class_entity = derived["class_entity"]
+        context["class_skill_choices"] = class_skill_choices(class_entity)
+        context["class_saves"] = class_save_proficiencies(class_entity)
+    elif step == "gear":
+        context["equipment_rows"] = entities_for_character(db, ["equipment", "item", "weapon", "armor"], character)
+    elif step == "spells":
+        all_spells = entities_for_character(db, ["spell"], character)
+        context["spell_rows"] = [s for s in all_spells if _spell_matches_class(s, derived["class_entity"], character.level)]
+        context["feat_rows"] = entities_for_character(db, ["feat"], character)
+    return context
+
+
+def _render_stage(request: Request, db: Session, character: Character, step: str):
+    return templates.TemplateResponse(request, f"character_steps/{step}.html", _step_context(db, character, step))
+
+
+@router.get("", response_class=HTMLResponse)
+def character_builder_home(request: Request, user: User = Depends(require_user), db: Session = Depends(get_db)):
+    characters = list(db.scalars(select(Character).where(Character.user_id == user.id).order_by(Character.updated_at.desc())).all())
+    return templates.TemplateResponse(request, "tools_character_builder_home.html", {
+        "tools_section": "character-builder", "characters": characters,
+    })
+
+
+@router.post("/new")
+async def new_character(request: Request, user: User = Depends(require_user), db: Session = Depends(get_db)):
+    form = await request.form()
+    source = str(form.get("source_document") or user.preferred_source_document or "") or None
+    source_row = next((row for row in _source_options(db) if row["key"] == source), None)
+    row = Character(
+        public_id=_uid(), user_id=user.id, name=str(form.get("name") or "New Character").strip() or "New Character",
+        source_document=source, game_system_key=(source_row or {}).get("game_system_key") or None,
+        ability_scores={ability: 10 for ability in ABILITIES}, currency={"cp":0,"sp":0,"ep":0,"gp":0,"pp":0},
+        details_json={}, choices_json={}, selected_spells=[], prepared_spells=[], selected_equipment=[], feats=[],
+        skill_proficiencies=[], save_proficiencies=[], languages=[], other_proficiencies=[],
+    )
+    db.add(row); db.commit()
+    return RedirectResponse(f"/tools/character-builder/{row.public_id}", 303)
+
+
+@router.post("/{public_id}/delete")
+def delete_character(public_id: str, user: User = Depends(require_user), db: Session = Depends(get_db)):
+    row = _character_or_404(db, public_id, user)
+    db.delete(row); db.commit()
+    return RedirectResponse("/tools/character-builder", 303)
+
+
+@router.get("/{public_id}", response_class=HTMLResponse)
+def edit_character(request: Request, public_id: str, step: str | None = None, user: User = Depends(require_user), db: Session = Depends(get_db)):
+    row = _character_or_404(db, public_id, user)
+    active = step if step in STEP_KEYS else (row.current_step if row.current_step in STEP_KEYS else "identity")
+    context = _step_context(db, row, active)
+    context.update({"tools_section": "character-builder"})
+    return templates.TemplateResponse(request, "tools_character_builder.html", context)
+
+
+@router.get("/{public_id}/step/{step}", response_class=HTMLResponse)
+def get_step(request: Request, public_id: str, step: str, user: User = Depends(require_user), db: Session = Depends(get_db)):
+    if step not in STEP_KEYS:
+        raise HTTPException(404)
+    row = _character_or_404(db, public_id, user)
+    row.current_step = step; db.commit()
+    return _render_stage(request, db, row, step)
+
+
+@router.post("/{public_id}/step/{step}", response_class=HTMLResponse)
+async def save_step(request: Request, public_id: str, step: str, user: User = Depends(require_user), db: Session = Depends(get_db)):
+    if step not in STEP_KEYS:
+        raise HTTPException(404)
+    row = _character_or_404(db, public_id, user)
+    form = await request.form()
+    next_step = str(form.get("next_step") or step)
+    if next_step not in STEP_KEYS:
+        next_step = step
+
+    if step == "identity":
+        old_source = row.source_document
+        row.name = str(form.get("name") or row.name).strip() or "New Character"
+        row.level = max(1, min(20, int(form.get("level") or row.level)))
+        row.experience_points = max(0, int(form.get("experience_points") or 0))
+        row.source_document = str(form.get("source_document") or "") or None
+        source = next((item for item in _source_options(db) if item["key"] == row.source_document), None)
+        row.game_system_key = (source or {}).get("game_system_key") or None
+        if old_source and old_source != row.source_document:
+            row.species_key=row.heritage_key=row.class_key=row.subclass_key=row.background_key=None
+            row.selected_spells=[]; row.prepared_spells=[]; row.selected_equipment=[]; row.feats=[]
+            row.skill_proficiencies=[]; row.save_proficiencies=[]
+    elif step == "species":
+        row.species_key = str(form.get("species_key") or "") or None
+        row.heritage_key = str(form.get("heritage_key") or "") or None
+    elif step == "class":
+        row.class_key = str(form.get("class_key") or "") or None
+        row.subclass_key = str(form.get("subclass_key") or "") or None
+        class_entity = find_character_entity(db, row, ["class", "classe"], row.class_key)
+        row.save_proficiencies = class_save_proficiencies(class_entity)
+    elif step == "abilities":
+        method = str(form.get("ability_method") or "standard_array")
+        row.ability_method = method if method in {"standard_array", "point_buy", "rolled", "manual"} else "manual"
+        scores = {}
+        for ability in ABILITIES:
+            scores[ability] = max(1, min(20, int(form.get(ability) or 10)))
+        row.ability_scores = scores
+    elif step == "background":
+        row.background_key = str(form.get("background_key") or "") or None
+        row.alignment_key = str(form.get("alignment_key") or "") or None
+        row.skill_proficiencies = list(dict.fromkeys(str(v) for v in form.getlist("skills") if v))
+        row.languages = [str(v).strip() for v in str(form.get("languages") or "").split(",") if str(v).strip()]
+        row.other_proficiencies = [str(v).strip() for v in str(form.get("other_proficiencies") or "").split(",") if str(v).strip()]
+    elif step == "gear":
+        row.selected_equipment = list(dict.fromkeys(str(v) for v in form.getlist("equipment") if v))
+        row.currency = {coin: max(0, int(form.get(coin) or 0)) for coin in ("cp","sp","ep","gp","pp")}
+    elif step == "spells":
+        row.selected_spells = list(dict.fromkeys(str(v) for v in form.getlist("spells") if v))
+        selected = set(row.selected_spells)
+        row.prepared_spells = [str(v) for v in form.getlist("prepared") if str(v) in selected]
+        row.feats = list(dict.fromkeys(str(v) for v in form.getlist("feats") if v))
+    elif step == "details":
+        fields = ["player_name","inspiration","personality_traits","ideals","bonds","flaws","age","height","weight","eyes","skin","hair","appearance","backstory","allies","symbol","treasure","additional_features","notes"]
+        details = dict(row.details_json or {})
+        for field in fields:
+            details[field] = str(form.get(field) or "").strip()
+        details["current_hp"] = max(0, int(form.get("current_hp") or derive_character(db,row)["hp_max"]))
+        details["temp_hp"] = max(0, int(form.get("temp_hp") or 0))
+        row.details_json = details
+    elif step == "review":
+        row.is_complete = bool(form.get("is_complete"))
+
+    row.current_step = next_step
+    db.commit(); db.refresh(row)
+    if request.headers.get("HX-Request") == "true":
+        response = _render_stage(request, db, row, next_step)
+        response.headers["HX-Push-Url"] = f"/tools/character-builder/{row.public_id}?step={next_step}"
+        return response
+    return RedirectResponse(f"/tools/character-builder/{row.public_id}?step={next_step}", 303)
+
+
+@router.get("/{public_id}/print", response_class=HTMLResponse)
+def print_character(request: Request, public_id: str, user: User = Depends(require_user), db: Session = Depends(get_db)):
+    row = _character_or_404(db, public_id, user)
+    return templates.TemplateResponse(request, "character_print.html", {"derived": derive_character(db, row), "character": row})
+
+
+@router.get("/{public_id}/pdf")
+def character_pdf(request: Request, public_id: str, user: User = Depends(require_user), db: Session = Depends(get_db)):
+    row = _character_or_404(db, public_id, user)
+    derived = derive_character(db, row)
+    html = templates.get_template("character_print.html").render(request=request, derived=derived, character=row, pdf_mode=True)
+    try:
+        from weasyprint import HTML
+        pdf = HTML(string=html, base_url=str(Path(__file__).parent)).write_pdf()
+    except Exception as exc:
+        raise HTTPException(503, f"PDF export is unavailable: {exc}") from exc
+    safe_name = re.sub(r"[^A-Za-z0-9._-]+", "_", row.name).strip("_") or "character"
+    return Response(pdf, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{safe_name}_character_sheet.pdf"'})

@@ -336,3 +336,12 @@ This release adds generated-result list assignment, modernizes My Lists, and int
 - Made the Feat Evaluator Hide Blocked control compact and correctly sized.
 - Added immediate client-side Game System filtering to the Weapons Evaluator.
 - Added immediate weapon-name filtering while preserving selected comparison records.
+
+## v0.31.0 - Character Builder
+
+- Added persistent user-owned characters and a nine-stage HTMX Character Builder.
+- Added source-aware Species/Race, Class, Background, Equipment, Spell, and Feat choices from local Open5e data.
+- Added character derivation for proficiency, abilities, HP, AC, initiative, saves, skills, attacks, passive Perception, and spellcasting.
+- Added three-page print output and direct PDF generation with WeasyPrint.
+- Added Docker PDF-rendering dependencies and Character Builder architecture documentation.
+- Added v0.31 regression tests.
