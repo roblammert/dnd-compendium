@@ -14,7 +14,7 @@ from app.models import Entity, User, UserEntityList, UserEntityListItem
 from app.visibility import visible_types
 
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-templates.env.globals["app_version"] = "0.31.10"
+templates.env.globals["app_version"] = "0.31.11"
 templates.env.globals["app_name"] = get_settings().app_name
 router = APIRouter()
 

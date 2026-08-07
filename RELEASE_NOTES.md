@@ -442,3 +442,12 @@ This release adds generated-result list assignment, modernizes My Lists, and int
 - Removed inline feat benefit/description previews from the Spells & Feats step.
 - Kept feat name, source, prerequisite/status text, selection control, and More Info action visible.
 - Detailed feat content remains available through the read-only Character Builder reference modal.
+
+## v0.31.11 - Character Builder review state and completion lifecycle
+
+- Reopening a saved character from the Character Library now always starts at Step 1: Identity.
+- Simplified Review & Character Sheet by removing the Combat and Features & Feats boxes.
+- Rebuilt the Review layout into a responsive derived-stat dashboard plus Identity and Ability Score summaries.
+- Moved the completion control into a dedicated Character Status panel so it remains inside the Review form and layout.
+- Any actual persisted change saved on Steps 1–8 now automatically clears `is_complete`, returning the character to Draft until explicitly completed again on Step 9.
+- Navigation-only changes do not invalidate completion because `current_step` is excluded from the completion-state fingerprint.

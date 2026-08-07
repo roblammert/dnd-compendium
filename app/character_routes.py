@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 import uuid
 from pathlib import Path
@@ -32,7 +33,7 @@ from app.character_rules_2024 import (
 
 router = APIRouter(prefix="/tools/character-builder")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-templates.env.globals["app_version"] = "0.31.8"
+templates.env.globals["app_version"] = "0.31.11"
 templates.env.globals["app_name"] = get_settings().app_name
 _md = MarkdownIt("commonmark", {"html": False, "linkify": True}).enable("table")
 templates.env.filters["render_markdown"] = lambda value: Markup(_md.render(str(value or "")))
@@ -126,6 +127,40 @@ def _feat_eligibility(feat: Entity, character: Character, derived: dict[str, Any
         # Unknown structured proficiency prerequisites are left enabled unless a clear mismatch is detectable.
         pass
     return (not reasons, ", ".join(reasons) if reasons else ("Requirements met" if text else "No prerequisite detected"))
+
+def _completion_fingerprint(character: Character) -> str:
+    """Return a stable snapshot of player-visible character state.
+
+    Workflow position and completion status are intentionally excluded so normal
+    navigation does not invalidate a completed character. Any persisted build
+    choice on steps 1-8 does.
+    """
+    payload = {
+        "name": character.name,
+        "level": character.level,
+        "experience_points": character.experience_points,
+        "species_key": character.species_key,
+        "heritage_key": character.heritage_key,
+        "class_key": character.class_key,
+        "subclass_key": character.subclass_key,
+        "background_key": character.background_key,
+        "alignment_key": character.alignment_key,
+        "ability_method": character.ability_method,
+        "ability_scores": character.ability_scores or {},
+        "selected_spells": character.selected_spells or [],
+        "prepared_spells": character.prepared_spells or [],
+        "selected_equipment": character.selected_equipment or [],
+        "feats": character.feats or [],
+        "skill_proficiencies": character.skill_proficiencies or [],
+        "save_proficiencies": character.save_proficiencies or [],
+        "languages": character.languages or [],
+        "other_proficiencies": character.other_proficiencies or [],
+        "currency": character.currency or {},
+        "details_json": character.details_json or {},
+        "choices_json": character.choices_json or {},
+    }
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+
 
 def _uid() -> str:
     return f"chr_{uuid.uuid4().hex[:24]}"
@@ -317,7 +352,7 @@ def edit_character(request: Request, public_id: str, step: str | None = None, us
     row = _character_or_404(db, public_id, user)
     if _enforce_2024_rules(row):
         db.commit(); db.refresh(row)
-    active = step if step in STEP_KEYS else (row.current_step if row.current_step in STEP_KEYS else "identity")
+    active = step if step in STEP_KEYS else "identity"
     context = _step_context(db, row, active)
     context.update({"tools_section": "character-builder"})
     return templates.TemplateResponse(request, "tools_character_builder.html", context)
@@ -348,6 +383,7 @@ async def save_step(request: Request, public_id: str, step: str, user: User = De
         raise HTTPException(404)
     row = _character_or_404(db, public_id, user)
     _enforce_2024_rules(row)
+    completion_before = _completion_fingerprint(row)
     form = await request.form()
     next_step = str(form.get("next_step") or step)
     if next_step not in STEP_KEYS:
@@ -455,6 +491,9 @@ async def save_step(request: Request, public_id: str, step: str, user: User = De
         row.details_json = details
     elif step == "review":
         row.is_complete = bool(form.get("is_complete"))
+
+    if step != "review" and _completion_fingerprint(row) != completion_before:
+        row.is_complete = False
 
     row.current_step = next_step
     db.commit(); db.refresh(row)

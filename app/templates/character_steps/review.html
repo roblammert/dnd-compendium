@@ -1,8 +1,29 @@
-<form class="character-step-form" method="post" action="/tools/character-builder/{{ character.public_id }}/step/review" hx-post="/tools/character-builder/{{ character.public_id }}/step/review" hx-target="#character-builder-stage" hx-swap="innerHTML">
-<header class="character-step-heading"><div><p class="panel-kicker">09</p><h2>Review & Character Sheet</h2><p>Review the derived sheet before marking the character complete. You can return to any step at any time; changing level or equipment recalculates the sheet.</p></div><span class="rules-badge">{{ 'COMPLETE' if character.is_complete else 'DRAFT' }}</span></header>
-{% if derived.warnings %}<section class="character-warning-panel"><h3>Rules Review</h3><p>Resolve these items before finalizing if they apply to your source/table:</p><ul>{% for warning in derived.warnings %}<li>{{ warning }}</li>{% endfor %}</ul></section>{% endif %}
-<section class="character-review-dashboard"><article><span>Armor Class</span><strong>{{ derived.armor_class }}</strong></article><article><span>Hit Points</span><strong>{{ derived.current_hp }}/{{ derived.hp_max }}</strong></article><article><span>Initiative</span><strong>{{ '%+d'|format(derived.initiative) }}</strong></article><article><span>Speed</span><strong>{{ derived.speed }} ft</strong></article><article><span>Proficiency</span><strong>+{{ derived.proficiency_bonus }}</strong></article><article><span>Passive Perception</span><strong>{{ derived.passive_perception }}</strong></article></section>
-<div class="review-columns"><section><h3>Ability Scores</h3>{% for ability in abilities %}<div class="review-stat"><b>{{ ability_names[ability] }}</b><span>{{ derived.scores[ability] }} ({{ '%+d'|format(derived.modifiers[ability]) }})</span></div>{% endfor %}</section><section><h3>Identity</h3><dl><dt>Species/Race</dt><dd>{{ derived.species.name if derived.species else '—' }}</dd><dt>Class</dt><dd>{{ derived.class_entity.name if derived.class_entity else '—' }} {{ character.level }}</dd><dt>Background</dt><dd>{{ derived.background.name if derived.background else '—' }}</dd><dt>Alignment</dt><dd>{{ derived.alignment.name if derived.alignment else '—' }}</dd></dl></section><section><h3>Combat</h3>{% for attack in derived.attacks %}<div class="review-stat"><b>{{ attack.name }}</b><span>{{ '%+d'|format(attack.attack_bonus) }} · {{ attack.damage }}</span></div>{% else %}<p>No weapon attacks selected.</p>{% endfor %}</section><section><h3>Features & Feats</h3>{% for feature in derived.class_features %}<div class="review-stat"><b>{{ feature.name }}</b><span>Level {{ feature.level }}</span></div>{% endfor %}{% for feat in derived.feats %}<div class="review-stat"><b>{{ feat.name }}</b><span>Feat</span></div>{% endfor %}{% if not derived.class_features and not derived.feats %}<p>No structured class features or feats detected.</p>{% endif %}</section></div>
-<div class="sheet-actions"><a class="secondary-action" href="/tools/character-builder/{{ character.public_id }}/print" target="_blank">Printable Sheet</a><a class="primary-action button-link" href="/tools/character-builder/{{ character.public_id }}/pdf">Download PDF</a><label class="complete-toggle"><input type="checkbox" name="is_complete" value="1" {% if character.is_complete %}checked{% endif %}> Mark character complete</label></div>
-<footer class="character-step-actions"><button type="button" class="secondary-action" data-character-nav-target="details">Previous</button><button name="next_step" value="review">Save Character</button></footer></form>
-
+<form class="character-step-form review-character-step" method="post" action="/tools/character-builder/{{ character.public_id }}/step/review" hx-post="/tools/character-builder/{{ character.public_id }}/step/review" hx-target="#character-builder-stage" hx-swap="innerHTML">
+<header class="character-step-heading"><div><p class="panel-kicker">09</p><h2>Review &amp; Character Sheet</h2><p>Confirm the core character details and derived numbers, then mark the character complete when you are satisfied with the build.</p></div><span class="rules-badge">{{ 'COMPLETE' if character.is_complete else 'DRAFT' }}</span></header>
+{% if derived.warnings %}<section class="character-warning-panel"><h3>Rules Review</h3><p>Resolve these items before finalizing if they apply:</p><ul>{% for warning in derived.warnings %}<li>{{ warning }}</li>{% endfor %}</ul></section>{% endif %}
+<section class="character-review-dashboard" aria-label="Derived character statistics">
+  <article><span>Armor Class</span><strong>{{ derived.armor_class }}</strong></article>
+  <article><span>Hit Points</span><strong>{{ derived.current_hp }}/{{ derived.hp_max }}</strong></article>
+  <article><span>Initiative</span><strong>{{ '%+d'|format(derived.initiative) }}</strong></article>
+  <article><span>Speed</span><strong>{{ derived.speed }} ft</strong></article>
+  <article><span>Proficiency</span><strong>+{{ derived.proficiency_bonus }}</strong></article>
+  <article><span>Passive Perception</span><strong>{{ derived.passive_perception }}</strong></article>
+</section>
+<div class="review-summary-grid">
+  <section class="review-summary-card"><h3>Identity</h3><dl class="review-identity-list">
+    <div><dt>Character</dt><dd>{{ character.name }}</dd></div>
+    <div><dt>Species / Race</dt><dd>{{ derived.species.name if derived.species else '—' }}</dd></div>
+    <div><dt>Class &amp; Level</dt><dd>{{ derived.class_entity.name if derived.class_entity else '—' }} {{ character.level }}</dd></div>
+    <div><dt>Background</dt><dd>{{ derived.background.name if derived.background else '—' }}</dd></div>
+    <div><dt>Alignment</dt><dd>{{ derived.alignment.name if derived.alignment else '—' }}</dd></div>
+    <div><dt>Experience</dt><dd>{{ '{:,}'.format(character.experience_points or 0) }} XP</dd></div>
+  </dl></section>
+  <section class="review-summary-card"><h3>Ability Scores</h3><div class="review-ability-grid">{% for ability in abilities %}<div class="review-ability-row"><b>{{ ability|upper }}</b><strong>{{ derived.scores[ability] }}</strong><span>{{ '%+d'|format(derived.modifiers[ability]) }}</span></div>{% endfor %}</div></section>
+</div>
+<section class="review-completion-panel">
+  <div><p class="eyebrow">Character Status</p><h3>{{ 'Character Complete' if character.is_complete else 'Character Draft' }}</h3><p>Any saved change on Steps 1–8 returns this character to Draft so the finished sheet is never silently out of date.</p></div>
+  <label class="complete-toggle"><input type="checkbox" name="is_complete" value="1" {% if character.is_complete %}checked{% endif %}> <span>Mark character as complete</span></label>
+</section>
+<div class="review-export-actions"><a class="secondary-action button-link" href="/tools/character-builder/{{ character.public_id }}/print" target="_blank">Printable Sheet</a><a class="primary-action button-link" href="/tools/character-builder/{{ character.public_id }}/pdf">Download PDF</a></div>
+<footer class="character-step-actions"><button type="button" class="secondary-action" data-character-nav-target="details">Previous</button><button name="next_step" value="review">Save Character</button></footer>
+</form>

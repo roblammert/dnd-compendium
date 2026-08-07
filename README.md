@@ -109,7 +109,7 @@ The public Dungeon Master tools include a mode-aware Encounter Builder with CR-b
 
 ### Character Builder
 
-Authenticated users have a persistent **Tools → Player → Character Builder** workspace. It uses the local Open5e cache and the user's preferred source to guide a character through identity/source, species/race, class, ability scores, background/proficiencies, equipment, spells/feats, narrative details, and final review.
+Authenticated users have a persistent **Tools → Player → Character Builder** workspace. It uses the local Open5e cache with the Character Builder's fixed D&D 5e 2024 rules layer to guide a character through identity, species/race, class, ability scores, background/proficiencies, equipment, spells/feats, narrative details, and final review.
 
 Character records are stored separately from reference entities. Derived values such as proficiency bonus, ability modifiers, hit points, Armor Class, initiative, saving throws, skills, passive Perception, attacks, and spellcasting numbers are recalculated from the saved choices.
 
@@ -135,3 +135,7 @@ Character creation now uses guarded sequential navigation, non-scrolling profici
 ### Character Builder v0.31.8
 
 Character Builder navigation now warns before leaving a dirty step and offers **Save & Move**, **Discard & Move**, or **Cancel**. Background language and proficiency choices render as readable rows without internal scrolling. Equipment and Spell search controls are explicitly non-submitting, Enter performs filtering rather than step navigation, Equipment filters use semantic Armor/Item/Weapon categories, and Spell level filtering uses normalized cached spell levels.
+
+### Character Builder v0.31.11
+
+Reopening a saved character now always starts at **01 Identity** unless an explicit internal workflow step is requested. The Review & Character Sheet step has been simplified to core derived statistics, Identity, Ability Scores, export actions, and a contained Character Status panel. Saving any actual change on Steps 1–8 automatically returns a previously completed character to Draft until the user explicitly marks it complete again on Step 9.
