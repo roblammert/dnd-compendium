@@ -550,3 +550,19 @@ This patch refines the printable character sheet.
 - Every spell level now has ten writable lines.
 - Spell-level line spacing matches the Cantrips writing area and remains contained within one US Letter spellcasting page.
 
+
+
+# D&D Compendium v0.32.7 Patch
+
+This patch refines the printable character sheet's core reference and inventory layout.
+
+## Changes
+
+- Equipment now has three complete Item / Type / Value / Weight groups across the page.
+- Added the Value column between Type and Weight in all three equipment groups.
+- Equipment Value uses the source-aware Item fallback for Weapons when the Weapon endpoint has no usable cost.
+- Blank equipment rows are the same height as populated rows so players can write additions during play.
+- Currency moved beneath the How Do I Roll guide.
+- Skill Proficiencies and Saving Throw Proficiencies moved directly beneath Proficiencies.
+- At-a-Glance Features now renders in two columns for better use of vertical space.
+

@@ -28,7 +28,7 @@ def _entity(entity_type, name, slug, data, *, source="srd-2024", system="5e-2024
 
 
 def test_print_moves_proficiencies_below_at_a_glance_and_removes_inventory_note():
-    assert PRINT.index("At-a-Glance Features") < PRINT.index("Skill Proficiencies") < PRINT.index("Saving Throw Proficiencies")
+    assert PRINT.index("Proficiencies") < PRINT.index("Skill Proficiencies") < PRINT.index("Saving Throw Proficiencies") < PRINT.index("At-a-Glance Features")
     detail = PRINT[PRINT.index("Inventory & Character Traits"):]
     assert "Currency is summarized on the core page" not in detail
 
@@ -52,7 +52,7 @@ def test_three_group_equipment_rows_include_blank_play_rows_and_weapon_item_weig
         assert len(rows) == 8
         assert len(rows[0]) == 3
         assert rows[0][0]["weight"] == "4.0 lb."
-        assert rows[-1][2] == {"name": "", "type": "", "weight": ""}
+        assert rows[-1][2] == {"name": "", "type": "", "value": "", "weight": ""}
 
 
 def test_spell_level_boxes_have_ten_cantrip_height_lines():

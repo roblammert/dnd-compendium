@@ -400,10 +400,11 @@ def equipment_weight_data(db: Session, entity: Entity) -> str:
 
 
 def equipment_print_columns(db: Session, equipment: list[Entity], *, groups: int = 3, minimum_rows: int = 8) -> list[list[dict[str, str]]]:
-    """Build balanced printable equipment rows across three Item/Type/Weight groups.
+    """Build balanced printable equipment rows across three Item/Type/Value/Weight groups.
 
-    A few blank rows are intentionally retained so the printed sheet can be updated
-    during play.
+    Blank rows deliberately use the same height as populated rows so players can add
+    equipment cleanly during play. Weapon cost and weight use the same source-aware
+    Item fallback used by the Weapon card.
     """
     groups = max(1, int(groups))
     used_rows = math.ceil(len(equipment) / groups) if equipment else 0
@@ -416,11 +417,13 @@ def equipment_print_columns(db: Session, equipment: list[Entity], *, groups: int
         group_items += [None] * max(0, row_count - len(group_items))
         for item in group_items:
             if item is None:
-                group_rows.append({"name": "", "type": "", "weight": ""})
+                group_rows.append({"name": "", "type": "", "value": "", "weight": ""})
             else:
+                cost = equipment_cost_data(db, item)
                 group_rows.append({
                     "name": item.name,
                     "type": item.entity_type.replace("_", " ").title(),
+                    "value": "" if cost.get("value") in {None, "", "—"} else str(cost.get("value")),
                     "weight": equipment_weight_data(db, item),
                 })
         columns.append(group_rows)

@@ -238,3 +238,7 @@ The printable Spellcasting page renders up to eight cantrip lines, nine writable
 ## v0.32.6 printable-sheet refinements
 
 The core play page now keeps Skill Proficiencies and Saving Throw Proficiencies beneath At-a-Glance Features. The Inventory page uses three balanced Item/Type/Weight groups with blank write-in rows; Weapon weights use source-aware matching Item metadata when necessary. The Spellcasting page provides ten handwriting-height lines for each spell level while remaining on a US Letter page with the Spell Usage reference above the footer.
+
+## v0.32.7 Printable Sheet Layout
+
+The core-page reference layout now keeps Currency beneath the How Do I Roll guide, groups Skill and Saving Throw proficiencies directly with the Proficiencies panel, and renders At-a-Glance Features in two columns. The equipment worksheet uses three full Item / Type / Value / Weight groups with equal-height writable blank rows. Weapon value and weight continue to use the source-aware matching Item fallback when necessary.
