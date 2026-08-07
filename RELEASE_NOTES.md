@@ -523,3 +523,14 @@ Every printed page includes `Generated with Rob's D&D Compendium - {version} - {
 - Cantrips become permanently locked when a character is marked complete.
 - Printable Spellcasting page now always provides eight cantrip lines and nine writable spell-level boxes with calculated slot totals.
 - Spell Usage is anchored at the bottom and explains fixed cantrips, prepared-spell changes after Long Rest/level-up, slot use, casting math, concentration, and components.
+
+
+# D&D Compendium v0.32.5 Patch
+
+## Spellcasting Print Layout
+
+- Every spell level (1–9) now contains nine writable spell lines.
+- Ability, Save DC, Attack, and Cantrips summary cards are stacked vertically.
+- The summary stack shares the top row with the eight-line Cantrips panel.
+- The layout remains US Letter and keeps Spell Usage above the footer.
+
