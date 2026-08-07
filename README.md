@@ -136,6 +136,6 @@ Character creation now uses guarded sequential navigation, non-scrolling profici
 
 Character Builder navigation now warns before leaving a dirty step and offers **Save & Move**, **Discard & Move**, or **Cancel**. Background language and proficiency choices render as readable rows without internal scrolling. Equipment and Spell search controls are explicitly non-submitting, Enter performs filtering rather than step navigation, Equipment filters use semantic Armor/Item/Weapon categories, and Spell level filtering uses normalized cached spell levels.
 
-### Character Builder v0.31.11
+### Character Builder v0.31.12
 
 Reopening a saved character now always starts at **01 Identity** unless an explicit internal workflow step is requested. The Review & Character Sheet step has been simplified to core derived statistics, Identity, Ability Scores, export actions, and a contained Character Status panel. Saving any actual change on Steps 1–8 automatically returns a previously completed character to Draft until the user explicitly marks it complete again on Step 9.

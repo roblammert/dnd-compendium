@@ -451,3 +451,10 @@ This release adds generated-result list assignment, modernizes My Lists, and int
 - Moved the completion control into a dedicated Character Status panel so it remains inside the Review form and layout.
 - Any actual persisted change saved on Steps 1–8 now automatically clears `is_complete`, returning the character to Draft until explicitly completed again on Step 9.
 - Navigation-only changes do not invalidate completion because `current_step` is excluded from the completion-state fingerprint.
+
+## v0.31.12 - Character Review layout alignment hotfix
+
+- Re-aligned Review ability score rows so ability abbreviation, score, and modifier remain cleanly on one line.
+- Increased Review ability score prominence while preserving the smaller modifier typography.
+- Replaced the oversized completion checkbox presentation with an explicitly sized native checkbox and compact inline label.
+- Constrained the completion control so its label remains inside the Character Status panel.

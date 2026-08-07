@@ -425,3 +425,13 @@ button:disabled { cursor:not-allowed; opacity:.55; }
 .review-completion-panel .complete-toggle{margin:0;flex:0 0 auto;padding:.7rem .8rem;border:1px solid #789296;background:#fff}
 .review-export-actions{display:flex;gap:.7rem;flex-wrap:wrap;margin:.8rem 0}
 @media(max-width:760px){.review-character-step .character-review-dashboard{grid-template-columns:repeat(2,minmax(0,1fr))}.review-summary-grid{grid-template-columns:1fr}.review-completion-panel{align-items:flex-start;flex-direction:column}.review-ability-grid{grid-template-columns:1fr}}
+
+
+/* v0.31.12 — Review page alignment hotfix */
+.review-ability-row{grid-template-columns:auto 1fr auto;gap:.45rem;padding:.55rem .65rem}
+.review-ability-row b{min-width:2.2rem}
+.review-ability-row strong{justify-self:end;font-size:1.25rem;line-height:1}
+.review-ability-row span{justify-self:end;min-width:1.8rem;font-size:.8rem;line-height:1;color:var(--muted)}
+.review-completion-panel .complete-toggle{display:inline-flex;align-items:center;justify-content:flex-start;gap:.55rem;max-width:260px;width:auto;min-width:0;padding:.55rem .7rem;white-space:normal}
+.review-completion-panel .complete-toggle input[type=checkbox]{appearance:auto;width:1rem!important;height:1rem!important;min-width:1rem!important;max-width:1rem!important;padding:0!important;margin:0!important;flex:0 0 1rem}
+.review-completion-panel .complete-toggle span{display:inline;min-width:0;line-height:1.25;font:800 .82rem/1.25 system-ui}

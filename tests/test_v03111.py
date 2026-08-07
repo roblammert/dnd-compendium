@@ -2,8 +2,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-def test_v03111_version():
-    assert '0.31.11' in (ROOT / 'pyproject.toml').read_text()
+def test_v03111_version_marker_was_present_in_release_history():
+    assert '## v0.31.11' in (ROOT / 'RELEASE_NOTES.md').read_text()
 
 def test_reopening_character_defaults_to_identity():
     routes=(ROOT/'app/character_routes.py').read_text()
