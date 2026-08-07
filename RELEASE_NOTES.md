@@ -290,3 +290,10 @@ This release refines Alignment, Background, Class, Condition, Creature Type, Dam
 - Adds mixed-level party setup, objective, terrain, pace, creature-theme, scaling, safety, and diagnostics controls.
 - Preserves settings and kept monsters across regeneration.
 - Adds a responsive high-tech tactical workbench interface.
+
+## v0.29.1
+
+- Polished the Scenario Parameters cards so labels, selectors, and descriptions align without overflowing.
+- Applied Target Monster Count to XP Threshold, 2014 Adjusted XP, Story-First Benchmark, and CR Band generation.
+- Counted kept monsters against the requested target and generated only the remaining slots.
+- Rebuilt Loot Generator with the tactical workbench header, workflow navigation, structured panels, metrics dashboard, sticky generation dock, and matching roster table.

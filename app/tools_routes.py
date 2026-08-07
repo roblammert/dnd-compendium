@@ -15,7 +15,7 @@ from app.services import build_monster_card, build_weapon_card, format_cost, for
 
 router = APIRouter(prefix="/tools")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-templates.env.globals["app_version"] = "0.29.0"
+templates.env.globals["app_version"] = "0.29.1"
 templates.env.globals["app_name"] = get_settings().app_name
 
 XP_THRESHOLDS = {
@@ -153,15 +153,20 @@ def encounter_builder(
             if row["entity"].public_id not in seen:
                 selected.append(dict(row, kept=False)); seen.add(row["entity"].public_id)
 
+    target_count = max(1, min(30, monster_count))
+    if mode == "composition":
+        target_count = {"solo":1,"duo":2,"mixed":4,"patrol":6,"horde":10}[composition]
+
     if generate:
         available = [row for row in filtered_rows if row["entity"].public_id not in seen]
+        slots_remaining = max(0, target_count - len(selected))
         if mode == "random_cr":
             pool = [row for row in available if cr_min <= row["cr"] <= cr_max]
-            add_random(pool, max(0, max(1, min(30, monster_count)) - len(selected)))
+            add_random(pool, slots_remaining)
         elif mode == "xp_budget":
             remaining = max(0, (budget or 0) - sum(row["xp"] for row in selected))
             pool = sorted([row for row in available if 0 < row["xp"] <= remaining], key=lambda r:r["xp"], reverse=True)
-            while pool and remaining > 0 and len(selected) < 30:
+            while pool and remaining > 0 and len(selected) < target_count:
                 eligible = [row for row in pool if row["xp"] <= remaining]
                 if not eligible: break
                 row = random.choice(eligible[:min(10,len(eligible))])
@@ -174,7 +179,7 @@ def encounter_builder(
                 trial = selected + [row]
                 if adjusted_xp(trial) <= (budget or 0):
                     selected.append(dict(row, kept=False)); seen.add(row["entity"].public_id)
-                if adjusted_xp(selected) >= (budget or 0) * .85 or len(selected) >= 30: break
+                if len(selected) >= target_count: break
         elif mode == "lazy_story":
             target = lazy_limit * {"medium":.65,"hard":.85,"deadly":1.0}[difficulty]
             pool = [row for row in available if row["cr"] > 0 and row["cr"] <= max(target, .25)]
@@ -182,9 +187,9 @@ def encounter_builder(
             for row in pool:
                 if sum(r["cr"] for r in selected) + row["cr"] <= target:
                     selected.append(dict(row, kept=False)); seen.add(row["entity"].public_id)
-                if sum(r["cr"] for r in selected) >= target * .85 or len(selected) >= 30: break
+                if len(selected) >= target_count: break
         elif mode == "composition":
-            profile = {"solo":1,"duo":2,"mixed":4,"patrol":6,"horde":10}[composition]
+            profile = target_count
             target_cr = max(.125, average_level / {"solo":1.1,"duo":1.8,"mixed":3.2,"patrol":5,"horde":8}[composition])
             pool = sorted(available, key=lambda r: abs(r["cr"]-target_cr))
             window = pool[:max(profile*4, 12)]
@@ -229,7 +234,7 @@ def encounter_builder(
     params = {"mode":mode,"cr_min":cr_min,"cr_max":cr_max,"monster_count":monster_count,"party_size":party_size,
               "average_party_level":average_party_level,"party_levels":levels,"difficulty":difficulty,"scale_mode":scale_mode,
               "baseline_party_size":baseline_party_size,"composition":composition,"objective":objective,"terrain":terrain,
-              "pace":pace,"creature_type":creature_type}
+              "pace":pace,"creature_type":creature_type,"target_count":target_count}
     return templates.TemplateResponse(request,"tools_encounter_builder.html",_tool_context("encounter-builder",
         selected=selected,budget=budget,budget_breakdown=budget_breakdown,budget_status=budget_status,total_xp=raw_xp,
         adjusted_xp=adjusted_total,encounter_multiplier=multiplier,total_cr=total_cr,lazy_limit=lazy_limit,lazy_status=lazy_status,

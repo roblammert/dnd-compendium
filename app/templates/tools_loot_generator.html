@@ -1,69 +1,39 @@
 {% extends "tools_layout.html" %}
 {% block tools_content %}
-<header class="tool-header">
-  <p class="eyebrow">Dungeon Master</p>
-  <h1>Loot Generator</h1>
-  <p>Generate a configurable collection of compendium equipment, items, magic items, and weapons. Keep selected rows between rolls.</p>
+<header class="encounter-command-header loot-command-header">
+  <div><p class="eyebrow">Dungeon Master · Treasure Design Suite</p><h1>Loot Generator</h1><p>Build a value-controlled treasure roster from compendium equipment, items, magic items, and weapons. Lock useful results, reroll the rest, and keep the entire configuration intact.</p></div>
+  <div class="command-readout"><span>STATUS</span><strong>READY</strong><small>{{ rows|length }} entries · {{ '%.2f'|format(total_value_gp) }} GP</small></div>
 </header>
-<form class="tool-panel" method="get" id="lootForm">
-  <input type="hidden" name="generate" value="1">
-  <div class="tool-grid">
-    <label>Minimum entries<input type="number" name="count_min" min="1" value="{{ params.count_min }}"></label>
-    <label>Maximum entries<input type="number" name="count_max" min="1" value="{{ params.count_max }}"></label>
-    <label class="full-span slider-control">Maximum value per entry: <output id="entryValueOutput">{{ params.max_value_gp }}</output> GP
-      <input id="entryValueSlider" type="range" name="max_value_gp" min="0" max="1000" step="5" value="{{ params.max_value_gp }}">
-    </label>
-    <label class="full-span slider-control">Maximum total list value: <output id="totalValueOutput">{{ params.max_total_value_gp }}</output> GP
-      <input id="totalValueSlider" type="range" name="max_total_value_gp" min="0" max="10000" step="25" value="{{ params.max_total_value_gp }}">
-    </label>
-  </div>
+<form method="get" id="lootForm" class="encounter-workbench loot-workbench"><input type="hidden" name="generate" value="1">
+  <nav class="encounter-stepper loot-stepper" aria-label="Loot workflow"><a href="#loot-volume">1 · Volume</a><a href="#loot-value">2 · Value</a><a href="#loot-content">3 · Content</a><a href="#loot-roster">4 · Roster</a></nav>
 
-  <fieldset class="loot-options">
-    <legend>Include</legend>
-    {% for name,label in [('include_equipment','Equipment'),('include_items','Items'),('include_magicitems','Magic Items'),('include_weapons','Weapons')] %}
-    <label class="form-check"><input class="form-check-input" type="checkbox" name="{{ name }}" value="1" {% if params[name] %}checked{% endif %}><span class="form-check-label">{{ label }}</span></label>
-    {% endfor %}
-  </fieldset>
+  <section id="loot-volume" class="workbench-panel">
+    <div class="panel-kicker">01</div><div class="panel-title"><h2>Loot Volume</h2><p>Set the number of rows to generate. Kept entries count toward the final total.</p></div>
+    <div class="method-field-grid"><label>Minimum entries<input type="number" name="count_min" min="1" max="100" value="{{ params.count_min }}"></label><label>Maximum entries<input type="number" name="count_max" min="1" max="100" value="{{ params.count_max }}"></label></div>
+  </section>
 
-  <fieldset class="loot-options" id="rarityFieldset" {% if not params.include_magicitems %}disabled{% endif %}>
-    <legend>Magic Item Rarities</legend>
-    {% for r in ['Common','Uncommon','Rare','Very Rare','Legendary','Artifact'] %}
-    <label class="form-check"><input class="form-check-input" type="checkbox" name="rarity" value="{{ r }}" {% if r in params.rarity %}checked{% endif %}><span class="form-check-label">{{ r }}</span></label>
-    {% endfor %}
-  </fieldset>
+  <section id="loot-value" class="workbench-panel">
+    <div class="panel-kicker">02</div><div class="panel-title"><h2>Value Envelope</h2><p>Control individual-item cost and the maximum combined value of the generated roster.</p></div>
+    <div class="loot-slider-grid">
+      <label class="tactical-slider"><span>Maximum value per entry</span><strong><output id="entryValueOutput">{{ params.max_value_gp }}</output> GP</strong><input id="entryValueSlider" type="range" name="max_value_gp" min="0" max="1000" step="5" value="{{ params.max_value_gp }}"><small>Priced entries above this amount are excluded.</small></label>
+      <label class="tactical-slider"><span>Maximum total list value</span><strong><output id="totalValueOutput">{{ params.max_total_value_gp }}</output> GP</strong><input id="totalValueSlider" type="range" name="max_total_value_gp" min="0" max="10000" step="25" value="{{ params.max_total_value_gp }}"><small>Kept rows are included in the running total.</small></label>
+    </div>
+  </section>
 
-  <div class="loot-summary"><span>Current generated value</span><strong>{{ '%.2f'|format(total_value_gp) }} GP</strong><small>Kept rows count toward the total limit.</small></div>
-  <button>Generate loot</button>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Keep</th><th>Name</th><th>Type</th><th>Cost</th><th>Weight</th><th>Rarity</th></tr></thead>
-      <tbody>
-      {% for row in rows %}
-        <tr>
-          <td>{% if row.public_id %}<input type="checkbox" name="keep" value="{{ row.public_id }}" {% if row.kept %}checked{% endif %}>{% endif %}</td>
-          <td>{% if row.url %}<a href="{{ row.url }}">{{ row.name }}</a>{% else %}{{ row.name }}{% endif %}</td>
-          <td>{{ row.type }}</td>
-          <td>{% if row.cost_tooltip %}<span class="cost-tooltip" title="{{ row.cost_tooltip }}">{{ row.cost }}</span>{% else %}{{ row.cost }}{% endif %}</td>
-          <td>{{ row.weight }}</td><td>{{ row.rarity }}</td>
-        </tr>
-      {% else %}<tr><td colspan="6" class="empty-table-state">Configure the generator and click Generate loot.</td></tr>{% endfor %}
-      </tbody>
-    </table>
-  </div>
+  <section id="loot-content" class="workbench-panel">
+    <div class="panel-kicker">03</div><div class="panel-title"><h2>Content Profile</h2><p>Choose which compendium categories may appear and constrain magic-item rarity.</p></div>
+    <div class="loot-content-grid">
+      <fieldset class="tactical-fieldset"><legend>Include</legend><div class="toggle-grid">{% for name,label in [('include_equipment','Equipment'),('include_items','Items'),('include_magicitems','Magic Items'),('include_weapons','Weapons')] %}<label class="tactical-toggle"><input type="checkbox" name="{{ name }}" value="1" {% if params[name] %}checked{% endif %}><span>{{ label }}</span></label>{% endfor %}</div></fieldset>
+      <fieldset class="tactical-fieldset" id="rarityFieldset" {% if not params.include_magicitems %}disabled{% endif %}><legend>Magic Item Rarities</legend><div class="toggle-grid rarity-grid">{% for r in ['Common','Uncommon','Rare','Very Rare','Legendary','Artifact'] %}<label class="tactical-toggle"><input type="checkbox" name="rarity" value="{{ r }}" {% if r in params.rarity %}checked{% endif %}><span>{{ r }}</span></label>{% endfor %}</div></fieldset>
+    </div>
+  </section>
+
+  <section class="encounter-dashboard loot-dashboard"><article><span>Entries</span><strong>{{ rows|length }}</strong><small>{{ params.count_min }}–{{ params.count_max }} target</small></article><article><span>Current Value</span><strong>{{ '%.2f'|format(total_value_gp) }}</strong><small>GP equivalent</small></article><article><span>Per Entry Cap</span><strong>{{ '%.0f'|format(params.max_value_gp) }}</strong><small>GP</small></article><article><span>Total Cap</span><strong>{{ '%.0f'|format(params.max_total_value_gp) }}</strong><small>GP</small></article></section>
+  <div class="generate-dock"><button class="primary-action">Generate Loot</button><span>Checked rows remain locked. All filters and value limits remain selected.</span></div>
+
+  <section id="loot-roster" class="workbench-panel roster-panel"><div class="panel-kicker">04</div><div class="panel-title"><h2>Loot Roster</h2><p>Review generated treasure, source-linked entries, cost conversions, and carry weight.</p></div><div class="table-wrap"><table class="encounter-table loot-table"><thead><tr><th>Keep</th><th>Name</th><th>Type</th><th>Cost</th><th>Weight</th><th>Rarity</th></tr></thead><tbody>{% for row in rows %}<tr><td>{% if row.public_id %}<input class="keep-checkbox" type="checkbox" name="keep" value="{{ row.public_id }}" {% if row.kept %}checked{% endif %}>{% endif %}</td><td>{% if row.url %}<a href="{{ row.url }}">{{ row.name }}</a>{% else %}{{ row.name }}{% endif %}</td><td><span class="analysis-pill">{{ row.type }}</span></td><td>{% if row.cost_tooltip %}<span class="cost-tooltip" title="{{ row.cost_tooltip }}">{{ row.cost }}</span>{% else %}{{ row.cost }}{% endif %}</td><td>{{ row.weight }}</td><td>{{ row.rarity }}</td></tr>{% else %}<tr><td colspan="6" class="empty-table-state">Configure the treasure profile and generate a loot roster.</td></tr>{% endfor %}</tbody></table></div></section>
 </form>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-  const bindSlider = (sliderId, outputId) => {
-    const slider = document.getElementById(sliderId); const output = document.getElementById(outputId);
-    slider.addEventListener('input', () => { output.value = slider.value; });
-  };
-  bindSlider('entryValueSlider', 'entryValueOutput'); bindSlider('totalValueSlider', 'totalValueOutput');
-  const magicItems = document.querySelector('input[name="include_magicitems"]');
-  const rarityFieldset = document.getElementById('rarityFieldset');
-  const syncRarityState = () => { rarityFieldset.disabled = !magicItems.checked; };
-  magicItems.addEventListener('change', syncRarityState);
-  document.getElementById('lootForm').addEventListener('submit', () => { rarityFieldset.disabled = false; });
-  syncRarityState();
-});
+document.addEventListener('DOMContentLoaded',()=>{const bind=(sliderId,outputId)=>{const slider=document.getElementById(sliderId),output=document.getElementById(outputId);slider.addEventListener('input',()=>output.value=slider.value)};bind('entryValueSlider','entryValueOutput');bind('totalValueSlider','totalValueOutput');const magic=document.querySelector('input[name="include_magicitems"]'),rarity=document.getElementById('rarityFieldset');const sync=()=>rarity.disabled=!magic.checked;magic.addEventListener('change',sync);document.getElementById('lootForm').addEventListener('submit',()=>rarity.disabled=false);sync()});
 </script>
 {% endblock %}
