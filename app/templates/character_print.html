@@ -66,8 +66,8 @@ body { color:#1c1b19; font-family:Arial,Helvetica,sans-serif; background:#e5e1d8
 .ability-card { border:1px solid #b9a77f; background:#fffdf8; break-inside:avoid; }
 .ability-head { display:grid; grid-template-columns:42px 1fr 38px; align-items:center; border-bottom:1px solid #d9ccb2; min-height:34px; }
 .ability-abbr { font-weight:900; font-size:9pt; text-align:center; color:#5d4930; }
-.ability-score { font:700 18pt Georgia,serif; color:#173643; text-align:center; }
-.ability-mod { font-weight:800; font-size:10pt; text-align:center; border-left:1px solid #d9ccb2; padding:6px 0; }
+.ability-score { font:700 18pt Georgia,serif; color:#173643; text-align:center; border-left:0; border-right:0; }
+.ability-mod { font-weight:800; font-size:10pt; text-align:center; border-left:0; border-right:0; padding:6px 0; }
 .ability-save { display:grid; grid-template-columns:9px 32px 1fr; align-items:center; gap:3px; padding:3px 5px; background:#f4f0e7; font-size:7.2pt; }
 .dot { width:7px; height:7px; border:1px solid #1e2527; border-radius:50%; display:inline-block; }
 .dot.on { background:#173643; }
@@ -158,15 +158,15 @@ body { color:#1c1b19; font-family:Arial,Helvetica,sans-serif; background:#e5e1d8
 .spell-page { min-height:9.42in; display:flex; flex-direction:column; }
 .spell-workspace { flex:1 1 auto; min-height:0; }
 .cantrip-box { margin:0; height:100%; }
-.spell-level-grid { display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,minmax(1.58in,auto)); gap:6px; align-items:stretch; }
-.spell-level { width:100%; border:1px solid #b9a77f; break-inside:avoid-page; page-break-inside:avoid; min-height:.86in; display:flex; flex-direction:column; }
+.spell-level-grid { display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1.69in); gap:6px; align-items:stretch; }
+.spell-level { width:100%; border:1px solid #b9a77f; break-inside:avoid-page; page-break-inside:avoid; min-height:0; overflow:hidden; display:flex; flex-direction:column; }
 .spell-level h3 { display:flex; justify-content:space-between; align-items:center; margin:0; padding:4px 6px; background:#fff; color:#173643; border-bottom:1.5px solid #173643; font-size:7pt; text-transform:uppercase; letter-spacing:.06em; font-weight:900; }
 .spell-usage { margin-top:7px; break-inside:avoid-page; page-break-inside:avoid; flex:0 0 auto; }
 .spell-usage .panel-title { background:#fff; color:#173643; border-bottom:1.5px solid #173643; font-size:8pt; }
 .spell-usage-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px 10px; }
 .spell-usage-grid p { margin:0 0 5px; }
 .spell-line { display:grid; grid-template-columns:11px 1fr; gap:4px; align-items:center; border-bottom:1px dotted #d2c5ad; min-height:15px; padding:1px 5px; font-size:7.2pt; }
-.write-line { border-bottom:1px dotted #b9a77f; min-height:15px; margin:0 5px; }
+.write-line { border-bottom:1px dotted #b9a77f; min-height:0; flex:1 1 0; margin:0 5px; }
 .prepared { width:8px; height:8px; border:1px solid #333; border-radius:50%; display:inline-block; }
 .prepared.on { background:#fff; }
 .empty-note { color:#8a8176; font-style:italic; }
@@ -225,7 +225,6 @@ body { color:#1c1b19; font-family:Arial,Helvetica,sans-serif; background:#e5e1d8
       </div>
       <section class="player-guide"><h2>Hit Dice &amp; How to Use Them</h2><div class="guide-body"><p class="hit-dice-line"><strong>Hit Dice: {{ derived.hit_dice_guide.title }}</strong><span class="hit-dice-pips">{% for _ in range(character.level) %}<i class="hit-die-pip"></i>{% endfor %}</span></p><p><strong>Short Rest:</strong> {{ derived.hit_dice_guide.short_rest }}</p><p><strong>Long Rest:</strong> {{ derived.hit_dice_guide.long_rest }}</p><p><strong>Leveling Up:</strong> {{ derived.hit_dice_guide.level_up }}</p></div></section>
       <section class="player-guide"><h2>How Do I Roll...</h2><div class="guide-body"><p>For a saving throw, roll a d20 and add the Save value below. For an ability check, roll a d20 and add the base Check modifier; when a listed skill applies, use that skill's modifier instead.</p><table class="roll-guide-table"><thead><tr><th>Ability</th><th>Save</th><th>Check</th><th>Examples</th></tr></thead><tbody>{% for row in derived.roll_reference_rows %}<tr><td>{{ row.ability }}</td><td>{{ row.save }}</td><td>{{ row.check }}</td><td>{{ row.examples }}</td></tr>{% endfor %}</tbody></table>{% for note in derived.roll_reference_notes %}<p class="guide-note">{{ note }}</p>{% endfor %}</div></section>
-      <section class="panel"><h2 class="panel-title split-title"><span>Currency</span><span class="title-note">100 CP = 10 SP = 1 GP (PP = 10 GP)</span></h2><div class="panel-body"><div class="currency">{% for coin in ['cp','sp','gp','pp'] %}<div class="coin"><b>{{ coin|upper }}</b><span>{% if derived.currency[coin] %}{{ derived.currency[coin] }}{% else %}&nbsp;{% endif %}</span></div>{% endfor %}</div></div></section>
     </div>
     <div>
       <section class="panel"><h2 class="panel-title">Attacks & Spellcasting</h2><div class="panel-body"><table class="attack-table"><thead><tr><th>Attack</th><th>Bonus</th><th>Damage / Effect</th></tr></thead><tbody>
@@ -242,6 +241,7 @@ body { color:#1c1b19; font-family:Arial,Helvetica,sans-serif; background:#e5e1d8
       <section class="panel"><h2 class="panel-title">Skill Proficiencies</h2><div class="panel-body">{{ derived.skill_proficiencies|join(' · ') or '—' }}</div></section>
       <section class="panel"><h2 class="panel-title">Saving Throw Proficiencies</h2><div class="panel-body">{% for save in derived.saves if save.proficient %}{{ save.name }}{% if not loop.last %} · {% endif %}{% else %}—{% endfor %}</div></section>
       <section class="panel"><h2 class="panel-title">At-a-Glance Features</h2><div class="panel-body"><ul class="clean-list feature-list-two">{% for feature in derived.class_features[:8] %}<li>{{ feature.name }}</li>{% endfor %}{% for feat in derived.feats[:4] %}<li>Feat: {{ feat.name }}</li>{% endfor %}{% if not derived.class_features and not derived.feats %}<li class="empty-note">No features recorded.</li>{% endif %}</ul></div></section>
+      <section class="panel"><h2 class="panel-title split-title"><span>Currency</span><span class="title-note">100 CP = 10 SP = 1 GP (PP = 10 GP)</span></h2><div class="panel-body"><div class="currency">{% for coin in ['cp','sp','gp','pp'] %}<div class="coin"><b>{{ coin|upper }}</b><span>{% if derived.currency[coin] %}{{ derived.currency[coin] }}{% else %}&nbsp;{% endif %}</span></div>{% endfor %}</div></div></section>
     </div>
   </div>
 </section>

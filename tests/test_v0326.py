@@ -57,4 +57,4 @@ def test_three_group_equipment_rows_include_blank_play_rows_and_weapon_item_weig
 
 def test_spell_level_boxes_have_ten_cantrip_height_lines():
     assert 'for _ in range(10)' in PRINT
-    assert '.write-line { border-bottom:1px dotted #b9a77f; min-height:15px;' in PRINT
+    assert '.write-line { border-bottom:1px dotted #b9a77f; min-height:0; flex:1 1 0;' in PRINT

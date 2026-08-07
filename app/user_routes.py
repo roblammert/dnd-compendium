@@ -10,11 +10,12 @@ from sqlalchemy.orm import Session, selectinload
 from app.auth import ROLE_LABELS, can, hash_password, require_admin, require_user, save_token_image, verify_password
 from app.db import get_db
 from app.config import get_settings
+from app.version import APP_VERSION
 from app.models import Entity, User, UserEntityList, UserEntityListItem
 from app.visibility import visible_types
 
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-templates.env.globals["app_version"] = "0.32.7"
+templates.env.globals["app_version"] = APP_VERSION
 templates.env.globals["app_name"] = get_settings().app_name
 router = APIRouter()
 

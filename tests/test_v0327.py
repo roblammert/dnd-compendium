@@ -20,11 +20,11 @@ def _entity(entity_type, name, slug, data, *, source="srd-2024", system="5e-2024
     )
 
 
-def test_currency_is_below_roll_guide_and_not_in_right_reference_column():
-    roll = PRINT.index("How Do I Roll...")
-    currency = PRINT.index('<span>Currency</span>')
+def test_currency_is_after_at_a_glance_in_right_reference_column():
     attacks = PRINT.index("Attacks & Spellcasting")
-    assert roll < currency < attacks
+    glance = PRINT.index('>At-a-Glance Features</h2>')
+    currency = PRINT.index('<span>Currency</span>')
+    assert attacks < glance < currency
     assert PRINT.count('<span>Currency</span>') == 1
 
 

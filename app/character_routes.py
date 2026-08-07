@@ -26,6 +26,7 @@ from app.character_services import (
     background_uses_2024_adjustment, equipment_reference_rows,
 )
 from app.config import get_settings
+from app.version import APP_VERSION
 from app.db import get_db
 from app.models import Character, Entity, User, LexiconTerm
 from app.character_rules_2024 import (
@@ -35,7 +36,7 @@ from app.character_rules_2024 import (
 
 router = APIRouter(prefix="/tools/character-builder")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-templates.env.globals["app_version"] = "0.32.2"
+templates.env.globals["app_version"] = APP_VERSION
 templates.env.globals["app_name"] = get_settings().app_name
 _md = MarkdownIt("commonmark", {"html": False, "linkify": True}).enable("table")
 templates.env.filters["render_markdown"] = lambda value: Markup(_md.render(str(value or "")))

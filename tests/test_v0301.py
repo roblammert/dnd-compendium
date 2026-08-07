@@ -11,4 +11,5 @@ def test_loot_content_layout_rules_exist():
 
 def test_version_metadata_exists():
     assert 'version = "' in Path("pyproject.toml").read_text()
-    assert 'APP_VERSION = "' in Path("app/main.py").read_text()
+    assert 'from app.version import APP_VERSION' in Path("app/main.py").read_text()
+    assert 'APP_VERSION = "' in Path("app/version.py").read_text()

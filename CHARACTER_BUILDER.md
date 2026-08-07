@@ -242,3 +242,11 @@ The core play page now keeps Skill Proficiencies and Saving Throw Proficiencies 
 ## v0.32.7 Printable Sheet Layout
 
 The core-page reference layout now keeps Currency beneath the How Do I Roll guide, groups Skill and Saving Throw proficiencies directly with the Proficiencies panel, and renders At-a-Glance Features in two columns. The equipment worksheet uses three full Item / Type / Value / Weight groups with equal-height writable blank rows. Weapon value and weight continue to use the source-aware matching Item fallback when necessary.
+
+## v0.32.8 print and workflow refinements
+
+- Runtime application version is now centralized in `app/version.py` so the site footer, Character Builder, Tools pages, and printable/PDF output cannot drift to different displayed versions.
+- Character Builder previous/next mover controls use centered SVG arrows.
+- Printable Ability Score cards no longer draw internal separator rules around the modifier.
+- Currency follows At-a-Glance Features on the core page.
+- Spell Level 1–9 boxes use ten equally sized flexible writing rows constrained inside each printable box.

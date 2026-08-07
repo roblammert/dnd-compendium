@@ -11,13 +11,14 @@ from markupsafe import Markup
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from app.config import get_settings
+from app.version import APP_VERSION
 from app.db import get_db
 from app.models import Entity, LexiconTerm, UserEntityList
 from app.services import build_monster_card, build_weapon_card, format_cost, format_weight, _numeric_value
 
 router = APIRouter(prefix="/tools")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-templates.env.globals["app_version"] = "0.31.11"
+templates.env.globals["app_version"] = APP_VERSION
 templates.env.globals["app_name"] = get_settings().app_name
 
 _tool_markdown = MarkdownIt("commonmark", {"html": False, "linkify": True, "typographer": False}).enable("table")

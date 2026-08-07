@@ -446,3 +446,7 @@ button:disabled { cursor:not-allowed; opacity:.55; }
 .review-character-step .review-ability-row b{min-width:0;white-space:nowrap}
 .review-character-step .review-ability-row strong{justify-self:center;min-width:0;white-space:nowrap}
 .review-character-step .review-ability-row span{justify-self:end;min-width:0;white-space:nowrap;text-align:right}
+
+/* v0.32.8 — centered workflow arrow controls */
+.step-move-button{display:flex!important;align-items:center!important;justify-content:center!important;padding:.45rem!important;line-height:1!important}
+.step-arrow-icon{display:block;width:1.35rem;height:1.35rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;margin:auto}

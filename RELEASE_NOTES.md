@@ -566,3 +566,12 @@ This patch refines the printable character sheet's core reference and inventory 
 - Skill Proficiencies and Saving Throw Proficiencies moved directly beneath Proficiencies.
 - At-a-Glance Features now renders in two columns for better use of vertical space.
 
+# D&D Compendium v0.32.8 Patch
+
+## Changes
+
+- Centralizes runtime versioning in `app/version.py`; `main.py`, Tools, Character Builder, and user/profile templates all consume the same `APP_VERSION` value.
+- Replaces plain up/down glyphs beneath the Character Builder steps with centered SVG arrow controls.
+- Makes each printable spell-level box a fixed flex layout so all ten write-in rows remain inside the box.
+- Removes the two vertical separator borders between the Ability Score and modifier on printable ability cards.
+- Moves the Currency panel beneath At-a-Glance Features.
