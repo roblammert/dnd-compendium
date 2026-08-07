@@ -282,3 +282,11 @@ This release refines Alignment, Background, Class, Condition, Creature Type, Dam
 - Moves Lazy DM limiting into the scaling selector and adds high-tech metrics and analysis.
 - Removes coin categories from Loot Generator.
 - Adds 40 GP per-entry and 600 GP total-list value sliders.
+
+## v0.29.0 — Encounter Design Workbench
+
+- Rebuilds the Encounter Builder as a guided five-stage professional workflow.
+- Adds XP Threshold, 2014 Adjusted XP, Story-First Lazy Benchmark, Composition Template, and CR Band methods.
+- Adds mixed-level party setup, objective, terrain, pace, creature-theme, scaling, safety, and diagnostics controls.
+- Preserves settings and kept monsters across regeneration.
+- Adds a responsive high-tech tactical workbench interface.

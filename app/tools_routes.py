@@ -15,7 +15,7 @@ from app.services import build_monster_card, build_weapon_card, format_cost, for
 
 router = APIRouter(prefix="/tools")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-templates.env.globals["app_version"] = "0.28.2"
+templates.env.globals["app_version"] = "0.29.0"
 templates.env.globals["app_name"] = get_settings().app_name
 
 XP_THRESHOLDS = {
@@ -61,7 +61,7 @@ def loadout_generator(request: Request):
 def encounter_builder(
     request: Request,
     generate: int = 0,
-    mode: str = "random_cr",
+    mode: str = "xp_budget",
     cr_min: float = 0,
     cr_max: float = 5,
     monster_count: int = 4,
@@ -71,151 +71,171 @@ def encounter_builder(
     difficulty: str = "medium",
     scale_mode: str = "none",
     baseline_party_size: int = 4,
+    composition: str = "mixed",
+    objective: str = "defeat",
+    terrain: str = "open",
+    pace: str = "standard",
+    creature_type: str = "any",
     keep: list[str] = Query(default=[]),
     db: Session = Depends(get_db),
 ):
-    valid_modes = {"random_cr", "xp_budget"}
-    mode = mode if mode in valid_modes else "random_cr"
+    valid_modes = {"random_cr", "xp_budget", "adjusted_xp", "lazy_story", "composition"}
+    mode = mode if mode in valid_modes else "xp_budget"
     difficulty = difficulty if difficulty in {"medium", "hard", "deadly"} else "medium"
     scale_mode = scale_mode if scale_mode in {"none", "variable", "lazy_dm"} else "none"
+    composition = composition if composition in {"solo", "duo", "mixed", "patrol", "horde"} else "mixed"
+    objective = objective if objective in {"defeat", "survive", "protect", "escape", "control", "interrupt"} else "defeat"
+    terrain = terrain if terrain in {"open", "tight", "vertical", "hazardous", "aquatic", "dark"} else "open"
+    pace = pace if pace in {"quick", "standard", "set_piece"} else "standard"
 
-    # Preserve a practical default roster on first visit. Repeated party_level
-    # query parameters are used so mixed-level parties are represented exactly.
     submitted_levels = [max(1, min(20, int(level))) for level in party_level if int(level) > 0]
-    if mode == "xp_budget":
+    needs_exact_party = mode in {"xp_budget", "adjusted_xp", "lazy_story", "composition"}
+    if needs_exact_party:
         levels = submitted_levels or [5, 5, 5, 5]
     else:
         party_size = max(1, min(20, party_size))
         average_party_level = max(1, min(20, average_party_level))
         levels = [average_party_level] * party_size
 
-    monsters = list(
-        db.scalars(
-            select(Entity)
-            .where(Entity.entity_type == "monster", Entity.is_active.is_(True))
-            .order_by(Entity.name)
-        ).all()
-    )
+    monsters = list(db.scalars(select(Entity).where(Entity.entity_type == "monster", Entity.is_active.is_(True)).order_by(Entity.name)).all())
     all_rows = [_monster_row(entity) for entity in monsters]
+    for row in all_rows:
+        data = row["entity"].data_json or {}
+        kind = data.get("type") or data.get("creature_type") or "Unknown"
+        if isinstance(kind, dict): kind = kind.get("name") or kind.get("key") or "Unknown"
+        row["creature_type"] = str(kind).title()
+    creature_types = sorted({row["creature_type"] for row in all_rows if row["creature_type"] != "Unknown"})
+    if creature_type != "any":
+        filtered_rows = [row for row in all_rows if row["creature_type"].casefold() == creature_type.casefold()]
+    else:
+        filtered_rows = all_rows
     row_by_id = {row["entity"].public_id: row for row in all_rows}
 
-    selected: list[dict] = []
-    seen: set[str] = set()
+    selected, seen = [], set()
     for public_id in keep:
         row = row_by_id.get(public_id)
         if row and public_id not in seen:
-            selected.append(dict(row, kept=True))
-            seen.add(public_id)
+            selected.append(dict(row, kept=True)); seen.add(public_id)
 
+    difficulty_index = DIFFICULTY_INDEX[difficulty]
+    budget_breakdown = []
     budget = None
-    budget_breakdown: list[dict] = []
-    if mode == "xp_budget":
-        difficulty_index = DIFFICULTY_INDEX[difficulty]
+    if mode in {"xp_budget", "adjusted_xp"}:
         for index, level in enumerate(levels, start=1):
             threshold = XP_THRESHOLDS[level][difficulty_index]
             budget_breakdown.append({"member": index, "level": level, "xp": threshold})
         budget = sum(entry["xp"] for entry in budget_breakdown)
 
-    if generate:
-        if mode == "random_cr":
-            pool = [
-                row for row in all_rows
-                if cr_min <= row["cr"] <= cr_max
-                and row["entity"].public_id not in seen
-            ]
-            needed = max(0, max(1, min(30, monster_count)) - len(selected))
-            if pool and needed:
-                for row in random.sample(pool, min(needed, len(pool))):
-                    selected.append(dict(row, kept=False))
-                    seen.add(row["entity"].public_id)
-        else:
-            committed_xp = sum(row["xp"] for row in selected)
-            remaining = max(0, (budget or 0) - committed_xp)
-            pool = [
-                row for row in all_rows
-                if row["xp"] > 0
-                and row["xp"] <= remaining
-                and row["entity"].public_id not in seen
-            ]
-            random.shuffle(pool)
-            # Prefer useful budget coverage without always producing the same
-            # highest-XP composition. Candidates are sampled in broad XP bands.
-            pool.sort(key=lambda row: row["xp"], reverse=True)
-            while pool and remaining > 0 and len(selected) < 30:
-                eligible = [row for row in pool if row["xp"] <= remaining]
-                if not eligible:
-                    break
-                window = eligible[: min(8, len(eligible))]
-                row = random.choice(window)
-                selected.append(dict(row, kept=False))
-                seen.add(row["entity"].public_id)
-                remaining -= row["xp"]
-                pool.remove(row)
-
     party_size = len(levels)
-    ratio = party_size / max(1, baseline_party_size)
     total_party_levels = sum(levels)
     average_level = total_party_levels / max(1, party_size)
+    ratio = party_size / max(1, baseline_party_size)
     lazy_multiplier = 0.25 if average_level < 5 else 0.5
     lazy_limit = lazy_multiplier * total_party_levels
 
-    for row in selected:
-        row["scaled_hp"] = row["hp"]
-        row["scaled_ac"] = row["ac"]
-        row["scale_note"] = "Original"
-        if scale_mode == "variable":
-            hp = _number(row["hp"])
-            ac = _number(row["ac"])
-            row["scaled_hp"] = round(hp * ratio) if hp else row["hp"]
-            row["scaled_ac"] = round(ac + ((ratio - 1) / 0.5)) if ac else row["ac"]
-            row["scale_note"] = f"R {ratio:.2f}"
-        elif scale_mode == "lazy_dm":
-            row["scale_note"] = "CR-limit check"
+    def encounter_multiplier(count: int) -> float:
+        if count <= 1: mult = 1
+        elif count == 2: mult = 1.5
+        elif count <= 6: mult = 2
+        elif count <= 10: mult = 2.5
+        elif count <= 14: mult = 3
+        else: mult = 4
+        if party_size < 3: mult = min(5, mult + .5)
+        elif party_size > 5: mult = max(1, mult - .5)
+        return mult
 
-    total_xp = sum(row["xp"] for row in selected)
+    def adjusted_xp(rows):
+        return round(sum(row["xp"] for row in rows) * encounter_multiplier(len(rows)))
+
+    def add_random(pool, count):
+        random.shuffle(pool)
+        for row in pool[:max(0, count)]:
+            if row["entity"].public_id not in seen:
+                selected.append(dict(row, kept=False)); seen.add(row["entity"].public_id)
+
+    if generate:
+        available = [row for row in filtered_rows if row["entity"].public_id not in seen]
+        if mode == "random_cr":
+            pool = [row for row in available if cr_min <= row["cr"] <= cr_max]
+            add_random(pool, max(0, max(1, min(30, monster_count)) - len(selected)))
+        elif mode == "xp_budget":
+            remaining = max(0, (budget or 0) - sum(row["xp"] for row in selected))
+            pool = sorted([row for row in available if 0 < row["xp"] <= remaining], key=lambda r:r["xp"], reverse=True)
+            while pool and remaining > 0 and len(selected) < 30:
+                eligible = [row for row in pool if row["xp"] <= remaining]
+                if not eligible: break
+                row = random.choice(eligible[:min(10,len(eligible))])
+                selected.append(dict(row, kept=False)); seen.add(row["entity"].public_id)
+                remaining -= row["xp"]; pool.remove(row)
+        elif mode == "adjusted_xp":
+            pool = [row for row in available if row["xp"] > 0]
+            random.shuffle(pool); pool.sort(key=lambda r:r["xp"], reverse=True)
+            for row in pool:
+                trial = selected + [row]
+                if adjusted_xp(trial) <= (budget or 0):
+                    selected.append(dict(row, kept=False)); seen.add(row["entity"].public_id)
+                if adjusted_xp(selected) >= (budget or 0) * .85 or len(selected) >= 30: break
+        elif mode == "lazy_story":
+            target = lazy_limit * {"medium":.65,"hard":.85,"deadly":1.0}[difficulty]
+            pool = [row for row in available if row["cr"] > 0 and row["cr"] <= max(target, .25)]
+            random.shuffle(pool); pool.sort(key=lambda r:r["cr"], reverse=True)
+            for row in pool:
+                if sum(r["cr"] for r in selected) + row["cr"] <= target:
+                    selected.append(dict(row, kept=False)); seen.add(row["entity"].public_id)
+                if sum(r["cr"] for r in selected) >= target * .85 or len(selected) >= 30: break
+        elif mode == "composition":
+            profile = {"solo":1,"duo":2,"mixed":4,"patrol":6,"horde":10}[composition]
+            target_cr = max(.125, average_level / {"solo":1.1,"duo":1.8,"mixed":3.2,"patrol":5,"horde":8}[composition])
+            pool = sorted(available, key=lambda r: abs(r["cr"]-target_cr))
+            window = pool[:max(profile*4, 12)]
+            add_random(window, max(0, profile-len(selected)))
+
+    raw_xp = sum(row["xp"] for row in selected)
+    multiplier = encounter_multiplier(len(selected))
+    adjusted_total = adjusted_xp(selected) if selected else 0
     total_cr = sum(row["cr"] for row in selected)
-    lazy_status = "Within benchmark" if total_cr <= lazy_limit else "Above benchmark"
+    active_total = adjusted_total if mode == "adjusted_xp" else raw_xp
     budget_status = None
     if budget is not None:
-        if total_xp > budget:
-            budget_status = "Over budget"
-        elif total_xp >= budget * 0.85:
-            budget_status = "On target"
-        else:
-            budget_status = "Under budget"
+        if active_total > budget: budget_status = "Over budget"
+        elif active_total >= budget * .85: budget_status = "On target"
+        else: budget_status = "Under budget"
+    lazy_status = "Within benchmark" if total_cr <= lazy_limit else "Above benchmark"
 
-    params = {
-        "mode": mode,
-        "cr_min": cr_min,
-        "cr_max": cr_max,
-        "monster_count": monster_count,
-        "party_size": party_size,
-        "average_party_level": average_party_level,
-        "party_levels": levels,
-        "difficulty": difficulty,
-        "scale_mode": scale_mode,
-        "baseline_party_size": baseline_party_size,
+    objective_notes = {
+        "defeat":"Straightforward elimination; reserve terrain features for movement and cover.",
+        "survive":"Build pressure in waves and define a visible round limit.",
+        "protect":"Give enemies routes and priorities beyond attacking the characters.",
+        "escape":"Use pursuit pressure, exits, and escalating environmental obstacles.",
+        "control":"Add interactable zones whose ownership changes the fight.",
+        "interrupt":"Give the opposition a countdown, ritual, device, or escape plan.",
     }
-    return templates.TemplateResponse(
-        request,
-        "tools_encounter_builder.html",
-        _tool_context(
-            "encounter-builder",
-            selected=selected,
-            budget=budget,
-            budget_breakdown=budget_breakdown,
-            budget_status=budget_status,
-            total_xp=total_xp,
-            total_cr=total_cr,
-            lazy_limit=lazy_limit,
-            lazy_status=lazy_status,
-            ratio=ratio,
-            party_size=party_size,
-            total_party_levels=total_party_levels,
-            average_level=average_level,
-            params=params,
-        ),
-    )
+    terrain_notes = {
+        "open":"Favor mobility, ranged lines, and scattered cover.","tight":"Limit frontage and emphasize chokepoints.",
+        "vertical":"Add elevation, falling risk, ladders, ledges, or flight.","hazardous":"Use recurring environmental effects with clear telegraphs.",
+        "aquatic":"Account for swim speeds, visibility, and three-dimensional movement.","dark":"Use concealment, light sources, and ambush routes.",
+    }
+    pace_targets = {"quick":"2–3 rounds", "standard":"3–5 rounds", "set_piece":"5–7 rounds"}
+
+    for row in selected:
+        row["scaled_hp"], row["scaled_ac"], row["scale_note"] = row["hp"], row["ac"], "Original"
+        if scale_mode == "variable":
+            hp, ac = _number(row["hp"]), _number(row["ac"])
+            row["scaled_hp"] = round(hp * ratio) if hp else row["hp"]
+            row["scaled_ac"] = round(ac + ((ratio - 1) / .5)) if ac else row["ac"]
+            row["scale_note"] = f"R {ratio:.2f}"
+        elif scale_mode == "lazy_dm": row["scale_note"] = "Benchmark only"
+
+    params = {"mode":mode,"cr_min":cr_min,"cr_max":cr_max,"monster_count":monster_count,"party_size":party_size,
+              "average_party_level":average_party_level,"party_levels":levels,"difficulty":difficulty,"scale_mode":scale_mode,
+              "baseline_party_size":baseline_party_size,"composition":composition,"objective":objective,"terrain":terrain,
+              "pace":pace,"creature_type":creature_type}
+    return templates.TemplateResponse(request,"tools_encounter_builder.html",_tool_context("encounter-builder",
+        selected=selected,budget=budget,budget_breakdown=budget_breakdown,budget_status=budget_status,total_xp=raw_xp,
+        adjusted_xp=adjusted_total,encounter_multiplier=multiplier,total_cr=total_cr,lazy_limit=lazy_limit,lazy_status=lazy_status,
+        ratio=ratio,party_size=party_size,total_party_levels=total_party_levels,average_level=average_level,params=params,
+        creature_types=creature_types,objective_note=objective_notes[objective],terrain_note=terrain_notes[terrain],
+        pace_target=pace_targets[pace]))
 
 
 @router.get("/loot-generator", response_class=HTMLResponse)

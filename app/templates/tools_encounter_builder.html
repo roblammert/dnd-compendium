@@ -1,168 +1,51 @@
 {% extends "tools_layout.html" %}
 {% block tools_content %}
-<header class="tool-header encounter-hero">
-  <div>
-    <p class="eyebrow">Dungeon Master</p>
-    <h1>Encounter Builder</h1>
-    <p>Generate balanced encounters from challenge-rating bands or exact mixed-level party XP budgets, then preview optional party-size scaling and danger limits.</p>
-  </div>
-  <div class="encounter-status-chip">Encounter Intelligence Console</div>
+<header class="encounter-command-header">
+  <div><p class="eyebrow">Dungeon Master · Tactical Design Suite</p><h1>Encounter Builder</h1><p>Design encounters by rules budget, adjusted XP, challenge band, story-first danger benchmark, or encounter composition. Keep successful choices, regenerate the rest, and review tactical pressure before play.</p></div>
+  <div class="command-readout"><span>STATUS</span><strong>READY</strong><small>{{ selected|length }} hostiles loaded</small></div>
 </header>
+<form method="get" id="encounterForm" class="encounter-workbench"><input type="hidden" name="generate" value="1">
+  <nav class="encounter-stepper" aria-label="Encounter workflow"><a href="#party">1 · Party</a><a href="#method">2 · Method</a><a href="#scenario">3 · Scenario</a><a href="#scaling">4 · Scaling</a><a href="#roster">5 · Roster</a></nav>
 
-<form class="encounter-console" method="get" id="encounterForm">
-  <input type="hidden" name="generate" value="1">
-
-  <section class="console-card mode-card">
-    <div class="console-card-heading">
-      <div><span class="console-step">01</span><h2>Build Method</h2></div>
-      <p>Only controls relevant to the selected method are displayed.</p>
-    </div>
-    <div class="mode-selector" role="radiogroup" aria-label="Encounter build method">
-      <label class="mode-tile">
-        <input type="radio" name="mode" value="random_cr" {% if params.mode == 'random_cr' %}checked{% endif %}>
-        <span><strong>CR Range Randomizer</strong><small>Choose a challenge-rating band and target monster count.</small></span>
-      </label>
-      <label class="mode-tile">
-        <input type="radio" name="mode" value="xp_budget" {% if params.mode == 'xp_budget' %}checked{% endif %}>
-        <span><strong>Character XP Threshold</strong><small>Calculate a budget from every party member's actual level.</small></span>
-      </label>
-    </div>
-
-    <div class="mode-panel" data-mode-panel="random_cr">
-      <div class="tool-grid three-column-grid">
-        <label>Minimum CR<input name="cr_min" type="number" step="0.125" min="0" value="{{ params.cr_min }}"></label>
-        <label>Maximum CR<input name="cr_max" type="number" step="0.125" min="0" value="{{ params.cr_max }}"></label>
-        <label>Encounter size<input name="monster_count" type="number" min="1" max="30" value="{{ params.monster_count }}"></label>
-      </div>
-    </div>
-
-    <div class="mode-panel" data-mode-panel="xp_budget">
-      <div class="party-builder-header">
-        <div><h3>Party member levels</h3><p>Each member contributes their own threshold. Mixed-level parties are calculated exactly.</p></div>
-        <button class="button-secondary compact-button" type="button" id="addPartyMember">Add member</button>
-      </div>
-      <div id="partyMembers" class="party-level-grid">
-        {% for level in params.party_levels %}
-        <label class="party-member"><span>Member {{ loop.index }}</span><input type="number" name="party_level" min="1" max="20" value="{{ level }}"><button type="button" class="remove-party-member" aria-label="Remove party member">×</button></label>
-        {% endfor %}
-      </div>
-      <label class="difficulty-control">Difficulty
-        <select name="difficulty">
-          {% for value,label in [('medium','Medium'),('hard','Hard'),('deadly','Deadly')] %}
-          <option value="{{ value }}" {% if params.difficulty == value %}selected{% endif %}>{{ label }}</option>
-          {% endfor %}
-        </select>
-      </label>
-      {% if budget_breakdown %}
-      <div class="budget-breakdown">
-        {% for entry in budget_breakdown %}<span>L{{ entry.level }} <strong>{{ "{:,}".format(entry.xp) }} XP</strong></span>{% endfor %}
-      </div>
-      {% endif %}
-    </div>
+  <section id="party" class="workbench-panel party-panel">
+    <div class="panel-kicker">01</div><div class="panel-title"><h2>Party Profile</h2><p>Enter real character levels. Mixed-level parties are calculated member by member.</p></div>
+    <div class="party-builder-header"><strong>{{ party_size }} adventurers · average level {{ '%.1f'|format(average_level) }}</strong><button type="button" class="button-secondary compact-button" id="addPartyMember">Add member</button></div>
+    <div id="partyMembers" class="party-level-grid">{% for level in params.party_levels %}<label class="party-member"><span>PC {{ loop.index }}</span><input type="number" name="party_level" min="1" max="20" value="{{ level }}"><button type="button" class="remove-party-member" aria-label="Remove party member">×</button></label>{% endfor %}</div>
   </section>
 
-  <section class="console-card scaling-card">
-    <div class="console-card-heading">
-      <div><span class="console-step">02</span><h2>Scaling Strategy</h2></div>
-      <p>Scaling is optional and never alters imported compendium records.</p>
+  <section id="method" class="workbench-panel">
+    <div class="panel-kicker">02</div><div class="panel-title"><h2>Build Method</h2><p>Choose the calculation model that best matches how you prepare encounters.</p></div>
+    <div class="method-grid" role="radiogroup">
+      {% set methods=[('xp_budget','XP Threshold Budget','Fill a mixed-level party budget with raw monster XP.'),('adjusted_xp','2014 Adjusted XP','Apply multiple-monster and party-size multipliers.'),('lazy_story','Story-First Benchmark','Choose monsters by fiction, then limit combined CR.'),('composition','Composition Template','Generate a solo, duo, mixed squad, patrol, or horde.'),('random_cr','CR Band Randomizer','Fast random generation inside a fixed CR range.')] %}
+      {% for value,title,copy in methods %}<label class="method-card"><input type="radio" name="mode" value="{{ value }}" {% if params.mode==value %}checked{% endif %}><span class="method-indicator"></span><strong>{{ title }}</strong><small>{{ copy }}</small></label>{% endfor %}
     </div>
-    <div class="tool-grid scaling-grid">
-      <label>Scaling method
-        <select name="scale_mode" id="scaleMode">
-          <option value="none" {% if params.scale_mode == 'none' %}selected{% endif %}>No scaling</option>
-          <option value="variable" {% if params.scale_mode == 'variable' %}selected{% endif %}>Variable party-size formula</option>
-          <option value="lazy_dm" {% if params.scale_mode == 'lazy_dm' %}selected{% endif %}>Lazy DM limiting benchmark</option>
-        </select>
-      </label>
-      <label data-scale-field="variable">Baseline party size
-        <input name="baseline_party_size" type="number" min="1" max="20" value="{{ params.baseline_party_size }}">
-      </label>
-      <label data-random-party-field>Party size
-        <input name="party_size" type="number" min="1" max="20" value="{{ params.party_size }}">
-      </label>
-      <label data-random-party-field>Average party level
-        <input name="average_party_level" type="number" min="1" max="20" value="{{ params.average_party_level }}">
-      </label>
-      <div class="scale-explainer" data-scale-copy="none">Use source HP and AC without modification.</div>
-      <div class="scale-explainer" data-scale-copy="variable">HP scales by party-size ratio; AC shifts approximately one point per 0.5 ratio change.</div>
-      <div class="scale-explainer" data-scale-copy="lazy_dm">No monster statistics are changed. The encounter's combined CR is checked against the party-level danger benchmark.</div>
+    <div class="method-controls">
+      <div data-mode-panel="xp_budget" data-mode-panel-extra="adjusted_xp lazy_story"><label>Difficulty<select name="difficulty">{% for value,label in [('medium','Medium'),('hard','Hard'),('deadly','Deadly')] %}<option value="{{ value }}" {% if params.difficulty==value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label></div>
+      <div data-mode-panel="random_cr" class="tool-grid three-column-grid"><label>Minimum CR<input name="cr_min" type="number" step="0.125" min="0" value="{{ params.cr_min }}"></label><label>Maximum CR<input name="cr_max" type="number" step="0.125" min="0" value="{{ params.cr_max }}"></label><label>Monster count<input name="monster_count" type="number" min="1" max="30" value="{{ params.monster_count }}"></label></div>
+      <div data-mode-panel="composition"><label>Composition<select name="composition"><option value="solo" {% if params.composition=='solo' %}selected{% endif %}>Solo boss</option><option value="duo" {% if params.composition=='duo' %}selected{% endif %}>Deadly duo</option><option value="mixed" {% if params.composition=='mixed' %}selected{% endif %}>Mixed squad</option><option value="patrol" {% if params.composition=='patrol' %}selected{% endif %}>Patrol</option><option value="horde" {% if params.composition=='horde' %}selected{% endif %}>Horde</option></select></label></div>
     </div>
+    {% if budget_breakdown %}<div class="budget-strip">{% for entry in budget_breakdown %}<span>PC{{ entry.member }} · L{{ entry.level }} <b>{{ "{:,}".format(entry.xp) }} XP</b></span>{% endfor %}</div>{% endif %}
   </section>
 
-  <div class="console-actions"><button class="primary-action">Generate Encounter</button><span>Kept monsters remain and count against all limits.</span></div>
-
-  <section class="encounter-metrics">
-    <article><span>Party</span><strong>{{ party_size }}</strong><small>{{ total_party_levels }} combined levels</small></article>
-    <article><span>XP Budget</span><strong>{{ "{:,}".format(budget) if budget is not none else '—' }}</strong><small>{{ budget_status or 'CR mode' }}</small></article>
-    <article><span>Selected XP</span><strong>{{ "{:,}".format(total_xp) }}</strong><small>{{ selected|length }} monsters</small></article>
-    <article><span>Total CR</span><strong>{{ '%.2f'|format(total_cr) }}</strong><small>{% if params.scale_mode == 'lazy_dm' %}{{ lazy_status }}{% else %}Current encounter{% endif %}</small></article>
-    <article><span>Scale Ratio</span><strong>{{ '%.2f'|format(ratio) }}</strong><small>{% if params.scale_mode == 'variable' %}Active{% else %}Inactive{% endif %}</small></article>
-    <article><span>Lazy Limit</span><strong>{{ '%.2f'|format(lazy_limit) }}</strong><small>CR benchmark</small></article>
+  <section id="scenario" class="workbench-panel">
+    <div class="panel-kicker">03</div><div class="panel-title"><h2>Scenario Parameters</h2><p>Balance alone does not create a memorable fight. Define purpose, space, duration, and creature theme.</p></div>
+    <div class="scenario-grid"><label>Objective<select name="objective">{% for v,l in [('defeat','Defeat opposition'),('survive','Survive a countdown'),('protect','Protect a target'),('escape','Escape or pursue'),('control','Control locations'),('interrupt','Interrupt a ritual or plan')] %}<option value="{{ v }}" {% if params.objective==v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select><small>{{ objective_note }}</small></label><label>Terrain<select name="terrain">{% for v,l in [('open','Open battlefield'),('tight','Tight quarters'),('vertical','Vertical terrain'),('hazardous','Environmental hazards'),('aquatic','Aquatic'),('dark','Darkness and concealment')] %}<option value="{{ v }}" {% if params.terrain==v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select><small>{{ terrain_note }}</small></label><label>Target pace<select name="pace"><option value="quick" {% if params.pace=='quick' %}selected{% endif %}>Quick skirmish</option><option value="standard" {% if params.pace=='standard' %}selected{% endif %}>Standard battle</option><option value="set_piece" {% if params.pace=='set_piece' %}selected{% endif %}>Set-piece battle</option></select><small>Expected duration: {{ pace_target }}</small></label><label>Creature theme<select name="creature_type"><option value="any">Any creature type</option>{% for kind in creature_types %}<option value="{{ kind }}" {% if params.creature_type==kind %}selected{% endif %}>{{ kind }}</option>{% endfor %}</select><small>Restricts newly generated rows; kept monsters remain.</small></label></div>
   </section>
 
-  <section class="console-card results-card">
-    <div class="console-card-heading"><div><span class="console-step">03</span><h2>Generated Encounter</h2></div><p>Lock any row before generating again.</p></div>
-    <div class="table-wrap encounter-table-wrap">
-      <table class="encounter-table">
-        <thead><tr><th>Keep</th><th>Monster</th><th>CR</th><th>XP</th><th>Base HP</th><th>Base AC</th><th>Adjusted HP</th><th>Adjusted AC</th><th>Analysis</th></tr></thead>
-        <tbody>
-        {% for row in selected %}
-          <tr>
-            <td><input class="keep-checkbox" form="encounterForm" type="checkbox" name="keep" value="{{ row.entity.public_id }}" {% if row.kept %}checked{% endif %}></td>
-            <td><a href="/compendium/monster/{{ row.entity.canonical_key or row.entity.slug }}">{{ row.entity.name }}</a></td>
-            <td>{{ row.cr }}</td><td>{{ "{:,}".format(row.xp) }}</td><td>{{ row.hp }}</td><td>{{ row.ac }}</td><td>{{ row.scaled_hp }}</td><td>{{ row.scaled_ac }}</td><td><span class="analysis-pill">{{ row.scale_note }}</span></td>
-          </tr>
-        {% else %}
-          <tr><td colspan="9" class="empty-table-state">Configure a build method and generate an encounter.</td></tr>
-        {% endfor %}
-        </tbody>
-      </table>
-    </div>
+  <section id="scaling" class="workbench-panel">
+    <div class="panel-kicker">04</div><div class="panel-title"><h2>Scaling & Safety</h2><p>Preview modifications without changing imported compendium data.</p></div>
+    <div class="scaling-console"><label>Scaling method<select name="scale_mode" id="scaleMode"><option value="none" {% if params.scale_mode=='none' %}selected{% endif %}>No statistic scaling</option><option value="variable" {% if params.scale_mode=='variable' %}selected{% endif %}>Party-size HP/AC scaling</option><option value="lazy_dm" {% if params.scale_mode=='lazy_dm' %}selected{% endif %}>Lazy DM danger check only</option></select></label><label data-scale-field="variable">Baseline party size<input name="baseline_party_size" type="number" min="1" max="20" value="{{ params.baseline_party_size }}"></label><div class="safety-readout"><span>LAZY LIMIT</span><strong>{{ '%.2f'|format(lazy_limit) }} CR</strong><small>{{ lazy_status }}</small></div></div>
   </section>
+
+  <section class="encounter-dashboard">
+    <article><span>Party</span><strong>{{ party_size }}</strong><small>{{ total_party_levels }} total levels</small></article><article><span>Budget</span><strong>{{ "{:,}".format(budget) if budget is not none else '—' }}</strong><small>{{ budget_status or params.mode|replace('_',' ')|title }}</small></article><article><span>Raw XP</span><strong>{{ "{:,}".format(total_xp) }}</strong><small>award value</small></article><article><span>Adjusted XP</span><strong>{{ "{:,}".format(adjusted_xp) }}</strong><small>× {{ encounter_multiplier }}</small></article><article><span>Total CR</span><strong>{{ '%.2f'|format(total_cr) }}</strong><small>{{ lazy_status }}</small></article><article><span>Scale</span><strong>{{ '%.2f'|format(ratio) }}</strong><small>{{ params.scale_mode|replace('_',' ')|title }}</small></article>
+  </section>
+  <div class="generate-dock"><button class="primary-action">Generate Encounter</button><span>Checked rows stay locked. Every setting remains in place.</span></div>
+
+  <section id="roster" class="workbench-panel roster-panel"><div class="panel-kicker">05</div><div class="panel-title"><h2>Encounter Roster</h2><p>Review source statistics, scaled preview values, and composition before play.</p></div><div class="table-wrap"><table class="encounter-table"><thead><tr><th>Keep</th><th>Monster</th><th>Type</th><th>CR</th><th>XP</th><th>HP</th><th>AC</th><th>Scaled HP</th><th>Scaled AC</th><th>Analysis</th></tr></thead><tbody>{% for row in selected %}<tr><td><input class="keep-checkbox" type="checkbox" name="keep" value="{{ row.entity.public_id }}" {% if row.kept %}checked{% endif %}></td><td><a href="/compendium/monster/{{ row.entity.canonical_key or row.entity.slug }}">{{ row.entity.name }}</a></td><td>{{ row.creature_type }}</td><td>{{ row.cr }}</td><td>{{ "{:,}".format(row.xp) }}</td><td>{{ row.hp }}</td><td>{{ row.ac }}</td><td>{{ row.scaled_hp }}</td><td>{{ row.scaled_ac }}</td><td><span class="analysis-pill">{{ row.scale_note }}</span></td></tr>{% else %}<tr><td colspan="10" class="empty-table-state">Complete the workflow and generate an encounter.</td></tr>{% endfor %}</tbody></table></div></section>
 </form>
-
-<details class="tool-reference"><summary>Calculation reference</summary><h3>Character XP Threshold</h3><p>The selected difficulty threshold is looked up separately for each party member and then summed. This handles mixed-level parties without averaging.</p><h3>Variable Party-Size Formula</h3><p>R = actual party size ÷ baseline party size. Adjusted HP = base HP × R. AC moves approximately ±1 for each ±0.5 shift in R.</p><h3>Lazy DM Limiting</h3><p>Average party level below 5 uses one quarter of total party levels. Average level 5 or higher uses one half. This mode is a danger check, not a stat adjustment.</p></details>
-
+<details class="tool-reference"><summary>Method reference and assumptions</summary><h3>XP Threshold Budget</h3><p>Each character contributes a level-based threshold. Raw monster XP is filled toward the selected budget.</p><h3>2014 Adjusted XP</h3><p>Raw XP is multiplied according to monster count, with an additional adjustment for unusually small or large parties.</p><h3>Story-First Benchmark</h3><p>Combined monster CR is compared with one quarter of total party levels below level 5 or one half at level 5 and above.</p><h3>Composition Templates</h3><p>Profiles create a starting roster shape—solo, duo, mixed squad, patrol, or horde—then select monsters near a party-relative CR target.</p></details>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-  const form = document.getElementById('encounterForm');
-  const modeInputs = [...form.querySelectorAll('input[name="mode"]')];
-  const panels = [...form.querySelectorAll('[data-mode-panel]')];
-  const scaleMode = document.getElementById('scaleMode');
-  const scaleFields = [...form.querySelectorAll('[data-scale-field]')];
-  const scaleCopies = [...form.querySelectorAll('[data-scale-copy]')];
-  const partyMembers = document.getElementById('partyMembers');
-  const randomPartyFields = [...form.querySelectorAll('[data-random-party-field]')];
-
-  function syncMode() {
-    const mode = modeInputs.find(input => input.checked)?.value || 'random_cr';
-    panels.forEach(panel => { panel.hidden = panel.dataset.modePanel !== mode; });
-    modeInputs.forEach(input => input.closest('.mode-tile').classList.toggle('selected', input.checked));
-    const needsRandomParty = mode === 'random_cr' && scaleMode.value !== 'none';
-    randomPartyFields.forEach(field => { field.hidden = !needsRandomParty; });
-  }
-  function syncScale() {
-    scaleFields.forEach(field => { field.hidden = field.dataset.scaleField !== scaleMode.value; });
-    scaleCopies.forEach(copy => { copy.hidden = copy.dataset.scaleCopy !== scaleMode.value; });
-    syncMode();
-  }
-  function renumberMembers() {
-    [...partyMembers.querySelectorAll('.party-member')].forEach((row, index) => { row.querySelector('span').textContent = `Member ${index + 1}`; });
-  }
-  modeInputs.forEach(input => input.addEventListener('change', syncMode));
-  scaleMode.addEventListener('change', syncScale);
-  document.getElementById('addPartyMember').addEventListener('click', () => {
-    const row = document.createElement('label');
-    row.className = 'party-member';
-    row.innerHTML = '<span></span><input type="number" name="party_level" min="1" max="20" value="5"><button type="button" class="remove-party-member" aria-label="Remove party member">×</button>';
-    partyMembers.appendChild(row); renumberMembers();
-  });
-  partyMembers.addEventListener('click', event => {
-    if (!event.target.classList.contains('remove-party-member')) return;
-    if (partyMembers.querySelectorAll('.party-member').length <= 1) return;
-    event.target.closest('.party-member').remove(); renumberMembers();
-  });
-  syncMode(); syncScale(); renumberMembers();
-});
+document.addEventListener('DOMContentLoaded',()=>{const form=document.getElementById('encounterForm'),modes=[...form.querySelectorAll('input[name="mode"]')],panels=[...form.querySelectorAll('[data-mode-panel]')],scale=document.getElementById('scaleMode'),scaleFields=[...form.querySelectorAll('[data-scale-field]')],members=document.getElementById('partyMembers');function sync(){const mode=modes.find(x=>x.checked)?.value;modes.forEach(x=>x.closest('.method-card').classList.toggle('selected',x.checked));panels.forEach(p=>{const allowed=[p.dataset.modePanel,...(p.dataset.modePanelExtra||'').split(' ')];p.hidden=!allowed.includes(mode)});scaleFields.forEach(f=>f.hidden=f.dataset.scaleField!==scale.value)}function renumber(){[...members.querySelectorAll('.party-member')].forEach((r,i)=>r.querySelector('span').textContent=`PC ${i+1}`)}modes.forEach(x=>x.addEventListener('change',sync));scale.addEventListener('change',sync);document.getElementById('addPartyMember').addEventListener('click',()=>{const r=document.createElement('label');r.className='party-member';r.innerHTML='<span></span><input type="number" name="party_level" min="1" max="20" value="5"><button type="button" class="remove-party-member" aria-label="Remove party member">×</button>';members.appendChild(r);renumber()});members.addEventListener('click',e=>{if(!e.target.classList.contains('remove-party-member')||members.children.length<=1)return;e.target.closest('.party-member').remove();renumber()});sync();renumber()});
 </script>
 {% endblock %}
