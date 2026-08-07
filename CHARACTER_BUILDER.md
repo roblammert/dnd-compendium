@@ -234,3 +234,7 @@ The printable sheet now includes Hit Dice expenditure pips, a 15-condition track
 Character generation now persists only cantrip choices. Level 1+ spells and prepared-spell lists are play-state choices and are intentionally not stored by the Character Builder. Once a character is marked complete, its generated cantrip list is locked in `choices_json.cantrips_locked` and cannot be changed by later edits.
 
 The printable Spellcasting page renders up to eight cantrip lines, nine writable level boxes with class/level slot totals, and a bottom-anchored Spell Usage reference explaining slot expenditure, preparation changes, casting math, concentration, and components.
+
+## v0.32.6 printable-sheet refinements
+
+The core play page now keeps Skill Proficiencies and Saving Throw Proficiencies beneath At-a-Glance Features. The Inventory page uses three balanced Item/Type/Weight groups with blank write-in rows; Weapon weights use source-aware matching Item metadata when necessary. The Spellcasting page provides ten handwriting-height lines for each spell level while remaining on a US Letter page with the Spell Usage reference above the footer.

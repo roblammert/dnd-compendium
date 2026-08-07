@@ -129,12 +129,16 @@ body { color:#1c1b19; font-family:Arial,Helvetica,sans-serif; background:#e5e1d8
 .feature-card { break-inside:auto; page-break-inside:auto; margin-bottom:7px; }
 .feature-card h3 { break-after:avoid; page-break-after:avoid; }
 .flow-block { break-inside:auto; page-break-inside:auto; }
-.inventory-summary { display:grid; grid-template-columns:1.25fr .75fr; gap:7px; align-items:start; }
+.inventory-summary { display:block; }
 .equipment-note { color:#6f675d; font-size:6.7pt; margin:4px 0 0; }
-.inventory-table.compact-four col.gutter { width:12px; }
-.inventory-table.compact-four td.gutter,.inventory-table.compact-four th.gutter { border:0; background:#fff; width:12px; padding:0; }
-.inventory-table.compact-four th:nth-child(2),.inventory-table.compact-four td:nth-child(2),
-.inventory-table.compact-four th:nth-child(5),.inventory-table.compact-four td:nth-child(5) { width:19%; }
+.inventory-table.triple-equipment { table-layout:fixed; font-size:6.65pt; }
+.inventory-table.triple-equipment col.item { width:19%; }
+.inventory-table.triple-equipment col.type { width:5.5%; }
+.inventory-table.triple-equipment col.weight { width:6%; }
+.inventory-table.triple-equipment col.gutter { width:2%; }
+.inventory-table.triple-equipment td.gutter,.inventory-table.triple-equipment th.gutter { border:0; background:#fff; padding:0; }
+.inventory-table.triple-equipment th,.inventory-table.triple-equipment td { padding:2px 3px; }
+.inventory-table.triple-equipment td.weight { white-space:nowrap; }
 .story-grid { display:block; }
 .story-pair { width:100%; border-collapse:separate; border-spacing:0 7px; table-layout:fixed; }
 .story-pair td { width:50%; vertical-align:top; padding:0 3px; }
@@ -150,7 +154,7 @@ body { color:#1c1b19; font-family:Arial,Helvetica,sans-serif; background:#e5e1d8
 .spell-page { min-height:9.42in; display:flex; flex-direction:column; }
 .spell-workspace { flex:1 1 auto; min-height:0; }
 .cantrip-box { margin:0; height:100%; }
-.spell-level-grid { display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,minmax(1.18in,1fr)); gap:6px; align-items:stretch; }
+.spell-level-grid { display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,minmax(1.58in,auto)); gap:6px; align-items:stretch; }
 .spell-level { width:100%; border:1px solid #b9a77f; break-inside:avoid-page; page-break-inside:avoid; min-height:.86in; display:flex; flex-direction:column; }
 .spell-level h3 { display:flex; justify-content:space-between; align-items:center; margin:0; padding:4px 6px; background:#fff; color:#173643; border-bottom:1.5px solid #173643; font-size:7pt; text-transform:uppercase; letter-spacing:.06em; font-weight:900; }
 .spell-usage { margin-top:7px; break-inside:avoid-page; page-break-inside:avoid; flex:0 0 auto; }
@@ -158,7 +162,7 @@ body { color:#1c1b19; font-family:Arial,Helvetica,sans-serif; background:#e5e1d8
 .spell-usage-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px 10px; }
 .spell-usage-grid p { margin:0 0 5px; }
 .spell-line { display:grid; grid-template-columns:11px 1fr; gap:4px; align-items:center; border-bottom:1px dotted #d2c5ad; min-height:15px; padding:1px 5px; font-size:7.2pt; }
-.write-line { border-bottom:1px dotted #b9a77f; min-height:9px; margin:0 5px; }
+.write-line { border-bottom:1px dotted #b9a77f; min-height:15px; margin:0 5px; }
 .prepared { width:8px; height:8px; border:1px solid #333; border-radius:50%; display:inline-block; }
 .prepared.on { background:#fff; }
 .empty-note { color:#8a8176; font-style:italic; }
@@ -232,6 +236,8 @@ body { color:#1c1b19; font-family:Arial,Helvetica,sans-serif; background:#e5e1d8
       <section class="panel"><h2 class="panel-title">Proficiencies</h2><div class="panel-body">{{ derived.other_proficiencies|join(' · ') or '—' }}</div></section>
       <section class="panel"><h2 class="panel-title split-title"><span>Currency</span><span class="title-note">100 CP = 10 SP = 1 GP (PP = 10 GP)</span></h2><div class="panel-body"><div class="currency">{% for coin in ['cp','sp','gp','pp'] %}<div class="coin"><b>{{ coin|upper }}</b><span>{% if derived.currency[coin] %}{{ derived.currency[coin] }}{% else %}&nbsp;{% endif %}</span></div>{% endfor %}</div></div></section>
       <section class="panel"><h2 class="panel-title">At-a-Glance Features</h2><div class="panel-body"><ul class="clean-list">{% for feature in derived.class_features[:8] %}<li>{{ feature.name }}</li>{% endfor %}{% for feat in derived.feats[:4] %}<li>Feat: {{ feat.name }}</li>{% endfor %}{% if not derived.class_features and not derived.feats %}<li class="empty-note">No features recorded.</li>{% endif %}</ul></div></section>
+      <section class="panel"><h2 class="panel-title">Skill Proficiencies</h2><div class="panel-body">{{ derived.skill_proficiencies|join(' · ') or '—' }}</div></section>
+      <section class="panel"><h2 class="panel-title">Saving Throw Proficiencies</h2><div class="panel-body">{% for save in derived.saves if save.proficient %}{{ save.name }}{% if not loop.last %} · {% endif %}{% else %}—{% endfor %}</div></section>
     </div>
   </div>
 </section>
@@ -240,16 +246,16 @@ body { color:#1c1b19; font-family:Arial,Helvetica,sans-serif; background:#e5e1d8
   <div class="page-title"><h2>Inventory & Character Traits</h2><span>Reference during play and advancement</span></div>
   <div class="inventory-summary">
     <section class="panel flow-block"><h2 class="panel-title">Equipment</h2><div class="panel-body">
-      {% if derived.equipment_print_compact %}
-      <table class="inventory-table compact-four"><colgroup><col><col><col class="gutter"><col><col></colgroup><thead><tr><th>Item</th><th>Type</th><th class="gutter"></th><th>Item</th><th>Type</th></tr></thead><tbody>
-      {% for row in derived.equipment_print_rows %}<tr><td>{{ row.left.name }}</td><td>{{ row.left.entity_type|replace('_',' ')|title }}</td><td class="gutter"></td>{% if row.right %}<td>{{ row.right.name }}</td><td>{{ row.right.entity_type|replace('_',' ')|title }}</td>{% else %}<td></td><td></td>{% endif %}</tr>{% endfor %}
-      </tbody></table>
-      {% else %}
-      <table class="inventory-table"><thead><tr><th>Item</th><th>Type</th></tr></thead><tbody>{% for item in derived.equipment %}<tr><td>{{ item.name }}</td><td>{{ item.entity_type|replace('_',' ')|title }}</td></tr>{% else %}<tr><td colspan="2" class="empty-note">No equipment selected.</td></tr>{% endfor %}</tbody></table>
-      {% endif %}
-      <p class="equipment-note">Currency is summarized on the core page. Automatically granted and selected equipment are shown together here.</p>
+      <table class="inventory-table triple-equipment">
+        <colgroup>
+          <col class="item"><col class="type"><col class="weight"><col class="gutter">
+          <col class="item"><col class="type"><col class="weight"><col class="gutter">
+          <col class="item"><col class="type"><col class="weight">
+        </colgroup>
+        <thead><tr><th>Item</th><th>Type</th><th>Weight</th><th class="gutter"></th><th>Item</th><th>Type</th><th>Weight</th><th class="gutter"></th><th>Item</th><th>Type</th><th>Weight</th></tr></thead>
+        <tbody>{% for groups in derived.equipment_print_columns %}<tr>{% for item in groups %}<td>{{ item.name }}</td><td>{{ item.type }}</td><td class="weight">{{ item.weight }}</td>{% if not loop.last %}<td class="gutter"></td>{% endif %}{% endfor %}</tr>{% endfor %}</tbody>
+      </table>
     </div></section>
-    <div><section class="panel"><h2 class="panel-title">Skill Proficiencies</h2><div class="panel-body">{{ derived.skill_proficiencies|join(' · ') or '—' }}</div></section><section class="panel"><h2 class="panel-title">Saving Throw Proficiencies</h2><div class="panel-body">{% for save in derived.saves if save.proficient %}{{ save.name }}{% if not loop.last %} · {% endif %}{% else %}—{% endfor %}</div></section></div>
   </div>
 
   <div class="section-banner"><h2>Traits</h2></div>
@@ -289,7 +295,7 @@ body { color:#1c1b19; font-family:Arial,Helvetica,sans-serif; background:#e5e1d8
     <section class="spell-level cantrip-box"><h3><span>Cantrips</span><span>Fixed at character generation</span></h3>{% set cantrips = derived.spells_by_level.get(0,[]) %}{% for i in range(8) %}<div class="spell-line"><i class="prepared"></i><span>{% if i < cantrips|length %}{{ cantrips[i].entity.name }}{% else %}&nbsp;{% endif %}</span></div>{% endfor %}</section>
   </div>
   <div class="spell-workspace">
-    <div class="spell-level-grid">{% for level in range(1,10) %}{% set total_slots = derived.spell_slots.get(level,0) %}<section class="spell-level"><h3><span>Level {{ level }}</span><span>Slots {% if total_slots %}{{ total_slots }} / ____{% else %}____ / ____{% endif %}</span></h3>{% for _ in range(9) %}<div class="write-line">&nbsp;</div>{% endfor %}</section>{% endfor %}</div>
+    <div class="spell-level-grid">{% for level in range(1,10) %}{% set total_slots = derived.spell_slots.get(level,0) %}<section class="spell-level"><h3><span>Level {{ level }}</span><span>Slots {% if total_slots %}{{ total_slots }} / ____{% else %}____ / ____{% endif %}</span></h3>{% for _ in range(10) %}<div class="write-line">&nbsp;</div>{% endfor %}</section>{% endfor %}</div>
   </div>
   <section class="panel spell-usage"><h2 class="panel-title">Spell Usage</h2><div class="panel-body spell-usage-grid">
     <div><p><b>Cantrips:</b> Cantrips are level 0 spells and never expend spell slots. The cantrips printed above were fixed when this character was generated and cannot be changed afterward.</p><p><b>Prepared level 1+ spells:</b> Write the spells you currently have prepared on the lines for their spell level. To cast one, expend a slot of that spell's level or higher; some spells improve when cast with a higher-level slot.</p><p><b>Your slots:</b> {{ derived.spell_usage_guide.slot_summary }}. Expended {% if derived.spell_usage_guide.pact %}Pact Magic {% endif %}slots return after a {{ derived.spell_usage_guide.recovery }}.</p></div>

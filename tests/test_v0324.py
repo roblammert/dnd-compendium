@@ -21,7 +21,7 @@ def test_spell_print_page_has_eight_cantrip_lines_and_nine_writable_levels():
     assert 'for i in range(8)' in PRINT
     assert 'for level in range(1,10)' in PRINT
     assert 'spell-level-grid' in PRINT
-    assert 'range(9)' in PRINT
+    assert 'range(10)' in PRINT
     assert 'Prepared level 1+ spells' in PRINT
     assert 'Prepared spells are not selected in the Character Builder' in PRINT
     assert 'fixed when this character was generated and cannot be changed afterward' in PRINT

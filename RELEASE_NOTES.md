@@ -534,3 +534,19 @@ Every printed page includes `Generated with Rob's D&D Compendium - {version} - {
 - The summary stack shares the top row with the eight-line Cantrips panel.
 - The layout remains US Letter and keeps Spell Usage above the footer.
 
+
+
+# D&D Compendium v0.32.6 Patch
+
+This patch refines the printable character sheet.
+
+## Changes
+
+- Skill Proficiencies and Saving Throw Proficiencies now live directly below At-a-Glance Features on the core page.
+- Equipment now prints in three balanced groups spanning the page. Each group contains Item, Type, and Weight columns, separated by gutters.
+- Equipment includes blank rows for additions made during play.
+- Weapon weight uses the same source-aware Item fallback used elsewhere in the application when the Weapon endpoint has no usable weight.
+- Removed the Equipment explanatory note below the table.
+- Every spell level now has ten writable lines.
+- Spell-level line spacing matches the Cantrips writing area and remains contained within one US Letter spellcasting page.
+

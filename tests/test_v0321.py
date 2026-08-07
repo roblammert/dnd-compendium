@@ -72,7 +72,7 @@ def test_v0321_print_template_has_safe_paged_footer_and_feature_break():
     assert 'counter(page) "/" counter(pages)' in template
     assert 'string(playername)' in template
     assert 'features-section { break-before:page' in template
-    assert 'inventory-table compact-four' in template
+    assert 'inventory-table triple-equipment' in template
     assert 'derived.print_profiles.species' in template
     assert 'derived.print_profiles.class' in template
     assert '<footer class="print-footer">' not in template

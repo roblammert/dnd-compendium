@@ -375,13 +375,58 @@ def _is_column_placeholder(value: Any) -> bool:
 
 
 def equipment_print_rows(equipment: list[Entity]) -> list[dict[str, Entity | None]]:
-    """Pair equipment into two Item/Type column groups for dense print layouts."""
+    """Legacy two-group helper retained for compatibility with older tests/callers."""
     split = (len(equipment) + 1) // 2
     left = equipment[:split]
     right = equipment[split:]
     rows = []
     for index, item in enumerate(left):
         rows.append({"left": item, "right": right[index] if index < len(right) else None})
+    return rows
+
+
+def equipment_weight_data(db: Session, entity: Entity) -> str:
+    """Return printable weight, using the same source-aware Item fallback as Weapon cards."""
+    from app.services import format_weight, _numeric_value
+    data = entity.data_json or {}
+    raw = _equipment_value_local(data, "weight")
+    if entity.entity_type == "weapon" and _numeric_value(raw) in (None, 0):
+        fallback = weapon_item_fallback(db, entity)
+        if fallback:
+            raw = _equipment_value_local(fallback.data_json or {}, "weight")
+    if raw in (None, "", [], {}):
+        return ""
+    return format_weight(raw, present=True)
+
+
+def equipment_print_columns(db: Session, equipment: list[Entity], *, groups: int = 3, minimum_rows: int = 8) -> list[list[dict[str, str]]]:
+    """Build balanced printable equipment rows across three Item/Type/Weight groups.
+
+    A few blank rows are intentionally retained so the printed sheet can be updated
+    during play.
+    """
+    groups = max(1, int(groups))
+    used_rows = math.ceil(len(equipment) / groups) if equipment else 0
+    row_count = max(minimum_rows, used_rows)
+    columns: list[list[dict[str, str]]] = []
+    for group in range(groups):
+        group_rows = []
+        start = group * used_rows
+        group_items = list(equipment[start:start + used_rows]) if used_rows else []
+        group_items += [None] * max(0, row_count - len(group_items))
+        for item in group_items:
+            if item is None:
+                group_rows.append({"name": "", "type": "", "weight": ""})
+            else:
+                group_rows.append({
+                    "name": item.name,
+                    "type": item.entity_type.replace("_", " ").title(),
+                    "weight": equipment_weight_data(db, item),
+                })
+        columns.append(group_rows)
+    rows = []
+    for row_index in range(row_count):
+        rows.append([columns[group][row_index] for group in range(groups)])
     return rows
 
 
@@ -1043,6 +1088,7 @@ def derive_character(db: Session, character: Character) -> dict[str, Any]:
             "subclass": entity_print_profile(subclass, "subclass"),
         },
         "equipment_print_rows": equipment_print_rows(equipment),
+        "equipment_print_columns": equipment_print_columns(db, equipment),
         "equipment_print_compact": len(equipment) > 10,
         "skill_choice_count": skill_choice_count, "warnings": warnings,
         "other_proficiencies": other_proficiencies, "background_skills": background_skill_list,
