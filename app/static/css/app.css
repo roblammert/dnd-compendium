@@ -282,3 +282,55 @@ button:disabled { cursor:not-allowed; opacity:.55; }
 @media(max-width:760px){.character-ability-rail{grid-template-columns:repeat(3,1fr)}.background-bonus-grid,.token-choice-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:500px){.ability-method-row,.character-ability-rail,.background-bonus-grid,.token-choice-grid{grid-template-columns:1fr}.selected-reference-panel{flex-direction:column}}
 .character-reference-modal{max-height:88vh}.reference-modal-body{max-height:72vh;overflow:auto}.reference-card-host{min-width:0}.reference-card-host .entity-page-shell{margin:0}.reference-card-host article{box-shadow:none}.reference-card-host .entity-action-bar,.reference-card-host .entity-artwork-panel{display:none}
+
+/* v0.31.5 Character Builder live rail + background layout refinements */
+.character-builder-shell.with-ability-rail{grid-template-columns:230px minmax(0,1fr) 168px;align-items:start}
+.character-ability-rail{position:sticky;top:86px;display:grid;gap:.4rem;min-width:0;align-self:start}
+.ability-rail-heading{padding:.62rem .5rem;background:#182631;color:#eef5f6;border:1px solid #405864;text-align:center}
+.ability-rail-heading span{display:block;font:900 .68rem system-ui;letter-spacing:.1em}
+.live-stat-grid{display:grid;grid-template-columns:1fr;gap:.35rem}
+.live-stat-card,.character-ability-rail .live-ability-card{min-height:0;padding:.48rem .55rem;background:#fff;border:1px solid #b8aa8d}
+.live-stat-card{display:grid;grid-template-columns:1fr auto;align-items:center}
+.live-stat-card span,.character-ability-rail .live-ability-card span{font:900 .67rem system-ui;text-transform:uppercase;color:#4d4540}
+.live-stat-card strong{font-size:1rem;color:#1f4852}
+.character-ability-rail .live-ability-card{display:grid;grid-template-columns:1fr auto auto;gap:.38rem;align-items:center;min-height:42px;transition:background-color .6s ease,box-shadow .6s ease}
+.character-ability-rail .live-ability-card strong{font-size:1.05rem;color:#1f4852}
+.character-ability-rail .live-ability-card b{font-size:.76rem;color:#687277;text-align:right;min-width:1.8rem}
+.character-ability-rail .live-ability-card.score-up{background:#dff3e5;box-shadow:inset 5px 0 #3c8b5c}
+.character-ability-rail .live-ability-card.score-down{background:#f4dddd;box-shadow:inset 5px 0 #9b3731}
+.background-bonus-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.55rem}
+.background-bonus-grid label{min-width:0;grid-template-columns:minmax(0,1fr) 72px;align-items:center}
+.background-bonus-grid label span{min-width:0;overflow-wrap:anywhere}
+.background-bonus-grid select{width:72px;min-width:72px}
+.background-token-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}
+.token-choice-grid{grid-template-columns:1fr;max-height:310px;overflow-y:auto;overflow-x:hidden;padding-right:.2rem}
+.token-choice-grid label,.skill-choice-grid label{position:relative;min-width:0;overflow:hidden}
+.token-choice-grid label span,.skill-choice-grid label span{min-width:0;overflow-wrap:anywhere;word-break:normal}
+.token-choice-grid label.background-granted,.skill-choice-grid label.background-granted{background:#eef5f2;border-color:#6e9a86;padding-right:2rem}
+.grant-lock{position:absolute;right:.42rem;top:.35rem;font-size:.72rem;line-height:1;filter:grayscale(.15)}
+.brief-reference-summary{max-width:72ch}
+.selected-reference-panel>div{min-width:0}
+.selected-reference-panel p{overflow-wrap:anywhere}
+@media(max-width:1050px){
+  .character-builder-shell,.character-builder-shell.with-ability-rail{grid-template-columns:180px minmax(0,1fr) 132px;align-items:start}
+  .character-stepper{position:sticky;top:86px;grid-template-columns:1fr}
+  .character-stepper a{border-right:0}
+  .character-ability-rail{position:sticky;top:86px;grid-template-columns:1fr;order:initial}
+  .ability-rail-heading{grid-column:auto}
+  .character-stage{order:initial}
+  .character-stepper{order:initial}
+  .ability-method-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .background-bonus-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:760px){
+  .character-builder-shell,.character-builder-shell.with-ability-rail{grid-template-columns:minmax(0,1fr) 110px;gap:.55rem}
+  .character-stepper{grid-column:1/-1;position:static;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .character-stage{grid-column:1}
+  .character-ability-rail{grid-column:2;grid-row:2;position:sticky;top:72px;align-self:start}
+  .background-token-columns{grid-template-columns:1fr}
+  .background-bonus-grid{grid-template-columns:1fr}
+  .character-ability-rail .live-ability-card{grid-template-columns:auto 1fr;grid-template-areas:"name score" "name mod"}
+  .character-ability-rail .live-ability-card span{grid-area:name}
+  .character-ability-rail .live-ability-card strong{grid-area:score;text-align:right}
+  .character-ability-rail .live-ability-card b{grid-area:mod}
+}

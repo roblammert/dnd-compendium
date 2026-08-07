@@ -136,7 +136,7 @@ def find_any_character_entity(db: Session, entity_types: list[str], key: str | N
         return None
     rows = list(db.scalars(select(Entity).where(
         Entity.entity_type.in_(entity_types), Entity.is_active.is_(True),
-        (Entity.canonical_key == key) | (Entity.slug == key)
+        (Entity.public_id == key) | (Entity.canonical_key == key) | (Entity.slug == key)
     ).order_by(Entity.id)).all())
     if not rows:
         return None
@@ -397,6 +397,31 @@ def background_skills(entity: Entity | None) -> list[str]:
     return list(background_rule(entity.canonical_key or entity.slug or entity.name).get("skills", []))
 
 
+
+
+def background_other_proficiencies(entity: Entity | None) -> list[str]:
+    """Return tool/other proficiencies granted directly by a background."""
+    if not entity:
+        return []
+    data = entity.data_json or {}
+    raw = _nested(data, "tool_proficiencies", "tools", "proficiencies.tools", "tool_proficiency")
+    text = _text(raw).strip()
+    result: list[str] = []
+    if text:
+        # Structured lists are flattened by _text; retain useful named phrases
+        # when possible without treating ability/save abbreviations as tools.
+        if isinstance(raw, list):
+            for item in raw:
+                value = _text(item).strip()
+                if value and value not in result:
+                    result.append(value)
+        elif text:
+            result.append(text)
+    fallback = background_rule(entity.canonical_key or entity.slug or entity.name).get("tool")
+    if fallback and fallback not in result:
+        result.append(str(fallback))
+    return result
+
 def point_buy_total(scores: dict[str, int]) -> int | None:
     total = 0
     for ability in ABILITIES:
@@ -473,7 +498,9 @@ def derive_character(db: Session, character: Character) -> dict[str, Any]:
 
     saves = list(dict.fromkeys((character.save_proficiencies or []) + class_save_proficiencies(class_entity)))
     background_skill_list = background_skills(background)
+    background_other_list = background_other_proficiencies(background)
     skills_prof = list(dict.fromkeys((character.skill_proficiencies or []) + background_skill_list))
+    other_proficiencies = list(dict.fromkeys((character.other_proficiencies or []) + background_other_list))
     skills = []
     for name, ability in SKILL_ABILITIES.items():
         proficient = name in skills_prof
@@ -551,4 +578,6 @@ def derive_character(db: Session, character: Character) -> dict[str, Any]:
         "strength_requirement": strength_requirement,
         "point_buy_total": point_buy_total(base_scores), "feats": feats, "class_features": class_features,
         "skill_choice_count": skill_choice_count, "warnings": warnings,
+        "other_proficiencies": other_proficiencies, "background_skills": background_skill_list,
+        "background_other_proficiencies": background_other_list,
     }

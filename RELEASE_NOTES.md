@@ -380,3 +380,14 @@ This release adds generated-result list assignment, modernizes My Lists, and int
 - Normalizes the class catalog into the twelve 2024 primary classes and nests recognized 2024 subclasses beneath their correct parent class even when Open5e exposes them through a class-shaped endpoint.
 - Expands subclass-parent aliases for the 48 subclasses in the 2024 Player's Handbook naming scheme, including College of Lore and Circle of the Land.
 - Fixes a Jinja context collision that caused a 500 error immediately after saving Ability Scores and advancing to Background & Proficiencies.
+
+## v0.31.5 — Character Builder live stats and background workflow refinement
+
+- Reworked the right rail into compact Live Stats (HP, AC, PB) and three-letter Live Abilities rows.
+- Removed HP/AC/PB from Build Status and eliminated duplicate/bottom ability rails by using a live-state HTMX payload instead of out-of-band rail rendering.
+- Added Level/XP synchronization using the bundled 2024 XP thresholds, with backend normalization.
+- Rebuilt Background & Proficiencies layout to prevent truncated controls and horizontal overflow.
+- Background descriptions are capped at 220 characters in the workflow while More Info retains the complete cached reference card.
+- Background-granted skills and tool proficiencies are shown checked, locked, and read-only and are included in derived character output.
+- Background selections preserve the exact source variant by public ID while legacy canonical selections continue to resolve.
+- Removed class saving-throw abbreviations from the Other Proficiencies picker.

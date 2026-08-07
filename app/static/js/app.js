@@ -311,6 +311,20 @@ document.addEventListener("submit", async (event) => {
     updateAbilityInputs(form);
   }
 
+  function updateLiveStatsFromScores(scores) {
+    const rail = document.querySelector('[data-ability-rail]');
+    if (!rail) return;
+    const hpNode = rail.querySelector('[data-live-stat="hp"]');
+    const acNode = rail.querySelector('[data-live-stat="ac"]');
+    const baseHp = Number(rail.dataset.baseHp || hpNode?.textContent || 1);
+    const baseAc = Number(rail.dataset.baseAc || acNode?.textContent || 10);
+    const baseCon = Number(rail.dataset.baseConMod || 0);
+    const baseDex = Number(rail.dataset.baseDexMod || 0);
+    const level = Math.max(1, Number(rail.dataset.level || 1));
+    if (hpNode && scores.con != null) hpNode.textContent = String(Math.max(1, baseHp + (mod(scores.con) - baseCon) * level));
+    if (acNode && scores.dex != null) acNode.textContent = String(Math.max(1, baseAc + (mod(scores.dex) - baseDex)));
+  }
+
   function railApplyScores(scores, flash=true) {
     const rail = document.querySelector('[data-ability-rail]');
     if (!rail) return;
@@ -329,6 +343,38 @@ document.addEventListener("submit", async (event) => {
         window.setTimeout(()=>card.classList.remove('score-up','score-down'),5000);
       }
     });
+    updateLiveStatsFromScores(scores);
+  }
+
+  function applyLiveState(root=document) {
+    const state = root.querySelector?.('[data-character-live-state]');
+    const rail = document.querySelector('[data-ability-rail]');
+    if (!state || !rail) return;
+    let scores = {};
+    try { scores = JSON.parse(state.dataset.scores || '{}'); } catch (_) {}
+    rail.dataset.baseHp = state.dataset.hp || rail.dataset.baseHp;
+    rail.dataset.baseAc = state.dataset.ac || rail.dataset.baseAc;
+    rail.dataset.level = state.dataset.level || rail.dataset.level;
+    rail.dataset.baseConMod = String(mod(scores.con ?? 10));
+    rail.dataset.baseDexMod = String(mod(scores.dex ?? 10));
+    const hp=rail.querySelector('[data-live-stat="hp"]'); if(hp) hp.textContent=state.dataset.hp || hp.textContent;
+    const ac=rail.querySelector('[data-live-stat="ac"]'); if(ac) ac.textContent=state.dataset.ac || ac.textContent;
+    const pb=rail.querySelector('[data-live-stat="pb"]'); if(pb) pb.textContent=`+${state.dataset.pb || 2}`;
+    railApplyScores(scores,false);
+  }
+
+  function initIdentityBuilder(root=document) {
+    const form = root.querySelector?.('[data-identity-builder]');
+    if (!form || form.dataset.identityReady === '1') return;
+    form.dataset.identityReady='1';
+    const levelInput=form.querySelector('input[name="level"]');
+    const xpInput=form.querySelector('input[name="experience_points"]');
+    let table={};
+    try { table=JSON.parse(form.dataset.levelXp || '{}'); } catch (_) {}
+    const minXp=(level)=>Number(table[String(level)] ?? table[level] ?? 0);
+    const levelForXp=(xp)=>{ let result=1; Object.entries(table).forEach(([level,minimum])=>{ if(Number(xp)>=Number(minimum)) result=Math.max(result,Number(level)); }); return Math.min(20,result); };
+    levelInput?.addEventListener('input',()=>{ const level=Math.max(1,Math.min(20,Number(levelInput.value||1))); if(xpInput && Number(xpInput.value||0)<minXp(level)) xpInput.value=String(minXp(level)); });
+    xpInput?.addEventListener('input',()=>{ if(levelInput) levelInput.value=String(levelForXp(Math.max(0,Number(xpInput.value||0)))); });
   }
 
   function initBackgroundBuilder(root=document) {
@@ -350,7 +396,7 @@ document.addEventListener("submit", async (event) => {
       if (preview) preview.hidden = !has;
       if (!has) return;
       if (title) title.textContent = option.textContent.split(' · ')[0];
-      if (summary) summary.textContent = option.dataset.summary || 'No cached description is available.';
+      if (summary) { const text=option.dataset.summary || 'No cached description is available.'; summary.textContent = text.length > 220 ? `${text.slice(0,217).trimEnd()}…` : text; }
       if (source) source.textContent = option.dataset.source || '';
       if (more) {
         more.dataset.referenceTitle = title?.textContent || 'Background';
@@ -358,6 +404,18 @@ document.addEventListener("submit", async (event) => {
         more.dataset.referenceUrl = option.dataset.infoUrl || '#';
       }
       const permitted = allowed();
+      const grantedSkills=(option.dataset.skills || '').split('|').filter(Boolean);
+      const grantedProfs=(option.dataset.proficiencies || '').split('|').filter(Boolean);
+      form.querySelectorAll('[data-skill-choice]').forEach((label)=>{
+        const input=label.querySelector('input'); const locked=grantedSkills.includes(label.dataset.skillChoice);
+        label.classList.toggle('background-granted',locked); if(input){ input.disabled=locked; if(locked) input.checked=true; }
+        const lock=label.querySelector('.grant-lock'); if(lock) lock.hidden=!locked;
+      });
+      form.querySelectorAll('[data-proficiency-choice]').forEach((label)=>{
+        const input=label.querySelector('input'); const locked=grantedProfs.includes(label.dataset.proficiencyChoice);
+        label.classList.toggle('background-granted',locked); if(input){ input.disabled=locked; if(locked) input.checked=true; }
+        const lock=label.querySelector('.grant-lock'); if(lock) lock.hidden=!locked;
+      });
       form.querySelectorAll('[data-background-ability]').forEach((label) => {
         const enabled = permitted.includes(label.dataset.backgroundAbility);
         label.classList.toggle('is-disabled', !enabled);
@@ -400,7 +458,7 @@ document.addEventListener("submit", async (event) => {
   }
 
   function initCharacterEnhancements(root=document) {
-    initClassBuilder(root); initBackgroundBuilder(root);
+    initIdentityBuilder(root); initClassBuilder(root); initBackgroundBuilder(root);
     const abilityForm = root.querySelector?.('[data-ability-builder]');
     if (abilityForm) updateAbilityInputs(abilityForm);
   }
@@ -419,6 +477,7 @@ document.addEventListener("submit", async (event) => {
   document.addEventListener('htmx:afterSwap',(event)=>{
     if(event.target?.id==='character-builder-stage') {
       initCharacterEnhancements(event.target);
+      applyLiveState(event.target);
       const step=new URL(location.href).searchParams.get('step');
       const shell=document.querySelector('.character-builder-shell');
       shell?.classList.toggle('with-ability-rail',['background','gear','spells','details','review'].includes(step));

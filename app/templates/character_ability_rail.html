@@ -1,1 +1,10 @@
-<aside id="character-ability-rail" class="character-ability-rail {% if step not in ['background','gear','spells','details','review'] %}is-hidden{% endif %}" data-ability-rail {% if oob|default(false) %}hx-swap-oob="outerHTML"{% endif %} aria-label="Current ability scores"><div class="ability-rail-heading"><span>LIVE ABILITIES</span><small>Updates as build choices change</small></div>{% for ability in abilities %}<article data-rail-ability="{{ ability }}" data-score="{{ derived.scores[ability] }}"><span>{{ ability_names[ability] }}</span><strong data-rail-score>{{ derived.scores[ability] }}</strong><b data-rail-mod>{{ '%+d'|format(derived.modifiers[ability]) }}</b></article>{% endfor %}</aside>
+<aside id="character-ability-rail" class="character-ability-rail {% if step not in ['background','gear','spells','details','review'] %}is-hidden{% endif %}" data-ability-rail aria-label="Live character statistics" data-base-hp="{{ derived.hp_max }}" data-base-ac="{{ derived.armor_class }}" data-base-con-mod="{{ derived.modifiers.con }}" data-base-dex-mod="{{ derived.modifiers.dex }}" data-level="{{ character.level }}">
+  <div class="ability-rail-heading"><span>LIVE STATS</span></div>
+  <div class="live-stat-grid">
+    <article class="live-stat-card"><span>HP</span><strong data-live-stat="hp">{{ derived.hp_max }}</strong></article>
+    <article class="live-stat-card"><span>AC</span><strong data-live-stat="ac">{{ derived.armor_class }}</strong></article>
+    <article class="live-stat-card"><span>PB</span><strong data-live-stat="pb">+{{ derived.proficiency_bonus }}</strong></article>
+  </div>
+  <div class="ability-rail-heading"><span>LIVE ABILITIES</span></div>
+  {% for ability in abilities %}<article class="live-ability-card" data-rail-ability="{{ ability }}" data-score="{{ derived.scores[ability] }}"><span>{{ ability|upper }}</span><strong data-rail-score>{{ derived.scores[ability] }}</strong><b data-rail-mod>{{ '%+d'|format(derived.modifiers[ability]) }}</b></article>{% endfor %}
+</aside>

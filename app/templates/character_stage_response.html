@@ -1,2 +1,2 @@
 {% include "character_steps/" ~ step ~ ".html" %}
-{% set oob = true %}{% include "character_ability_rail.html" %}
+<template data-character-live-state data-step="{{ step }}" data-hp="{{ derived.hp_max }}" data-ac="{{ derived.armor_class }}" data-pb="{{ derived.proficiency_bonus }}" data-level="{{ character.level }}" data-scores='{{ derived.scores|tojson }}'></template>

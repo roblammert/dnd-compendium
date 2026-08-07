@@ -18,25 +18,28 @@ from app.character_services import (
     ABILITIES, ABILITY_NAMES, SKILL_ABILITIES, STANDARD_ARRAY,
     class_save_proficiencies, class_skill_choices, derive_character,
     entities_for_character, entity_summary, find_character_entity, builder_summary,
-    subclass_parent_key, background_allowed_abilities, split_class_catalog,
+    subclass_parent_key, background_allowed_abilities, background_skills,
+    background_other_proficiencies, split_class_catalog,
 )
 from app.config import get_settings
 from app.db import get_db
 from app.models import Character, Entity, User
 from app.character_rules_2024 import (
     RULESET_SOURCE_KEY, RULESET_SOURCE_LABEL, RULESET_GAME_SYSTEM_KEY,
-    RULESET_GAME_SYSTEM_LABEL, RULESET_DISPLAY_NAME, STANDARD_LANGUAGES,
+    RULESET_GAME_SYSTEM_LABEL, RULESET_DISPLAY_NAME, STANDARD_LANGUAGES, LEVEL_XP,
 )
 
 router = APIRouter(prefix="/tools/character-builder")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-templates.env.globals["app_version"] = "0.31.4"
+templates.env.globals["app_version"] = "0.31.5"
 templates.env.globals["app_name"] = get_settings().app_name
 _md = MarkdownIt("commonmark", {"html": False, "linkify": True}).enable("table")
 templates.env.filters["render_markdown"] = lambda value: Markup(_md.render(str(value or "")))
 templates.env.globals["entity_summary"] = entity_summary
 templates.env.globals["builder_summary"] = builder_summary
 templates.env.globals["background_allowed_abilities"] = background_allowed_abilities
+templates.env.globals["background_skills"] = background_skills
+templates.env.globals["background_other_proficiencies"] = background_other_proficiencies
 
 STEPS = [
     ("identity", "Identity"),
@@ -137,7 +140,7 @@ def _step_context(db: Session, character: Character, step: str) -> dict[str, Any
     context: dict[str, Any] = {
         "character": character, "step": step, "steps": STEPS, "derived": derived,
         "ability_names": ABILITY_NAMES, "abilities": ABILITIES, "skill_abilities": SKILL_ABILITIES,
-        "standard_array": STANDARD_ARRAY,
+        "standard_array": STANDARD_ARRAY, "level_xp": LEVEL_XP,
         "ruleset_display_name": RULESET_DISPLAY_NAME,
         "ruleset_source_label": RULESET_SOURCE_LABEL,
         "ruleset_game_system_label": RULESET_GAME_SYSTEM_LABEL,
@@ -158,18 +161,21 @@ def _step_context(db: Session, character: Character, step: str) -> dict[str, Any
     elif step == "background":
         # 2024 characters may use backgrounds from older books. Prefer the 2024
         # variant when duplicates exist, but expose distinct legacy backgrounds too.
-        context["background_rows"] = _dedupe_prefer_2024(_all_active_entities(db, ["background"]))
+        context["background_rows"] = sorted(_all_active_entities(db, ["background"]), key=lambda r: (r.name.casefold(), 0 if r.source_document == RULESET_SOURCE_KEY else 1, (r.source_display_name or "").casefold()))
         # Alignment is descriptive rather than an edition-specific mechanic, so use
         # the best available cached variant instead of requiring srd-2024 coverage.
         context["alignment_rows"] = _dedupe_prefer_2024(_all_active_entities(db, ["alignment"]))
         context["language_rows"] = _dedupe_prefer_2024(_all_active_entities(db, ["language"]))
         context["language_options"] = sorted(set(STANDARD_LANGUAGES + [r.name for r in context["language_rows"]]))
-        context["selected_background"] = next((r for r in context["background_rows"] if (r.canonical_key or r.slug) == character.background_key), None)
+        context["selected_background"] = next((r for r in context["background_rows"] if r.public_id == character.background_key or (r.canonical_key or r.slug) == character.background_key), None)
         context["selected_background_allowed_abilities"] = background_allowed_abilities(context["selected_background"])
+        context["background_locked_skills"] = background_skills(context["selected_background"])
+        context["background_locked_proficiencies"] = background_other_proficiencies(context["selected_background"])
         class_entity = derived["class_entity"]
-        context["class_skill_choices"] = class_skill_choices(class_entity)
+        class_skills = class_skill_choices(class_entity)
+        context["class_skill_choices"] = list(dict.fromkeys(class_skills + context["background_locked_skills"]))
         context["class_saves"] = class_save_proficiencies(class_entity)
-        suggested = list(dict.fromkeys(list(character.other_proficiencies or []) + [str(x) for x in context["class_saves"]]))
+        suggested = list(dict.fromkeys(list(character.other_proficiencies or []) + context["background_locked_proficiencies"]))
         context["proficiency_options"] = sorted(set(suggested + ["Light Armor", "Medium Armor", "Heavy Armor", "Shields", "Simple Weapons", "Martial Weapons", "Thieves' Tools", "Calligrapher's Supplies", "Gaming Set"]))
     elif step == "gear":
         context["equipment_rows"] = entities_for_character(db, ["equipment", "item", "weapon", "armor"], character)
@@ -256,8 +262,14 @@ async def save_step(request: Request, public_id: str, step: str, user: User = De
 
     if step == "identity":
         row.name = str(form.get("name") or row.name).strip() or "New Character"
-        row.level = max(1, min(20, int(form.get("level") or row.level)))
-        row.experience_points = max(0, int(form.get("experience_points") or 0))
+        posted_level = max(1, min(20, int(form.get("level") or row.level)))
+        posted_xp = max(0, int(form.get("experience_points") or 0))
+        # Identity keeps level and XP coherent. The browser performs the same
+        # interaction live; this server normalization prevents crafted/stale
+        # submissions from storing an impossible lower XP for the chosen level.
+        level_from_xp = max(level for level, minimum in LEVEL_XP.items() if posted_xp >= minimum)
+        row.level = max(posted_level, level_from_xp)
+        row.experience_points = max(posted_xp, LEVEL_XP[row.level])
         # Source/game-system fields are deliberately ignored. Character Builder
         # is pinned to the 2024 rules and cannot be switched by the client.
         _enforce_2024_rules(row, reset_incompatible=False)

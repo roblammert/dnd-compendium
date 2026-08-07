@@ -188,8 +188,9 @@ The builder now treats descriptions and immediate feedback as first-class workfl
 
 The application rules engine itself remains fixed to D&D 2024. Broader background availability is compatibility behavior inside those rules, not an edition selector.
 
-## v0.31.4 class catalog normalization
 
-The builder does not trust endpoint type alone to distinguish classes from subclasses. Cached 2024 records are normalized against the twelve primary classes and the 2024 subclass-parent map. This prevents subclass records such as College of Lore and Circle of the Land from appearing in the Primary Class picker when a source exposes them through a class-like endpoint.
+## v0.31.5 Live Build Feedback
 
-Character Builder reference modals are informational views only. Full-card actions such as raw JSON, Add to List, and artwork management remain available only on the normal Compendium detail page.
+The post-Ability-Score workflow keeps one sticky right-side live rail. It contains HP, AC, proficiency bonus, and compact STR/DEX/CON/INT/WIS/CHA score/modifier rows. HTMX step responses carry a compact live-state payload instead of rendering another rail, preventing duplicate rails from appearing below the form.
+
+Identity keeps Level and XP coherent using the bundled 2024 XP threshold table. Background variants are source-specific, background-granted skills/tools are locked in the UI, and selected background ability adjustments immediately update the live ability rail and dependent HP/AC preview.
