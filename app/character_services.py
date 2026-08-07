@@ -278,6 +278,97 @@ def entity_print_profile(entity: Entity | None, kind: str = "") -> str:
     return "\n\n".join(part for part in parts if part).strip()
 
 
+
+def feat_print_profile(entity: Entity | None) -> str:
+    """Return complete printable feat prose from summary plus structured benefit fields."""
+    if not entity:
+        return ""
+    data = entity.data_json or {}
+    parts: list[str] = []
+    for value in (data.get("desc"), data.get("description"), entity.summary):
+        text = _print_block_markdown(value)
+        if text and text not in parts:
+            parts.append(text)
+    for key in ("benefits", "benefit", "features", "effects", "descriptions"):
+        text = _print_block_markdown(data.get(key))
+        if text and text not in parts:
+            parts.append(text)
+    return "\n\n".join(parts).strip()
+
+
+def species_hp_per_level_bonus(entity: Entity | None) -> int:
+    """Detect a species trait that increases HP maximum once per character level."""
+    if not entity:
+        return 0
+    blob = _text(entity.data_json or {})
+    match = re.search(r"Hit Point maximum increases by\s+(\d+).*?whenever you gain a level", blob, re.I | re.S)
+    if match:
+        return int(match.group(1))
+    return 1 if canonical_rule_key(entity.canonical_key or entity.slug or entity.name) == "dwarf" and "Dwarven Toughness" in blob else 0
+
+
+def hit_dice_print_guide(character: Character, class_entity: Entity | None, species: Entity | None, hit_die: int, con_mod: int) -> dict[str, Any]:
+    count = max(1, int(character.level or 1))
+    fixed_die = math.floor(hit_die / 2) + 1
+    species_bonus = species_hp_per_level_bonus(species)
+    class_name = class_entity.name if class_entity else "your class"
+    species_note = ""
+    if species_bonus:
+        species_name = species.name if species else "Your species"
+        species_note = f" {species_name} adds +{species_bonus} HP to your maximum at each level; this does not change the die you roll during a Short Rest."
+    fixed_gain = fixed_die + con_mod + species_bonus
+    roll_extra = con_mod + species_bonus
+    return {
+        "title": f"{count}d{hit_die}",
+        "short_rest": f"You have {count} d{hit_die} Hit Point Dice from {class_name} {count}. During a Short Rest, spend one or more unspent dice. For each die, roll 1d{hit_die} {con_mod:+d}; regain at least 1 HP from that die, and decide after each roll whether to spend another.",
+        "long_rest": "After a Long Rest, you regain all lost HP and all spent Hit Point Dice.",
+        "level_up": f"When you gain another {class_name} level, add one d{hit_die} Hit Point Die. For maximum HP, the fixed-value method adds {fixed_gain} HP ({fixed_die} + CON {con_mod:+d}{f' + species {species_bonus}' if species_bonus else ''}); if your table rolls, use 1d{hit_die} {roll_extra:+d}.{species_note}"
+    }
+
+
+def roll_reference_rows(skills: list[dict[str, Any]], saves: list[dict[str, Any]], modifiers: dict[str, int]) -> list[dict[str, str]]:
+    """Build character-specific d20 guidance for every ability."""
+    by_ability: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for skill in skills:
+        by_ability[skill["ability"]].append(skill)
+    generic = {
+        "str": ["lift, push, or break something", "force open a stuck door"],
+        "dex": ["balance or move quietly", "perform precise handwork"],
+        "con": ["endure harsh conditions", "push through prolonged exertion"],
+        "int": ["recall lore", "reason through clues"],
+        "wis": ["notice danger", "read a creature's intentions"],
+        "cha": ["influence someone", "mislead or intimidate someone"],
+    }
+    save_map = {row["ability"]: row for row in saves}
+    result = []
+    for ability in ABILITIES:
+        candidates = sorted(by_ability.get(ability, []), key=lambda r: (not r.get("proficient", False), r.get("name", "")))
+        examples = []
+        for skill in candidates[:2]:
+            examples.append(f"{skill['name']} {skill['modifier']:+d}{' (proficient)' if skill.get('proficient') else ''}")
+        if not examples:
+            examples = [f"{label}: {modifiers[ability]:+d}" for label in generic[ability][:2]]
+        elif len(examples) < 2:
+            examples.append(f"Other {ABILITY_NAMES[ability]} check {modifiers[ability]:+d}")
+        save = save_map[ability]
+        result.append({
+            "ability": ability.upper(),
+            "save": f"d20 {save['modifier']:+d}" + (" (proficient)" if save.get("proficient") else ""),
+            "check": f"d20 {modifiers[ability]:+d}",
+            "examples": "; ".join(examples[:2]),
+        })
+    return result
+
+
+def roll_reference_notes(species: Entity | None) -> list[str]:
+    if not species:
+        return []
+    blob = _text(species.data_json or {})
+    notes = []
+    if re.search(r"Advantage on saving throws.*?(?:avoid or end).*?Poisoned", blob, re.I | re.S):
+        notes.append("Species trait: you have Advantage on saving throws made to avoid or end the Poisoned condition.")
+    return notes
+
 def _is_column_placeholder(value: Any) -> bool:
     text = _text(value).strip().casefold()
     return text in {"[column data]", "column data", "[column-data]", "—", "-"}
@@ -837,7 +928,7 @@ def derive_character(db: Session, character: Character) -> dict[str, Any]:
         skills.append({"name": name, "ability": ability, "modifier": modifiers[ability] + (prof if proficient else 0), "proficient": proficient})
 
     hit_die = class_hit_die(class_entity)
-    hp_max = max(1, hit_die + modifiers["con"] + max(0, character.level - 1) * (math.floor(hit_die / 2) + 1 + modifiers["con"]))
+    hp_max = max(1, hit_die + modifiers["con"] + max(0, character.level - 1) * (math.floor(hit_die / 2) + 1 + modifiers["con"]) + species_hp_per_level_bonus(species) * character.level)
     details = character.details_json or {}
     hp_current = int(details.get("current_hp", hp_max) or hp_max)
     temp_hp = int(details.get("temp_hp", 0) or 0)
@@ -909,6 +1000,10 @@ def derive_character(db: Session, character: Character) -> dict[str, Any]:
         "currency": currency, "details": details, "stealth_disadvantage": stealth_disadvantage,
         "strength_requirement": strength_requirement,
         "point_buy_total": point_buy_total(base_scores), "feats": feats, "class_features": class_features,
+        "feat_print_profiles": {feat.public_id: feat_print_profile(feat) for feat in feats},
+        "hit_dice_guide": hit_dice_print_guide(character, class_entity, species, hit_die, modifiers["con"]),
+        "roll_reference_rows": roll_reference_rows(skills, save_rows, modifiers),
+        "roll_reference_notes": roll_reference_notes(species),
         "print_profiles": {
             "species": entity_print_profile(species, "species"),
             "class": entity_print_profile(class_entity, "class"),

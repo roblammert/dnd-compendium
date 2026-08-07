@@ -495,3 +495,13 @@ Every printed page includes `Generated with Rob's D&D Compendium - {version} - {
 - Paged-media footers reserve their own page area to prevent content collisions.
 - Footer left: `Generated with Rob's D&D Compendium - {version} - {YYYYMMDD}`.
 - Footer right: `{Character Name} - {Player Name} - {Page}/{Total Pages}`.
+
+## v0.32.2
+- Rebuilt print footers as a continuous full-width rule with left generation metadata and right character/player/page numbering.
+- Footer generation timestamp now includes Central time in `YYYYMMDD HH:MM` format.
+- Printable feat descriptions now merge structured benefits/effects/descriptions instead of relying only on top-level summaries.
+- Removed the Traits explanatory subheader.
+- Added character-specific `Hit Dice & How to Use Them` and `How Do I Roll...` play-reference panels beneath the ability scores.
+- Added species-per-level HP adjustments such as 2024 Dwarven Toughness to derived maximum HP and level-up guidance.
+- Removed Electrum from the printable currency panel and leaves zero-value coin boxes blank for handwriting.
+- Increased the reserved print footer margin and tightened trait fragmentation to prevent content/footer collisions.

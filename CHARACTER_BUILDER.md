@@ -223,3 +223,11 @@ The printable sheet no longer assumes that Species and Class records expose usef
 Open5e Class payloads can contain progression-table cells mixed into feature-shaped data. These include values such as `[Column data]`, ordinal column labels, Proficiency Bonus columns, and spell-list appendices. `class_features_for_level()` now treats these as structural table data instead of printable character features. Real prose with duplicate feature names wins over placeholder entries.
 
 For PDF output, page footer content is emitted through CSS paged-media margin boxes. This reserves physical space below the content frame and provides reliable WeasyPrint page counters. Equipment switches to paired Item/Type columns after 10 entries, while Features always begin on a fresh page.
+
+
+## v0.32.2 print-play reference additions
+
+- Print footers use a continuous printable-width rule, Central-time generation timestamp, and character/player page numbering.
+- Feat print profiles merge structured benefits, effects, and descriptions so rules text is not lost when `desc` is only a lead-in.
+- The core play page includes character-specific Hit Dice/rest/level-up guidance and a compact d20 roll-reference table derived from live saves, skills, ability modifiers, proficiency, class Hit Die, and species HP traits.
+- Printable currency omits EP and leaves zero coin values blank for handwriting.

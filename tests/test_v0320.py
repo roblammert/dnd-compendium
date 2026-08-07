@@ -24,5 +24,5 @@ def test_v0320_print_sheet_has_overflow_safe_paged_css():
 
 def test_v0320_routes_supply_version_and_generation_date():
     routes = Path("app/character_routes.py").read_text()
-    assert 'date.today().strftime("%Y%m%d")' in routes
+    assert 'strftime("%Y%m%d %H:%M")' in routes
     assert 'app_version=request.app.version' in routes
