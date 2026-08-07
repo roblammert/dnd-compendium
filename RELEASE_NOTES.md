@@ -330,3 +330,9 @@ This release adds generated-result list assignment, modernizes My Lists, and int
 - Added an instant client-side Hide Blocked toggle to Feat Evaluator without evaluation or page refresh.
 - Renamed Weapon & Martial Arts Evaluator to Weapons Evaluator throughout the Tools interface.
 - Added a Game System dropdown beside weapon search and preserved selected comparison records while filtering the picker.
+
+## v0.30.4 — Evaluator interaction fixes
+
+- Made the Feat Evaluator Hide Blocked control compact and correctly sized.
+- Added immediate client-side Game System filtering to the Weapons Evaluator.
+- Added immediate weapon-name filtering while preserving selected comparison records.

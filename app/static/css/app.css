@@ -253,3 +253,11 @@ button:disabled { cursor:not-allowed; opacity:.55; }
 
 /* v0.30.3 evaluator controls */
 .feat-options-heading{display:flex;align-items:center;justify-content:space-between;gap:1rem;grid-column:2/-1}.feat-options-heading>div{min-width:0}.inline-tool-toggle{display:flex;align-items:center;gap:.55rem;white-space:nowrap;padding:.65rem .85rem;border:1px solid #7f928f;background:#edf7f5;color:#244d4d;font:800 .8rem system-ui;text-transform:uppercase;letter-spacing:.04em;cursor:pointer}.inline-tool-toggle input{width:1rem;height:1rem}.feat-grid.hide-blocked .feat-evaluation-card.ineligible{display:none}.weapon-filter-row{display:grid;grid-template-columns:minmax(0,2fr) minmax(220px,1fr);gap:.8rem}.weapon-filter-row label{display:grid;gap:.4rem;font-weight:800}.weapon-filter-row input,.weapon-filter-row select{width:100%;min-width:0;box-sizing:border-box}.weapon-choice-grid .tactical-toggle span{min-width:0;overflow-wrap:anywhere}.weapon-choice-grid>.empty-table-state{grid-column:1/-1;margin:0}@media(max-width:760px){.feat-options-heading{align-items:flex-start;flex-direction:column}.weapon-filter-row{grid-template-columns:1fr}}
+
+
+/* v0.30.4 evaluator interaction fixes */
+.inline-tool-toggle{display:inline-flex;flex:0 0 auto;width:auto;max-width:100%;min-height:2.35rem;align-items:center;justify-content:center;gap:.5rem;padding:.45rem .7rem;box-sizing:border-box}
+.inline-tool-toggle input[type="checkbox"]{appearance:auto;flex:0 0 1rem;width:1rem!important;height:1rem!important;min-width:1rem;margin:0;padding:0}
+.inline-tool-toggle span{display:inline;line-height:1;white-space:nowrap}
+.weapon-choice-grid [data-weapon-choice][hidden]{display:none!important}
+@media(max-width:760px){.inline-tool-toggle{align-self:flex-start}}

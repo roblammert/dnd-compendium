@@ -59,6 +59,29 @@
       applyBlockedVisibility();
     }
 
+    const weaponSystemFilter = document.querySelector("[data-weapon-system-filter]");
+    const weaponSearch = document.querySelector("[data-weapon-search]");
+    const weaponChoices = Array.from(document.querySelectorAll("[data-weapon-choice]"));
+    const weaponEmpty = document.querySelector("[data-weapon-empty]");
+    if (weaponChoices.length && (weaponSystemFilter || weaponSearch)) {
+      const filterWeapons = () => {
+        const system = weaponSystemFilter ? weaponSystemFilter.value : "";
+        const query = weaponSearch ? weaponSearch.value.trim().toLowerCase() : "";
+        let visible = 0;
+        weaponChoices.forEach((choice) => {
+          const matchesSystem = !system || choice.dataset.gameSystem === system;
+          const matchesSearch = !query || (choice.dataset.weaponName || "").includes(query);
+          const show = matchesSystem && matchesSearch;
+          choice.hidden = !show;
+          if (show) visible += 1;
+        });
+        if (weaponEmpty) weaponEmpty.hidden = visible !== 0;
+      };
+      if (weaponSystemFilter) weaponSystemFilter.addEventListener("change", filterWeapons);
+      if (weaponSearch) weaponSearch.addEventListener("input", filterWeapons);
+      filterWeapons();
+    }
+
 
     const listDestination = document.querySelector("[data-list-destination]");
     const newListFields = document.querySelector("[data-new-list-fields]");

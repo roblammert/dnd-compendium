@@ -14,9 +14,9 @@
     <div class="panel-title"><h2>Select Weapons</h2><p>Search and filter by game system, then choose up to six records for direct comparison.</p></div>
     <div class="weapon-picker">
       <div class="weapon-filter-row">
-        <label>Search<input name="search" value="{{ search }}" placeholder="Battleaxe"></label>
+        <label>Search<input name="search" value="{{ search }}" placeholder="Battleaxe" data-weapon-search></label>
         <label>Game System
-          <select name="game_system">
+          <select name="game_system" data-weapon-system-filter>
             <option value="">All game systems</option>
             {% for system in game_systems %}
             <option value="{{ system.key }}" {% if game_system == system.key %}selected{% endif %}>{{ system.name }}</option>
@@ -24,16 +24,15 @@
           </select>
         </label>
       </div>
-      <div class="weapon-choice-grid">
+      <div class="weapon-choice-grid" data-weapon-choice-grid>
         {% for weapon in weapons[:100] %}
-        <label class="tactical-toggle">
+        <label class="tactical-toggle" data-weapon-choice data-game-system="{{ weapon.game_system_key or '' }}" data-weapon-name="{{ weapon.name|lower }}">
           <input type="checkbox" name="compare" value="{{ weapon.public_id }}" {% if weapon.public_id in compare %}checked{% endif %}>
           <span>{{ weapon.name }}</span>
           <small>{{ weapon.source_display_name or '' }}{% if weapon.game_system_name %} · {{ weapon.game_system_name }}{% endif %}</small>
         </label>
-        {% else %}
-        <p class="empty-table-state">No weapons match the selected filters.</p>
         {% endfor %}
+        <p class="empty-table-state" data-weapon-empty hidden>No weapons match the selected filters.</p>
       </div>
       <div class="generate-dock"><button class="primary-action">Compare Selected</button></div>
     </div>

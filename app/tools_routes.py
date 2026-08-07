@@ -179,9 +179,8 @@ def weapon_evaluator(request: Request, search: str = "", game_system: str = "", 
             systems_by_key.setdefault(key, name)
     game_systems = [{"key": key, "name": systems_by_key[key]} for key in sorted(systems_by_key, key=lambda value: systems_by_key[value].casefold())]
     weapons=all_weapons
-    if search: weapons=[w for w in weapons if search.casefold() in w.name.casefold()]
-    if game_system: weapons=[w for w in weapons if (w.game_system_key or "") == game_system]
-    chosen=[w for w in all_weapons if w.public_id in compare][:6] if compare else weapons[:4]
+    initially_visible = [w for w in weapons if (not search or search.casefold() in w.name.casefold()) and (not game_system or (w.game_system_key or "") == game_system)]
+    chosen=[w for w in all_weapons if w.public_id in compare][:6] if compare else initially_visible[:4]
     rows=[]
     for entity in chosen:
         data=entity.data_json or {}; fallback=_select_item_fallback(entity,_matching_item_candidates(entity,item_index)); card=build_weapon_card(entity,fallback_item=fallback)
