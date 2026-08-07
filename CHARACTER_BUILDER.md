@@ -175,7 +175,7 @@ The v0.31 model is designed to support later increments without replacing charac
 - import/export character JSON
 - campaign assignment and DM-view permissions
 
-## v0.31.3 Interactive Builder UX
+## v0.31.4 Interactive Builder UX
 
 The builder now treats descriptions and immediate feedback as first-class workflow requirements:
 
@@ -187,3 +187,9 @@ The builder now treats descriptions and immediate feedback as first-class workfl
 - From Background onward, a sticky **Live Abilities** rail remains visible. Changes to background ability adjustments update the rail immediately; increases flash green and decreases flash red for five seconds.
 
 The application rules engine itself remains fixed to D&D 2024. Broader background availability is compatibility behavior inside those rules, not an edition selector.
+
+## v0.31.4 class catalog normalization
+
+The builder does not trust endpoint type alone to distinguish classes from subclasses. Cached 2024 records are normalized against the twelve primary classes and the 2024 subclass-parent map. This prevents subclass records such as College of Lore and Circle of the Land from appearing in the Primary Class picker when a source exposes them through a class-like endpoint.
+
+Character Builder reference modals are informational views only. Full-card actions such as raw JSON, Add to List, and artwork management remain available only on the normal Compendium detail page.

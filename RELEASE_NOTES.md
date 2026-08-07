@@ -373,3 +373,10 @@ This release adds generated-result list assignment, modernizes My Lists, and int
 - Repairs Alignment availability by using the best cached variant when a dedicated 2024 record is absent.
 - Replaces free-text language/proficiency entry with selectable controls.
 - Adds a persistent Live Abilities rail after the Ability Scores step with green/red five-second change feedback.
+
+## v0.31.4 — Character Builder class normalization and reference-modal hotfix
+
+- Keeps Character Builder More Info modals read-only by removing raw JSON, list actions, and artwork upload/link controls from embedded Compendium cards.
+- Normalizes the class catalog into the twelve 2024 primary classes and nests recognized 2024 subclasses beneath their correct parent class even when Open5e exposes them through a class-shaped endpoint.
+- Expands subclass-parent aliases for the 48 subclasses in the 2024 Player's Handbook naming scheme, including College of Lore and Circle of the Land.
+- Fixes a Jinja context collision that caused a 500 error immediately after saving Ability Scores and advancing to Background & Proficiencies.

@@ -216,10 +216,63 @@ def subclass_parent_key(entity: Entity | None) -> str | None:
                 return class_key
     key = canonical_rule_key(entity.canonical_key or entity.slug or entity.name)
     for sub_key, parent in DEFAULT_SUBCLASS_PARENTS.items():
-        if sub_key in key:
+        # Exact matching avoids false positives such as the Cleric "War"
+        # domain being detected inside the base class name "Warlock".  A
+        # suffix match still supports source-prefixed Open5e keys.
+        if key == sub_key or key.endswith(f"-{sub_key}"):
             return parent
     return None
 
+
+
+def primary_class_key(entity: Entity | None) -> str | None:
+    """Return one of the twelve 2024 base class keys, or None.
+
+    Open5e occasionally exposes subclass-like records through class-shaped
+    endpoints.  A primary class is therefore recognized by the canonical key
+    or display name matching a core class exactly; subclass names are not
+    allowed to leak into the primary-class picker.
+    """
+    if not entity:
+        return None
+    candidates = (entity.canonical_key, entity.slug, entity.name)
+    for candidate in candidates:
+        key = canonical_rule_key(candidate)
+        if key in CLASS_RULES:
+            return key
+        # Source-prefixed keys such as srd-2024_bard normalize with a suffix.
+        for class_key in CLASS_RULES:
+            if key.endswith(f"-{class_key}"):
+                return class_key
+    return None
+
+
+def split_class_catalog(rows: list[Entity]) -> tuple[list[Entity], list[Entity], dict[str, str]]:
+    """Normalize mixed Open5e class/subclass rows for the builder UI."""
+    primary: list[Entity] = []
+    subclasses: list[Entity] = []
+    parents: dict[str, str] = {}
+    seen_primary: set[str] = set()
+    seen_subclasses: set[tuple[str, str]] = set()
+
+    for entity in rows:
+        parent = subclass_parent_key(entity)
+        base = primary_class_key(entity)
+        if parent and not base:
+            sub_key = canonical_rule_key(entity.canonical_key or entity.slug or entity.name)
+            marker = (parent, sub_key)
+            if marker not in seen_subclasses:
+                subclasses.append(entity)
+                parents[entity.public_id] = parent
+                seen_subclasses.add(marker)
+            continue
+        if base and base not in seen_primary:
+            primary.append(entity)
+            seen_primary.add(base)
+
+    primary.sort(key=lambda entity: entity.name.casefold())
+    subclasses.sort(key=lambda entity: (parents.get(entity.public_id, ""), entity.name.casefold()))
+    return primary, subclasses, parents
 
 def background_allowed_abilities(entity: Entity | None) -> list[str]:
     if not entity:

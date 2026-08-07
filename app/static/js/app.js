@@ -208,7 +208,7 @@ document.addEventListener("submit", async (event) => {
   document.addEventListener('DOMContentLoaded', ()=>refreshPointBuy(document.querySelector('[data-ability-builder]')));
 })();
 
-// v0.31.3 Character Builder responsive choices, previews, auto-generation, and live abilities.
+// v0.31.4 Character Builder responsive choices, previews, auto-generation, and live abilities.
 (() => {
   const abilities = ['str','dex','con','int','wis','cha'];
   const mod = (score) => Math.floor((Number(score) - 10) / 2);
@@ -234,7 +234,20 @@ document.addEventListener("submit", async (event) => {
       const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
       const shell = doc.querySelector('.entity-page-shell');
       if (shell && host) {
-        shell.querySelector('.entity-page-toolbar')?.remove();
+        // Character Builder reference modals are deliberately read-only.  The
+        // full Compendium page keeps JSON, list actions, and artwork controls;
+        // the embedded modal contains only the informational card itself.
+        shell.querySelectorAll([
+          '.entity-page-toolbar',
+          '.raw-json-panel',
+          '.entity-user-actions',
+          '.asset-tools',
+          '.shared-assets-panel',
+          '.card-list-action',
+          '#add-to-list-dialog',
+          '.list-dialog',
+          '[data-open-list-dialog]'
+        ].join(',')).forEach((node) => node.remove());
         host.innerHTML = shell.innerHTML;
         host.hidden = false;
         if (summary) summary.hidden = true;

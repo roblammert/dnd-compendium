@@ -18,7 +18,7 @@ from app.character_services import (
     ABILITIES, ABILITY_NAMES, SKILL_ABILITIES, STANDARD_ARRAY,
     class_save_proficiencies, class_skill_choices, derive_character,
     entities_for_character, entity_summary, find_character_entity, builder_summary,
-    subclass_parent_key, background_allowed_abilities,
+    subclass_parent_key, background_allowed_abilities, split_class_catalog,
 )
 from app.config import get_settings
 from app.db import get_db
@@ -30,7 +30,7 @@ from app.character_rules_2024 import (
 
 router = APIRouter(prefix="/tools/character-builder")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-templates.env.globals["app_version"] = "0.31.3"
+templates.env.globals["app_version"] = "0.31.4"
 templates.env.globals["app_name"] = get_settings().app_name
 _md = MarkdownIt("commonmark", {"html": False, "linkify": True}).enable("table")
 templates.env.filters["render_markdown"] = lambda value: Markup(_md.render(str(value or "")))
@@ -146,10 +146,15 @@ def _step_context(db: Session, character: Character, step: str) -> dict[str, Any
         context["species_rows"] = entities_for_character(db, ["species", "race"], character)
         context["selected_species"] = find_character_entity(db, character, ["species", "race"], character.species_key)
     elif step == "class":
-        context["class_rows"] = entities_for_character(db, ["class", "classe"], character)
-        context["subclass_rows"] = entities_for_character(db, ["subclass", "subclasse"], character)
+        # Some Open5e datasets expose subclass-shaped entries through class-like
+        # endpoints.  Build one mixed catalog and normalize it into the twelve
+        # primary 2024 classes plus correctly nested subclasses.
+        mixed_rows = entities_for_character(db, ["class", "classe", "subclass", "subclasse"], character)
+        class_rows, subclass_rows, subclass_parents = split_class_catalog(mixed_rows)
+        context["class_rows"] = class_rows
+        context["subclass_rows"] = subclass_rows
         context["selected_class"] = find_character_entity(db, character, ["class", "classe"], character.class_key)
-        context["subclass_parents"] = {r.public_id: subclass_parent_key(r) for r in context["subclass_rows"]}
+        context["subclass_parents"] = subclass_parents
     elif step == "background":
         # 2024 characters may use backgrounds from older books. Prefer the 2024
         # variant when duplicates exist, but expose distinct legacy backgrounds too.
@@ -160,7 +165,7 @@ def _step_context(db: Session, character: Character, step: str) -> dict[str, Any
         context["language_rows"] = _dedupe_prefer_2024(_all_active_entities(db, ["language"]))
         context["language_options"] = sorted(set(STANDARD_LANGUAGES + [r.name for r in context["language_rows"]]))
         context["selected_background"] = next((r for r in context["background_rows"] if (r.canonical_key or r.slug) == character.background_key), None)
-        context["background_allowed_abilities"] = background_allowed_abilities(context["selected_background"])
+        context["selected_background_allowed_abilities"] = background_allowed_abilities(context["selected_background"])
         class_entity = derived["class_entity"]
         context["class_skill_choices"] = class_skill_choices(class_entity)
         context["class_saves"] = class_save_proficiencies(class_entity)

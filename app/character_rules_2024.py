@@ -106,10 +106,72 @@ BACKGROUND_SUMMARIES = {
     "wayfarer": "You learned to survive without the security most people take for granted, relying on adaptability, street sense, and stubborn hope. Wayfarers fit resourceful characters who make their own opportunities.",
 }
 
+# 2024 Player's Handbook subclass -> base-class map.  Open5e sources do not
+# always classify these records consistently: some subclass-shaped records may
+# arrive through a class-like endpoint.  Character Builder uses this map to
+# normalize the UI into exactly twelve primary classes with subclasses nested
+# beneath their parent class.
 DEFAULT_SUBCLASS_PARENTS = {
-    "berserker": "barbarian", "lore": "bard", "life": "cleric", "land": "druid",
-    "champion": "fighter", "open-hand": "monk", "devotion": "paladin", "hunter": "ranger",
-    "thief": "rogue", "draconic-sorcery": "sorcerer", "fiend": "warlock", "evoker": "wizard",
+    # Barbarian
+    "path-of-the-berserker": "barbarian", "berserker": "barbarian",
+    "path-of-the-wild-heart": "barbarian", "wild-heart": "barbarian",
+    "path-of-the-world-tree": "barbarian", "world-tree": "barbarian",
+    "path-of-the-zealot": "barbarian", "zealot": "barbarian",
+    # Bard
+    "college-of-dance": "bard", "dance": "bard",
+    "college-of-glamour": "bard", "glamour": "bard",
+    "college-of-lore": "bard", "lore": "bard",
+    "college-of-valor": "bard", "college-of-valour": "bard", "valor": "bard", "valour": "bard",
+    # Cleric
+    "life-domain": "cleric", "life": "cleric",
+    "light-domain": "cleric", "light": "cleric",
+    "trickery-domain": "cleric", "trickery": "cleric",
+    "war-domain": "cleric", "war": "cleric",
+    # Druid
+    "circle-of-the-land": "druid", "land": "druid",
+    "circle-of-the-moon": "druid", "moon": "druid",
+    "circle-of-the-sea": "druid", "sea": "druid",
+    "circle-of-the-stars": "druid", "stars": "druid",
+    # Fighter
+    "battle-master": "fighter", "battlemaster": "fighter",
+    "champion": "fighter",
+    "eldritch-knight": "fighter",
+    "psi-warrior": "fighter",
+    # Monk
+    "warrior-of-mercy": "monk", "mercy": "monk",
+    "warrior-of-shadow": "monk", "shadow": "monk",
+    "warrior-of-the-elements": "monk", "elements": "monk",
+    "warrior-of-the-open-hand": "monk", "open-hand": "monk",
+    # Paladin
+    "oath-of-devotion": "paladin", "devotion": "paladin",
+    "oath-of-glory": "paladin", "glory": "paladin",
+    "oath-of-the-ancients": "paladin", "ancients": "paladin",
+    "oath-of-vengeance": "paladin", "vengeance": "paladin",
+    # Ranger
+    "beast-master": "ranger", "beastmaster": "ranger",
+    "fey-wanderer": "ranger",
+    "gloom-stalker": "ranger",
+    "hunter": "ranger",
+    # Rogue
+    "arcane-trickster": "rogue",
+    "assassin": "rogue",
+    "soulknife": "rogue", "soul-knife": "rogue",
+    "thief": "rogue",
+    # Sorcerer
+    "aberrant-sorcery": "sorcerer", "aberrant-mind": "sorcerer",
+    "clockwork-sorcery": "sorcerer", "clockwork-soul": "sorcerer",
+    "draconic-sorcery": "sorcerer", "draconic-bloodline": "sorcerer",
+    "wild-magic-sorcery": "sorcerer", "wild-magic": "sorcerer",
+    # Warlock
+    "archfey-patron": "warlock", "archfey": "warlock", "the-archfey": "warlock",
+    "celestial-patron": "warlock", "celestial": "warlock", "the-celestial": "warlock",
+    "fiend-patron": "warlock", "fiend": "warlock", "the-fiend": "warlock",
+    "great-old-one-patron": "warlock", "great-old-one": "warlock", "the-great-old-one": "warlock",
+    # Wizard
+    "abjurer": "wizard", "school-of-abjuration": "wizard",
+    "diviner": "wizard", "school-of-divination": "wizard",
+    "evoker": "wizard", "school-of-evocation": "wizard",
+    "illusionist": "wizard", "school-of-illusion": "wizard",
 }
 
 STANDARD_LANGUAGES = [

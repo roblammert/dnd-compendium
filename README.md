@@ -107,6 +107,18 @@ The public Tools area includes a coin converter, encounter builder, and loot gen
 
 The public Dungeon Master tools include a mode-aware Encounter Builder with CR-band randomization, exact mixed-level XP budgets, variable party-size scaling previews, Lazy DM limiting analysis, preserved settings, and keepable monster rows. The Loot Generator uses separate per-entry and total-list GP limits and supports keepable compendium entities.
 
+### Character Builder
+
+Authenticated users have a persistent **Tools → Player → Character Builder** workspace. It uses the local Open5e cache and the user's preferred source to guide a character through identity/source, species/race, class, ability scores, background/proficiencies, equipment, spells/feats, narrative details, and final review.
+
+Character records are stored separately from reference entities. Derived values such as proficiency bonus, ability modifiers, hit points, Armor Class, initiative, saving throws, skills, passive Perception, attacks, and spellcasting numbers are recalculated from the saved choices.
+
+Completed characters can be printed through a purpose-built three-page sheet or downloaded directly as PDF. See `CHARACTER_BUILDER.md` for architecture and extension points.
+
+
 ### Character Builder reliability
 
 Character Builder navigation is progressively enhanced: HTMX provides in-place step transitions, while every step also has a normal POST fallback. Direct fragment URLs redirect to the full application shell, and static assets are cache-busted by application version.
+
+### Character Builder v0.31.4
+The Player Character Builder now provides guided descriptions, parent-aware subclass selection, auto-generated ability scores, broader 2024-compatible background handling, selectable languages/proficiencies, and a live ability-score rail that shows character-impacting choices in real time.
