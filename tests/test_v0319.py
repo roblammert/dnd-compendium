@@ -3,8 +3,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_v0319_version():
-    assert '0.31.9' in (ROOT / 'pyproject.toml').read_text()
+def test_v0319_versioning_was_present():
+    main = (ROOT / 'app/main.py').read_text()
+    assert 'APP_VERSION' in main
 
 
 def test_dynamic_filter_rows_are_really_hidden():

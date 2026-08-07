@@ -435,3 +435,10 @@ This release adds generated-result list assignment, modernizes My Lists, and int
 - Removed the older name-only Character Builder search listeners so Equipment and Spell filtering now has a single authoritative implementation.
 - Equipment search now sends the selected type filter to the backend in addition to applying the semantic type filter client-side.
 - Enter in Equipment and Spell search remains intercepted and cannot submit the surrounding Character Builder step form.
+
+## v0.31.10 - Character Builder feat rows
+
+- Replaced the Character Builder feat grid with compact full-width rows.
+- Removed inline feat benefit/description previews from the Spells & Feats step.
+- Kept feat name, source, prerequisite/status text, selection control, and More Info action visible.
+- Detailed feat content remains available through the read-only Character Builder reference modal.
