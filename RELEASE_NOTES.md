@@ -318,3 +318,9 @@ This release adds generated-result list assignment, modernizes My Lists, and int
 - Weapon & Martial Arts Evaluator
 - Tactical workbench CSS for Player tools
 - Regression tests
+
+## v0.30.2
+
+- Rendered structured Feat Evaluator descriptions as Markdown with emphasis and tables.
+- Fixed Loadout Generator content-card label layout.
+- Standardized accessible cost-conversion tooltips across all Tools cost tables.

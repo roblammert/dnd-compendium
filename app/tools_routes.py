@@ -6,6 +6,8 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from markdown_it import MarkdownIt
+from markupsafe import Markup
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from app.config import get_settings
@@ -15,8 +17,43 @@ from app.services import build_monster_card, build_weapon_card, format_cost, for
 
 router = APIRouter(prefix="/tools")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-templates.env.globals["app_version"] = "0.30.0"
+templates.env.globals["app_version"] = "0.30.2"
 templates.env.globals["app_name"] = get_settings().app_name
+
+_tool_markdown = MarkdownIt("commonmark", {"html": False, "linkify": True, "typographer": False}).enable("table")
+
+def _render_tool_markdown(value):
+    if value in (None, ""):
+        return Markup("")
+    return Markup(_tool_markdown.render(str(value)))
+
+templates.env.filters["render_markdown"] = _render_tool_markdown
+
+def _structured_markdown(value) -> str:
+    """Turn Open5e list/dict description payloads into readable Markdown."""
+    if value in (None, "", [], {}):
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        blocks = [_structured_markdown(item).strip() for item in value]
+        return "\n\n".join(block for block in blocks if block)
+    if isinstance(value, dict):
+        title = value.get("name") or value.get("title") or value.get("label")
+        text = value.get("desc") or value.get("description") or value.get("text") or value.get("detail")
+        if text is not None:
+            body = _structured_markdown(text).strip()
+            return f"**{title}.** {body}" if title and body else (body or str(title or ""))
+        ignored = {"document", "gamesystem", "key", "id", "url", "slug"}
+        lines = []
+        for key, item in value.items():
+            if key in ignored or item in (None, "", [], {}):
+                continue
+            rendered = _structured_markdown(item).strip()
+            if rendered:
+                lines.append(f"**{key.replace('_', ' ').title()}:** {rendered}")
+        return "\n\n".join(lines)
+    return str(value)
 
 XP_THRESHOLDS = {
 1:(25,50,75,100),2:(50,100,150,200),3:(75,150,225,400),4:(125,250,375,500),
@@ -125,7 +162,9 @@ def feat_evaluator(request: Request, character_level: int = 1, strength: int = 1
             if m and score<int(m.group(1)): eligible=False; reasons.append(f"{ability.title()} {m.group(1)}")
         if proficiency and "proficien" in text and proficiency.casefold() not in text: eligible=False; reasons.append(proficiency)
         benefits=data.get("benefits") or data.get("desc") or data.get("description") or ""
-        rows.append({"entity":feat,"eligible":eligible,"requirements":", ".join(reasons) if reasons else ("None detected" if not text else str(prereq)),"summary":str(benefits)[:280]})
+        summary = _structured_markdown(benefits)
+        requirements = ", ".join(reasons) if reasons else ("None detected" if not text else _structured_markdown(prereq))
+        rows.append({"entity":feat,"eligible":eligible,"requirements":requirements,"summary":summary})
     return templates.TemplateResponse(request,"tools_feat_evaluator.html",_tool_context("feat-evaluator",rows=rows,params={"character_level":character_level,**scores,"proficiency":proficiency}))
 
 

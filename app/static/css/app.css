@@ -231,3 +231,22 @@ button:disabled { cursor:not-allowed; opacity:.55; }
   .loot-content-grid .toggle-grid,
   .loot-content-grid .rarity-grid{grid-template-columns:1fr}
 }
+
+/* v0.30.2 tool-card and cost-tooltip refinements */
+.feat-evaluation-card{min-width:0;overflow:hidden}
+.feat-evaluation-card header a{font-weight:800;overflow-wrap:anywhere}
+.feat-description{margin:.8rem 0;color:#342b24;line-height:1.55}
+.feat-description p{margin:.45rem 0;font-size:.92rem}
+.feat-description ul,.feat-description ol{margin:.5rem 0;padding-left:1.35rem}
+.feat-description table{font-size:.82rem;margin:.65rem 0}
+.feat-requirements{margin-top:auto;padding-top:.75rem;border-top:1px solid #ded2b8;color:var(--muted);font-size:.8rem}
+.feat-requirements>strong{display:block;margin-bottom:.25rem;color:#4d4338;text-transform:uppercase;letter-spacing:.05em;font:800 .68rem system-ui}
+.feat-requirements .rich-markdown p{margin:.2rem 0}
+.feat-evaluation-card{display:flex;flex-direction:column}
+#loadout-content .toggle-grid{grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
+#loadout-content .tactical-toggle{display:grid;grid-template-columns:1.1rem minmax(0,1fr);align-items:center;gap:.7rem;min-width:0;min-height:4rem;padding:.85rem 1rem;box-sizing:border-box;overflow:hidden}
+#loadout-content .tactical-toggle input{margin:0;justify-self:center}
+#loadout-content .tactical-toggle span{display:block;min-width:0;line-height:1.25;overflow-wrap:anywhere}
+.cost-tooltip{position:relative;cursor:help;border-bottom:1px dotted currentColor;font-weight:700}
+.cost-tooltip:focus{outline:2px solid #477481;outline-offset:2px}
+@media(max-width:700px){#loadout-content .toggle-grid{grid-template-columns:1fr}}
