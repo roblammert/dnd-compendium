@@ -324,3 +324,9 @@ This release adds generated-result list assignment, modernizes My Lists, and int
 - Rendered structured Feat Evaluator descriptions as Markdown with emphasis and tables.
 - Fixed Loadout Generator content-card label layout.
 - Standardized accessible cost-conversion tooltips across all Tools cost tables.
+
+## v0.30.3 — Evaluator Filtering
+
+- Added an instant client-side Hide Blocked toggle to Feat Evaluator without evaluation or page refresh.
+- Renamed Weapon & Martial Arts Evaluator to Weapons Evaluator throughout the Tools interface.
+- Added a Game System dropdown beside weapon search and preserved selected comparison records while filtering the picker.

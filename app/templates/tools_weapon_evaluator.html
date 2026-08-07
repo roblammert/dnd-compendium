@@ -1,1 +1,55 @@
-{% extends "tools_layout.html" %}{% block tools_content %}<header class="encounter-command-header player-command-header"><div><p class="eyebrow">Player Tool</p><h1>Weapon & Martial Arts Evaluator</h1><p>Compare damage, mastery properties, reach, range, and source-aware costs side by side.</p></div><div class="command-readout"><span>COMPARE SET</span><strong>{{ rows|length }}</strong><small>up to 6 weapons</small></div></header><form class="encounter-workbench" method="get"><section class="workbench-panel"><div class="panel-kicker">01</div><div class="panel-title"><h2>Select Weapons</h2><p>Search, then choose up to six records for direct comparison.</p></div><div class="weapon-picker"><label>Search<input name="search" value="{{ search }}"></label><div class="weapon-choice-grid">{% for weapon in weapons[:100] %}<label class="tactical-toggle"><input type="checkbox" name="compare" value="{{ weapon.public_id }}" {% if weapon.public_id in compare %}checked{% endif %}> {{ weapon.name }} <small>{{ weapon.source_display_name or '' }}</small></label>{% endfor %}</div><div class="generate-dock"><button class="primary-action">Compare Selected</button></div></div></section></form><section class="workbench-panel roster-panel"><div class="panel-kicker">02</div><div class="panel-title"><h2>Comparison</h2></div><div class="table-wrap"><table class="encounter-table"><thead><tr><th>Weapon</th><th>Damage</th><th>Properties / Mastery</th><th>Range</th><th>Cost</th><th>Source</th></tr></thead><tbody>{% for row in rows %}<tr><td><a href="/compendium/weapon/{{ row.entity.canonical_key or row.entity.slug }}?source={{ row.entity.public_id }}">{{ row.entity.name }}</a></td><td>{{ row.damage }}</td><td>{{ row.properties }}</td><td>{{ row.range }}</td><td>{% if row.cost_tooltip %}<span class="cost-tooltip" tabindex="0" aria-label="{{ row.cost }}. {{ row.cost_tooltip }}" title="{{ row.cost_tooltip }}">{{ row.cost }}</span>{% else %}{{ row.cost }}{% endif %}</td><td>{{ row.entity.source_display_name or 'Unknown' }}</td></tr>{% else %}<tr><td colspan="6" class="empty-table-state">Select weapons to compare.</td></tr>{% endfor %}</tbody></table></div></section>{% endblock %}
+{% extends "tools_layout.html" %}
+{% block tools_content %}
+<header class="encounter-command-header player-command-header">
+  <div>
+    <p class="eyebrow">Player Tool</p>
+    <h1>Weapons Evaluator</h1>
+    <p>Compare damage, mastery properties, reach, range, and source-aware costs side by side.</p>
+  </div>
+  <div class="command-readout"><span>COMPARE SET</span><strong>{{ rows|length }}</strong><small>up to 6 weapons</small></div>
+</header>
+<form class="encounter-workbench" method="get">
+  <section class="workbench-panel">
+    <div class="panel-kicker">01</div>
+    <div class="panel-title"><h2>Select Weapons</h2><p>Search and filter by game system, then choose up to six records for direct comparison.</p></div>
+    <div class="weapon-picker">
+      <div class="weapon-filter-row">
+        <label>Search<input name="search" value="{{ search }}" placeholder="Battleaxe"></label>
+        <label>Game System
+          <select name="game_system">
+            <option value="">All game systems</option>
+            {% for system in game_systems %}
+            <option value="{{ system.key }}" {% if game_system == system.key %}selected{% endif %}>{{ system.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+      <div class="weapon-choice-grid">
+        {% for weapon in weapons[:100] %}
+        <label class="tactical-toggle">
+          <input type="checkbox" name="compare" value="{{ weapon.public_id }}" {% if weapon.public_id in compare %}checked{% endif %}>
+          <span>{{ weapon.name }}</span>
+          <small>{{ weapon.source_display_name or '' }}{% if weapon.game_system_name %} · {{ weapon.game_system_name }}{% endif %}</small>
+        </label>
+        {% else %}
+        <p class="empty-table-state">No weapons match the selected filters.</p>
+        {% endfor %}
+      </div>
+      <div class="generate-dock"><button class="primary-action">Compare Selected</button></div>
+    </div>
+  </section>
+</form>
+<section class="workbench-panel roster-panel">
+  <div class="panel-kicker">02</div>
+  <div class="panel-title"><h2>Comparison</h2></div>
+  <div class="table-wrap"><table class="encounter-table">
+    <thead><tr><th>Weapon</th><th>Damage</th><th>Properties / Mastery</th><th>Range</th><th>Cost</th><th>Source</th></tr></thead>
+    <tbody>{% for row in rows %}<tr>
+      <td><a href="/compendium/weapon/{{ row.entity.canonical_key or row.entity.slug }}?source={{ row.entity.public_id }}">{{ row.entity.name }}</a></td>
+      <td>{{ row.damage }}</td><td>{{ row.properties }}</td><td>{{ row.range }}</td>
+      <td>{% if row.cost_tooltip %}<span class="cost-tooltip" tabindex="0" aria-label="{{ row.cost }}. {{ row.cost_tooltip }}" title="{{ row.cost_tooltip }}">{{ row.cost }}</span>{% else %}{{ row.cost }}{% endif %}</td>
+      <td>{{ row.entity.source_display_name or 'Unknown' }}</td>
+    </tr>{% else %}<tr><td colspan="6" class="empty-table-state">Select weapons to compare.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}

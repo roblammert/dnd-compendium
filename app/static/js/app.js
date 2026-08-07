@@ -49,6 +49,16 @@
     if (closeList && listDialog) closeList.addEventListener("click", () => listDialog.close());
     if (listDialog && new URLSearchParams(location.search).get("add_to_list") === "1") listDialog.showModal();
 
+    const hideBlocked = document.querySelector("[data-hide-blocked]");
+    const featGrid = document.querySelector("[data-feat-grid]");
+    if (hideBlocked && featGrid) {
+      const applyBlockedVisibility = () => {
+        featGrid.classList.toggle("hide-blocked", hideBlocked.checked);
+      };
+      hideBlocked.addEventListener("change", applyBlockedVisibility);
+      applyBlockedVisibility();
+    }
+
 
     const listDestination = document.querySelector("[data-list-destination]");
     const newListFields = document.querySelector("[data-new-list-fields]");

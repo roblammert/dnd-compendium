@@ -17,7 +17,7 @@ from app.services import build_monster_card, build_weapon_card, format_cost, for
 
 router = APIRouter(prefix="/tools")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-templates.env.globals["app_version"] = "0.30.2"
+templates.env.globals["app_version"] = "0.30.3"
 templates.env.globals["app_name"] = get_settings().app_name
 
 _tool_markdown = MarkdownIt("commonmark", {"html": False, "linkify": True, "typographer": False}).enable("table")
@@ -169,10 +169,19 @@ def feat_evaluator(request: Request, character_level: int = 1, strength: int = 1
 
 
 @router.get("/weapon-evaluator", response_class=HTMLResponse)
-def weapon_evaluator(request: Request, search: str = "", compare: list[str] = Query(default=[]), db: Session = Depends(get_db)):
-    weapons=list(db.scalars(select(Entity).where(Entity.entity_type=="weapon",Entity.is_active.is_(True)).order_by(Entity.name)).all()); item_entities=list(db.scalars(select(Entity).where(Entity.entity_type=="item",Entity.is_active.is_(True))).all()); item_index=_build_item_index(item_entities)
+def weapon_evaluator(request: Request, search: str = "", game_system: str = "", compare: list[str] = Query(default=[]), db: Session = Depends(get_db)):
+    all_weapons=list(db.scalars(select(Entity).where(Entity.entity_type=="weapon",Entity.is_active.is_(True)).order_by(Entity.name)).all()); item_entities=list(db.scalars(select(Entity).where(Entity.entity_type=="item",Entity.is_active.is_(True))).all()); item_index=_build_item_index(item_entities)
+    systems_by_key = {}
+    for weapon in all_weapons:
+        key = (weapon.game_system_key or "").strip()
+        name = (weapon.game_system_name or key or "Unknown").strip()
+        if key:
+            systems_by_key.setdefault(key, name)
+    game_systems = [{"key": key, "name": systems_by_key[key]} for key in sorted(systems_by_key, key=lambda value: systems_by_key[value].casefold())]
+    weapons=all_weapons
     if search: weapons=[w for w in weapons if search.casefold() in w.name.casefold()]
-    chosen=[w for w in weapons if w.public_id in compare][:6] if compare else weapons[:4]
+    if game_system: weapons=[w for w in weapons if (w.game_system_key or "") == game_system]
+    chosen=[w for w in all_weapons if w.public_id in compare][:6] if compare else weapons[:4]
     rows=[]
     for entity in chosen:
         data=entity.data_json or {}; fallback=_select_item_fallback(entity,_matching_item_candidates(entity,item_index)); card=build_weapon_card(entity,fallback_item=fallback)
@@ -183,7 +192,7 @@ def weapon_evaluator(request: Request, search: str = "", compare: list[str] = Qu
         cost=_summary_value(card,"Cost") or {}; cost_value=cost.get("value") if isinstance(cost,dict) else cost
         if isinstance(cost_value,dict): cost_value=cost_value.get("value") or cost_value.get("text")
         rows.append({"entity":entity,"damage":f"{damage} {damage_type}".strip(),"properties":", ".join(filter(None,prop_names)) or "—","range":f"{data.get('range',0)}/{data.get('long_range',0)} {data.get('distance_unit','feet')}","cost":cost_value or "Unknown","cost_tooltip":cost.get("tooltip","") if isinstance(cost,dict) else ""})
-    return templates.TemplateResponse(request,"tools_weapon_evaluator.html",_tool_context("weapon-evaluator",weapons=weapons,rows=rows,search=search,compare=compare))
+    return templates.TemplateResponse(request,"tools_weapon_evaluator.html",_tool_context("weapon-evaluator",weapons=weapons,rows=rows,search=search,game_system=game_system,game_systems=game_systems,compare=compare))
 
 @router.get("/encounter-builder", response_class=HTMLResponse)
 def encounter_builder(

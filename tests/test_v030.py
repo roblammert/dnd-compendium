@@ -4,7 +4,7 @@ from app.tools_routes import templates
 def test_player_tools_and_bulk_list_actions_are_present():
     layout=Path('app/templates/tools_layout.html').read_text()
     assert 'Feat Evaluator' in layout
-    assert 'Weapon & Martial Arts' in layout
+    assert 'Weapons Evaluator' in layout
     assert Path('app/templates/tools_loadout_generator.html').exists()
     assert Path('app/templates/tools_feat_evaluator.html').exists()
     assert Path('app/templates/tools_weapon_evaluator.html').exists()
