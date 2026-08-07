@@ -216,10 +216,10 @@ Equipment search remains backed by SQLite wildcard matching against entity names
 
 Search controls intercept Enter and never submit the containing character step form. This prevents Equipment search from moving to Background and Spell search from moving to Equipment.
 
-## v0.32.0 Printable Sheet Architecture
+## v0.32.1 printable-sheet data normalization
 
-The printable character sheet was fully redesigned in v0.32.0 after a survey of official and community 5e/2024 character-sheet patterns. See `CHARACTER_SHEET_PRINT_RESEARCH.md` for the reviewed approaches and design conclusions.
+The printable sheet no longer assumes that Species and Class records expose useful prose through a top-level `desc`. `entity_print_profile()` reads cached Species `traits` / `species_traits` and Class `core_traits` when present, with the built-in 2024 concise summary layer used only when cached descriptive prose is absent.
 
-The print renderer now uses CSS paged media instead of fixed-height content boxes. Page 1 is a deterministic core-play dashboard. Inventory, traits, features, feats, story content, and spellcasting use content-driven pagination so long sections flow to additional US Letter pages instead of clipping or shrinking. Table headers repeat when inventory crosses a page boundary, Markdown rules content is rendered, and spellcasting is emitted only for characters that actually use it.
+Open5e Class payloads can contain progression-table cells mixed into feature-shaped data. These include values such as `[Column data]`, ordinal column labels, Proficiency Bonus columns, and spell-list appendices. `class_features_for_level()` now treats these as structural table data instead of printable character features. Real prose with duplicate feature names wins over placeholder entries.
 
-Every printed page includes the footer `Generated with Rob's D&D Compendium - {version} - {YYYYMMDD}`.
+For PDF output, page footer content is emitted through CSS paged-media margin boxes. This reserves physical space below the content frame and provides reliable WeasyPrint page counters. Equipment switches to paired Item/Type columns after 10 entries, while Features always begin on a fresh page.

@@ -152,6 +152,148 @@ def entity_summary(entity: Entity | None) -> str:
     return _text(value)
 
 
+def _print_block_markdown(value: Any) -> str:
+    """Normalize an Open5e descriptive block without exposing table placeholders."""
+    if value in (None, "", [], {}):
+        return ""
+    if isinstance(value, str):
+        text = value.strip()
+        return "" if _is_column_placeholder(text) else text
+    if isinstance(value, list):
+        parts = [_print_block_markdown(item) for item in value]
+        return "\n\n".join(part for part in parts if part)
+    if isinstance(value, dict):
+        name = _text(value.get("name") or value.get("title") or value.get("label")).strip()
+        desc = ""
+        for key in ("desc", "description", "text", "detail", "details", "content"):
+            if key in value:
+                desc = _print_block_markdown(value.get(key))
+                if desc:
+                    break
+        if name and desc and name.casefold() not in desc.casefold()[: max(40, len(name) + 8)]:
+            return f"**{name}.** {desc}"
+        if desc:
+            return desc
+        # Some Open5e species traits put prose in nested values without a desc key.
+        nested = []
+        for key, child in value.items():
+            if key in {"name", "title", "label", "key", "slug", "document", "gamesystem"}:
+                continue
+            text = _print_block_markdown(child)
+            if text:
+                nested.append(text)
+        body = "\n\n".join(dict.fromkeys(nested))
+        if name and body:
+            return f"**{name}.** {body}"
+        return body
+    return str(value).strip()
+
+
+def _markdown_table(rows: list[tuple[str, str]]) -> str:
+    rows = [(str(k).strip(), str(v).strip()) for k, v in rows if str(v).strip()]
+    if not rows:
+        return ""
+    body = ["| Detail | Value |", "|---|---|"]
+    body.extend(f"| {k.replace('|', '/')} | {v.replace('|', '/')} |" for k, v in rows)
+    return "\n".join(body)
+
+
+def entity_print_profile(entity: Entity | None, kind: str = "") -> str:
+    """Return useful printable identity/trait content from the cached Open5e record.
+
+    Printable profiles intentionally differ from the short builder summaries. Species
+    can expose their useful text through ``traits`` while classes often store their
+    core identity in ``core_traits`` rather than a top-level description.
+    """
+    if not entity:
+        return ""
+    data = entity.data_json or {}
+    key = canonical_rule_key(entity.canonical_key or entity.slug or entity.name)
+    parts: list[str] = []
+    summary = entity_summary(entity).strip()
+    if not summary:
+        if kind == "species":
+            summary = SPECIES_SUMMARIES.get(key, "")
+        elif kind == "class":
+            summary = CLASS_SUMMARIES.get(key, "")
+        elif kind == "background":
+            summary = BACKGROUND_SUMMARIES.get(key, "")
+    if summary:
+        parts.append(summary)
+
+    if kind == "species":
+        traits = _nested(data, "traits", "species_traits", "racial_traits", "features")
+        trait_text = _print_block_markdown(traits)
+        if trait_text:
+            parts.append(trait_text)
+
+    if kind == "class":
+        core = data.get("core_traits") if isinstance(data.get("core_traits"), dict) else {}
+        rows: list[tuple[str, str]] = []
+        labels = {
+            "primary_ability": "Primary Ability",
+            "hit_point_die": "Hit Point Die",
+            "saving_throw_proficiencies": "Saving Throws",
+            "skill_proficiencies": "Skill Proficiencies",
+            "weapon_proficiencies": "Weapons",
+            "armor_training": "Armor Training",
+            "starting_equipment": "Starting Equipment",
+        }
+        for raw_key, label in labels.items():
+            if raw_key in core:
+                value = _text(core.get(raw_key)).strip()
+                if value and not _is_column_placeholder(value):
+                    rows.append((label, value))
+        # Older/newer cached shapes may expose the same facts at top level.
+        if not rows:
+            candidates = [
+                ("Hit Point Die", _text(_nested(data, "hit_die", "hit_dice"))),
+                ("Primary Ability", _text(_nested(data, "primary_ability", "primary_abilities"))),
+                ("Saving Throws", _text(_nested(data, "saving_throw_proficiencies", "saving_throws"))),
+                ("Armor Training", _text(_nested(data, "armor_training", "armor_proficiencies"))),
+                ("Weapons", _text(_nested(data, "weapon_proficiencies", "weapons"))),
+            ]
+            rows.extend((label, value) for label, value in candidates if value)
+        if not rows:
+            rule = class_rule(key)
+            fallback_rows = [
+                ("Hit Point Die", f"d{rule.get('hit_die')}" if rule.get("hit_die") else ""),
+                ("Saving Throws", ", ".join(ABILITY_NAMES.get(a, a.upper()) for a in rule.get("saves", []))),
+            ]
+            skills = rule.get("skills")
+            if skills == "any":
+                fallback_rows.append(("Skill Proficiencies", f"Choose {rule.get('skill_count', '')} skills".strip()))
+            elif skills:
+                fallback_rows.append(("Skill Proficiencies", f"Choose {rule.get('skill_count', '')}: " + ", ".join(skills)))
+            rows.extend((label, value) for label, value in fallback_rows if value)
+        table = _markdown_table(rows)
+        if table:
+            parts.append(table)
+
+    if kind == "subclass" and not parts:
+        details = _print_block_markdown(_nested(data, "features", "traits", "benefits"))
+        if details:
+            parts.append(details)
+
+    return "\n\n".join(part for part in parts if part).strip()
+
+
+def _is_column_placeholder(value: Any) -> bool:
+    text = _text(value).strip().casefold()
+    return text in {"[column data]", "column data", "[column-data]", "—", "-"}
+
+
+def equipment_print_rows(equipment: list[Entity]) -> list[dict[str, Entity | None]]:
+    """Pair equipment into two Item/Type column groups for dense print layouts."""
+    split = (len(equipment) + 1) // 2
+    left = equipment[:split]
+    right = equipment[split:]
+    rows = []
+    for index, item in enumerate(left):
+        rows.append({"left": item, "right": right[index] if index < len(right) else None})
+    return rows
+
+
 def species_bonuses(entity: Entity | None) -> dict[str, int]:
     if not entity:
         return {}
@@ -368,22 +510,50 @@ def class_skill_choice_count(entity: Entity | None) -> int | None:
 
 
 def class_features_for_level(entity: Entity | None, level: int) -> list[dict[str, Any]]:
+    """Normalize actual class features while excluding Open5e progression-table cells.
+
+    Open5e class payloads can mix prose feature records with synthetic table-column
+    records whose descriptions are literally ``[Column data]``.  Those cells are
+    useful to the web class table but are not character features and must never be
+    printed.  Duplicate feature names prefer the entry containing real prose.
+    """
     if not entity:
         return []
     data = entity.data_json or {}
     raw = _nested(data, "features", "class_features", "levels", "progression")
     items = raw if isinstance(raw, list) else []
-    result = []
+    result_by_name: dict[str, dict[str, Any]] = {}
+    structural_names = {"proficiency bonus", "prepared spells"}
+    ordinal = re.compile(r"^(?:\d+)(?:st|nd|rd|th)$", re.I)
     for item in items:
         if not isinstance(item, dict):
             continue
-        feature_level = _number(item.get("level") or item.get("class_level"), 1)
-        if feature_level > level:
+        explicit_level = item.get("level") if item.get("level") not in (None, "") else item.get("class_level")
+        feature_level = _number(explicit_level, 0) if explicit_level not in (None, "") else 0
+        if feature_level and feature_level > level:
             continue
-        name = _text(item.get("name") or item.get("feature") or item.get("title")) or f"Level {feature_level} Feature"
-        desc = _text(item.get("desc") or item.get("description") or item.get("text") or item.get("detail"))
-        result.append({"name": name, "level": feature_level, "description": desc})
-    return result
+        name = _text(item.get("name") or item.get("feature") or item.get("title")).strip()
+        if not name:
+            continue
+        raw_desc = item.get("desc") or item.get("description") or item.get("text") or item.get("detail")
+        if _is_column_placeholder(raw_desc):
+            continue
+        desc = _print_block_markdown(raw_desc)
+        normalized = re.sub(r"\s+", " ", name).strip().casefold()
+        if not desc and (normalized in structural_names or ordinal.match(normalized)):
+            continue
+        # Class spell-list appendices are reference catalogs, not possessed features.
+        if normalized.endswith(" spell list"):
+            continue
+        # Generic subclass-choice rows are structural once a subclass has been selected.
+        if normalized.endswith(" subclasses") or normalized == "subclasses":
+            continue
+        existing = result_by_name.get(normalized)
+        candidate = {"name": name, "level": feature_level or 1, "description": desc}
+        if existing is None or (not existing.get("description") and desc):
+            result_by_name[normalized] = candidate
+    return list(result_by_name.values())
+
 
 def background_skills(entity: Entity | None) -> list[str]:
     if not entity:
@@ -739,6 +909,14 @@ def derive_character(db: Session, character: Character) -> dict[str, Any]:
         "currency": currency, "details": details, "stealth_disadvantage": stealth_disadvantage,
         "strength_requirement": strength_requirement,
         "point_buy_total": point_buy_total(base_scores), "feats": feats, "class_features": class_features,
+        "print_profiles": {
+            "species": entity_print_profile(species, "species"),
+            "class": entity_print_profile(class_entity, "class"),
+            "background": entity_print_profile(background, "background"),
+            "subclass": entity_print_profile(subclass, "subclass"),
+        },
+        "equipment_print_rows": equipment_print_rows(equipment),
+        "equipment_print_compact": len(equipment) > 10,
         "skill_choice_count": skill_choice_count, "warnings": warnings,
         "other_proficiencies": other_proficiencies, "background_skills": background_skill_list,
         "background_other_proficiencies": background_other_list,

@@ -140,6 +140,6 @@ Character Builder navigation now warns before leaving a dirty step and offers **
 
 Reopening a saved character now always starts at **01 Identity** unless an explicit internal workflow step is requested. The Review & Character Sheet step has been simplified to core derived statistics, Identity, Ability Scores, export actions, and a contained Character Status panel. Saving any actual change on Steps 1–8 automatically returns a previously completed character to Draft until the user explicitly marks it complete again on Step 9.
 
-### Printable Character Sheets
+### Printable Character Sheets (v0.32.1)
 
-Character Builder characters can be rendered as print-ready US Letter HTML or downloaded directly as PDF. v0.32.0 introduces a full print-layout redesign with combat-first core information, ability-grouped skills, content-driven feature/story pages, conditional spellcasting, Markdown rendering, and safe continuation pages for long character data. See `CHARACTER_SHEET_PRINT_RESEARCH.md` for the design research behind the layout.
+Printable sheets use cached structured Species/Class data for Traits, filter Open5e progression-table placeholders out of Features, compact long equipment lists into paired Item/Type columns, and use page-aware left/right footers with total page numbering.

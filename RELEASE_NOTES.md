@@ -485,3 +485,13 @@ The Character Builder print/PDF subsystem has been redesigned from the ground up
 The first page is a combat-first dashboard with identity, core statistics, grouped ability/skill cards, attacks, defenses, languages, proficiencies, currency, and feature names. Inventory and detailed rules content move to reference sections where Markdown can render without compression. Narrative information uses content-driven sizing, and spellcasting is included only when relevant. Long content continues onto additional US Letter pages instead of overflowing or being clipped.
 
 Every printed page includes `Generated with Rob's D&D Compendium - {version} - {YYYYMMDD}`.
+
+## v0.32.1 - Printable Sheet Data & Pagination Repair
+
+- Printable Traits extract Species trait blocks and Class core-trait metadata from cached Open5e JSON.
+- Open5e progression-table placeholders such as `[Column data]` are removed from printable Features.
+- Features begin on a fresh US Letter page.
+- Long Equipment lists use paired Item/Type columns with a center gutter.
+- Paged-media footers reserve their own page area to prevent content collisions.
+- Footer left: `Generated with Rob's D&D Compendium - {version} - {YYYYMMDD}`.
+- Footer right: `{Character Name} - {Player Name} - {Page}/{Total Pages}`.

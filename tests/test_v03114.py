@@ -9,7 +9,7 @@ def test_printable_character_sheet_preserves_v03114_requirements():
     assert '<h2>Traits</h2>' in template
     assert '<h2>Features</h2>' in template
     assert 'render_markdown' in template
-    assert '@page { size: Letter;' in template
+    assert '@page {' in template and 'size: Letter;' in template
 
 
 def test_print_markdown_has_table_and_emphasis_styles():
@@ -21,5 +21,5 @@ def test_print_markdown_has_table_and_emphasis_styles():
 
 
 def test_version_is_current_or_newer_than_03114():
-    assert 'version = "0.32.0"' in Path("pyproject.toml").read_text()
-    assert 'APP_VERSION = "0.32.0"' in Path("app/main.py").read_text()
+    assert 'version = "0.32.1"' in Path("pyproject.toml").read_text()
+    assert 'APP_VERSION = "0.32.1"' in Path("app/main.py").read_text()

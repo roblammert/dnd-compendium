@@ -4,15 +4,41 @@
 <meta charset="utf-8">
 <title>{{ character.name }} - Character Sheet</title>
 <style>
-@page { size: Letter; margin: .36in .38in .68in; }
-* { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; }
-body { color:#1c1b19; font-family: Arial, Helvetica, sans-serif; background:#e5e1d8; font-size:8.6pt; line-height:1.28; }
+@page {
+  size: Letter;
+  margin: .34in .38in .52in;
+  @bottom-left {
+    content: string(footerleft);
+    color:#5f5b54;
+    font:6.25pt Arial, Helvetica, sans-serif;
+    border-top:.7pt solid #b9a77f;
+    padding-top:3pt;
+    vertical-align:top;
+  }
+  @bottom-right {
+    content: string(charname) " - " string(playername) " - " counter(page) "/" counter(pages);
+    color:#5f5b54;
+    font:6.25pt Arial, Helvetica, sans-serif;
+    border-top:.7pt solid #b9a77f;
+    padding-top:3pt;
+    text-align:right;
+    vertical-align:top;
+  }
+}
+* { box-sizing:border-box; }
+html,body { margin:0; padding:0; }
+body { color:#1c1b19; font-family:Arial,Helvetica,sans-serif; background:#e5e1d8; font-size:8.45pt; line-height:1.27; }
+.footer-seed { height:0; overflow:hidden; font-size:0; line-height:0; color:transparent; }
+.footer-left-seed { string-set:footerleft content(); }
+.footer-char-seed { string-set:charname content(); }
+.footer-player-seed { string-set:playername content(); }
 .printbar { width:7.74in; margin:.18in auto; display:flex; justify-content:flex-end; gap:.4rem; }
 .printbar a,.printbar button { border:1px solid #273d47; background:#fff; color:#172c35; padding:.48rem .72rem; font-weight:700; text-decoration:none; border-radius:4px; cursor:pointer; }
 .print-document { width:7.74in; margin:0 auto .3in; }
 .print-page { background:#fff; padding:.02in 0; }
 .core-page { break-after:page; page-break-after:always; }
+.story-page,.spell-page { break-before:page; page-break-before:always; }
+.features-section { break-before:page; page-break-before:always; }
 
 .page-title { display:flex; justify-content:space-between; align-items:flex-end; border-bottom:2px solid #173643; padding:0 0 5px; margin:0 0 7px; }
 .page-title h2 { margin:0; font:700 15pt Georgia,serif; color:#173643; }
@@ -60,23 +86,30 @@ body { color:#1c1b19; font-family: Arial, Helvetica, sans-serif; background:#e5e
 .section-banner { border-top:2px solid #173643; border-bottom:1px solid #b9a77f; padding:5px 2px 4px; margin:9px 0 6px; break-after:avoid; }
 .section-banner h2 { margin:0; font:700 13pt Georgia,serif; color:#173643; }
 .section-banner p { margin:1px 0 0; color:#6f675d; font-size:7pt; }
-.two-col { display:grid; grid-template-columns:1fr 1fr; gap:7px; align-items:start; }
-.rich-card { border:1px solid #cabb9c; background:#fffdf9; padding:6px 7px; margin-bottom:6px; break-inside:avoid-page; page-break-inside:avoid; }
+.trait-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; align-items:start; }
+.rich-card { border:1px solid #cabb9c; background:#fffdf9; padding:6px 7px; margin-bottom:6px; break-inside:auto; page-break-inside:auto; }
 .rich-card h3 { margin:0 0 3px; font:700 10pt Georgia,serif; color:#39291d; }
 .rich-card .meta { color:#806029; font-size:6.4pt; text-transform:uppercase; font-weight:800; letter-spacing:.04em; margin-bottom:3px; }
-.rich p { margin:.18em 0 .42em; }
+.rich p { margin:.18em 0 .42em; orphans:2; widows:2; }
 .rich ul,.rich ol { margin:.2em 0 .45em 1.15em; padding:0; }
 .rich li { margin:.08em 0; }
 .rich strong { font-weight:800; }
 .rich em { font-style:italic; }
 .rich h1,.rich h2,.rich h3,.rich h4 { color:#39291d; font-family:Georgia,serif; text-transform:none; letter-spacing:0; text-align:left; margin:.4em 0 .18em; }
 .rich table { width:100%; border-collapse:collapse; margin:.35em 0; font-size:7pt; break-inside:auto; }
+.rich thead { display:table-header-group; }
 .rich th,.rich td { border:1px solid #b9a77f; padding:2px 3px; vertical-align:top; }
 .rich th { background:#f1ece1; }
 .rich blockquote { margin:.3em 0; padding:.12em .45em; border-left:3px solid #806029; color:#51493f; }
+.feature-card { break-inside:auto; page-break-inside:auto; margin-bottom:7px; }
+.feature-card h3 { break-after:avoid; page-break-after:avoid; }
 .flow-block { break-inside:auto; page-break-inside:auto; }
 .inventory-summary { display:grid; grid-template-columns:1.25fr .75fr; gap:7px; align-items:start; }
 .equipment-note { color:#6f675d; font-size:6.7pt; margin:4px 0 0; }
+.inventory-table.compact-four col.gutter { width:12px; }
+.inventory-table.compact-four td.gutter,.inventory-table.compact-four th.gutter { border:0; background:#fff; width:12px; padding:0; }
+.inventory-table.compact-four th:nth-child(2),.inventory-table.compact-four td:nth-child(2),
+.inventory-table.compact-four th:nth-child(5),.inventory-table.compact-four td:nth-child(5) { width:19%; }
 .story-grid { display:block; }
 .story-pair { width:100%; border-collapse:separate; border-spacing:0 7px; table-layout:fixed; }
 .story-pair td { width:50%; vertical-align:top; padding:0 3px; }
@@ -86,7 +119,6 @@ body { color:#1c1b19; font-family: Arial, Helvetica, sans-serif; background:#e5e
 .story-card h3 { margin:0 0 4px; color:#173643; font:700 10pt Georgia,serif; }
 .story-content { white-space:pre-wrap; overflow-wrap:anywhere; min-height:2.55em; padding:1px 0 2px; }
 .story-content:empty::after { content:"\00a0\A\00a0"; white-space:pre; }
-
 .spell-summary { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-bottom:7px; break-inside:avoid; }
 .spell-columns { display:grid; grid-template-columns:1fr 1fr; gap:7px; align-items:start; }
 .spell-level { display:inline-block; width:100%; border:1px solid #b9a77f; margin:0 0 7px; break-inside:avoid-page; page-break-inside:avoid; }
@@ -95,21 +127,21 @@ body { color:#1c1b19; font-family: Arial, Helvetica, sans-serif; background:#e5e
 .prepared { width:8px; height:8px; border:1px solid #333; border-radius:50%; display:inline-block; }
 .prepared.on { background:#173643; }
 .empty-note { color:#8a8176; font-style:italic; }
-.print-footer { color:#5f5b54; border-top:1px solid #b9a77f; padding-top:2px; text-align:center; font-size:6.5pt; letter-spacing:.02em; }
 @media print {
   body { background:#fff; }
   .printbar { display:none!important; }
   .print-document { width:auto; margin:0; }
   .print-page { padding:0; }
-  .print-footer { position:fixed; left:.38in; right:.38in; bottom:.18in; z-index:10; background:#fff; }
 }
 @media screen {
   .print-page { padding:.18in; margin-bottom:.22in; box-shadow:0 1px 8px #999; }
-  .print-footer { width:7.74in; margin:0 auto .25in; background:#fff; padding:4px; }
+  .footer-preview { width:7.74in; margin:0 auto .25in; border-top:1px solid #b9a77f; padding-top:4px; color:#5f5b54; font-size:6.5pt; display:flex; justify-content:space-between; }
 }
+@media print { .footer-preview { display:none; } }
 </style>
 </head>
 <body>
+<div class="footer-seed"><span class="footer-left-seed">Generated with Rob's D&amp;D Compendium - {{ app_version }} - {{ generated_date }}</span><span class="footer-char-seed">{{ character.name }}</span><span class="footer-player-seed">{{ derived.details.get('player_name','') or 'Player' }}</span></div>
 {% if not pdf_mode %}<div class="printbar"><button onclick="window.print()">Print / Save as PDF</button><a href="/tools/character-builder/{{ character.public_id }}/pdf">Download PDF</a></div>{% endif %}
 <div class="print-document">
 
@@ -121,117 +153,85 @@ body { color:#1c1b19; font-family: Arial, Helvetica, sans-serif; background:#e5e
       <div class="identity-field"><span class="k">Subclass</span><span class="v">{{ derived.subclass.name if derived.subclass else '—' }}</span></div>
       <div class="identity-field"><span class="k">Background</span><span class="v">{{ derived.background.name if derived.background else '—' }}</span></div>
       <div class="identity-field"><span class="k">Species</span><span class="v">{{ derived.species.name if derived.species else '—' }}</span></div>
-      <div class="identity-field"><span class="k">Alignment</span><span class="v">{{ derived.alignment.name if derived.alignment else '—' }}</span></div>
-      <div class="identity-field"><span class="k">XP</span><span class="v">{{ '{:,}'.format(character.experience_points or 0) }}</span></div>
+      <div class="identity-field"><span class="k">Alignment</span><span class="v">{{ derived.alignment.name if derived.alignment else (character.alignment_key or '—') }}</span></div>
+      <div class="identity-field"><span class="k">XP</span><span class="v">{{ '{:,}'.format(character.experience_points) }}</span></div>
     </div>
   </header>
-
   <div class="combat-ribbon">
     <div class="stat-chip"><span class="k">AC</span><span class="v">{{ derived.armor_class }}</span></div>
     <div class="stat-chip hp"><span class="k">HP Current / Max</span><span class="v">{{ derived.current_hp }} / {{ derived.hp_max }}</span></div>
     <div class="stat-chip"><span class="k">Temp HP</span><span class="v">{{ derived.temp_hp }}</span></div>
     <div class="stat-chip"><span class="k">Initiative</span><span class="v">{{ '%+d'|format(derived.initiative) }}</span></div>
     <div class="stat-chip"><span class="k">Speed</span><span class="v">{{ derived.speed }}</span></div>
-    <div class="stat-chip"><span class="k">Prof</span><span class="v">+{{ derived.proficiency_bonus }}</span></div>
+    <div class="stat-chip"><span class="k">Prof</span><span class="v">{{ '%+d'|format(derived.proficiency_bonus) }}</span></div>
     <div class="stat-chip"><span class="k">Passive Per.</span><span class="v">{{ derived.passive_perception }}</span></div>
   </div>
-
   <div class="core-grid">
-    <div>
-      <div class="ability-board">
-      {% for save in derived.saves %}
-        <section class="ability-card">
-          <div class="ability-head"><div class="ability-abbr">{{ save.ability|upper }}</div><div class="ability-score">{{ derived.scores[save.ability] }}</div><div class="ability-mod">{{ '%+d'|format(derived.modifiers[save.ability]) }}</div></div>
-          <div class="ability-save"><i class="dot {% if save.proficient %}on{% endif %}"></i><span class="num">{{ '%+d'|format(save.modifier) }}</span><span>Saving Throw</span></div>
-          <div class="ability-skills">
-          {% set ns = namespace(found=false) %}
-          {% for skill in derived.skills if skill.ability == save.ability %}
-            {% set ns.found = true %}<div class="skill-line"><i class="dot {% if skill.proficient %}on{% endif %}"></i><span class="num">{{ '%+d'|format(skill.modifier) }}</span><span>{{ skill.name }}</span></div>
-          {% endfor %}
-          {% if not ns.found %}<div class="skill-line"><span></span><span></span><span class="empty-note">No associated skills</span></div>{% endif %}
-          </div>
-        </section>
-      {% endfor %}
-      </div>
+    <div class="ability-board">
+    {% for save in derived.saves %}
+      <section class="ability-card"><div class="ability-head"><span class="ability-abbr">{{ save.ability|upper }}</span><span class="ability-score">{{ derived.scores[save.ability] }}</span><span class="ability-mod">{{ '%+d'|format(derived.modifiers[save.ability]) }}</span></div>
+        <div class="ability-save"><i class="dot {% if save.proficient %}on{% endif %}"></i><span class="num">{{ '%+d'|format(save.modifier) }}</span><span>Saving Throw</span></div>
+        <div class="ability-skills">
+          {% set ns = namespace(count=0) %}
+          {% for skill in derived.skills %}{% if skill.ability == save.ability %}{% set ns.count = ns.count + 1 %}<div class="skill-line"><i class="dot {% if skill.proficient %}on{% endif %}"></i><span class="num">{{ '%+d'|format(skill.modifier) }}</span><span>{{ skill.name }}</span></div>{% endif %}{% endfor %}
+          {% if ns.count == 0 %}<div class="empty-note" style="text-align:center;padding:3px">No associated skills</div>{% endif %}
+        </div>
+      </section>
+    {% endfor %}
     </div>
     <div>
-      <section class="panel"><h2 class="panel-title">Attacks & Spellcasting</h2><div class="panel-body">
-        <table class="attack-table"><thead><tr><th>Attack</th><th>Bonus</th><th>Damage / Effect</th></tr></thead><tbody>
+      <section class="panel"><h2 class="panel-title">Attacks & Spellcasting</h2><div class="panel-body"><table class="attack-table"><thead><tr><th>Attack</th><th>Bonus</th><th>Damage / Effect</th></tr></thead><tbody>
         {% for attack in derived.attacks %}<tr><td><b>{{ attack.name }}</b></td><td class="num">{{ '%+d'|format(attack.attack_bonus) }}</td><td>{{ attack.damage }}</td></tr>{% endfor %}
         {% if derived.spellcasting_ability %}<tr><td><b>Spell Attack</b></td><td class="num">{{ '%+d'|format(derived.spell_attack_bonus) }}</td><td>Save DC {{ derived.spell_save_dc }} · {{ derived.spellcasting_ability|upper }}</td></tr>{% endif %}
         {% if not derived.attacks and not derived.spellcasting_ability %}<tr><td colspan="3" class="empty-note">No attacks or spellcasting entries selected.</td></tr>{% endif %}
-        </tbody></table>
-      </div></section>
-
+      </tbody></table></div></section>
       <div class="quick-grid">
-        <section class="panel"><h2 class="panel-title">Defenses & Resources</h2><div class="panel-body">
-          <b>Hit Dice:</b> {{ character.level }}d{{ derived.hit_die }}<br>
-          <b>Heroic Inspiration:</b> {{ 'Yes' if derived.details.get('inspiration') else 'No' }}<br>
-          {% if derived.stealth_disadvantage %}<b>Stealth:</b> Disadvantage from armor<br>{% endif %}
-          {% if derived.strength_requirement %}<b>Armor STR:</b> {{ derived.strength_requirement }}{% endif %}
-        </div></section>
+        <section class="panel"><h2 class="panel-title">Defenses & Resources</h2><div class="panel-body"><b>Hit Dice:</b> {{ character.level }}d{{ derived.hit_die }}<br><b>Heroic Inspiration:</b> {{ 'Yes' if derived.details.get('inspiration') else 'No' }}{% if derived.stealth_disadvantage %}<br><b>Stealth:</b> Disadvantage from armor{% endif %}{% if derived.strength_requirement %}<br><b>Armor STR:</b> {{ derived.strength_requirement }}{% endif %}</div></section>
         <section class="panel"><h2 class="panel-title">Languages</h2><div class="panel-body">{{ character.languages|join(', ') or 'Common' }}</div></section>
       </div>
-
       <section class="panel"><h2 class="panel-title">Proficiencies</h2><div class="panel-body">{{ derived.other_proficiencies|join(' · ') or '—' }}</div></section>
       <section class="panel"><h2 class="panel-title">Currency</h2><div class="panel-body"><div class="currency">{% for coin in ['cp','sp','ep','gp','pp'] %}<div class="coin"><b>{{ coin|upper }}</b><span>{{ derived.currency[coin] }}</span></div>{% endfor %}</div></div></section>
-      <section class="panel"><h2 class="panel-title">At-a-Glance Features</h2><div class="panel-body"><ul class="clean-list">
-        {% for feature in derived.class_features[:8] %}<li>{{ feature.name }}</li>{% endfor %}
-        {% for feat in derived.feats[:4] %}<li>Feat: {{ feat.name }}</li>{% endfor %}
-        {% if not derived.class_features and not derived.feats %}<li class="empty-note">No features recorded.</li>{% endif %}
-      </ul></div></section>
+      <section class="panel"><h2 class="panel-title">At-a-Glance Features</h2><div class="panel-body"><ul class="clean-list">{% for feature in derived.class_features[:8] %}<li>{{ feature.name }}</li>{% endfor %}{% for feat in derived.feats[:4] %}<li>Feat: {{ feat.name }}</li>{% endfor %}{% if not derived.class_features and not derived.feats %}<li class="empty-note">No features recorded.</li>{% endif %}</ul></div></section>
     </div>
   </div>
 </section>
 
 <section class="print-page detail-page">
-  <div class="page-title"><h2>Inventory & Character Features</h2><span>Reference during play and advancement</span></div>
+  <div class="page-title"><h2>Inventory & Character Traits</h2><span>Reference during play and advancement</span></div>
   <div class="inventory-summary">
     <section class="panel flow-block"><h2 class="panel-title">Equipment</h2><div class="panel-body">
-      <table class="inventory-table"><thead><tr><th>Item</th><th>Type</th></tr></thead><tbody>
-      {% for item in derived.equipment %}<tr><td>{{ item.name }}</td><td>{{ item.entity_type|replace('_',' ')|title }}</td></tr>{% else %}<tr><td colspan="2" class="empty-note">No equipment selected.</td></tr>{% endfor %}
-      </tbody></table><p class="equipment-note">Currency is summarized on the core page. Automatically granted and selected equipment are shown together here.</p>
+      {% if derived.equipment_print_compact %}
+      <table class="inventory-table compact-four"><colgroup><col><col><col class="gutter"><col><col></colgroup><thead><tr><th>Item</th><th>Type</th><th class="gutter"></th><th>Item</th><th>Type</th></tr></thead><tbody>
+      {% for row in derived.equipment_print_rows %}<tr><td>{{ row.left.name }}</td><td>{{ row.left.entity_type|replace('_',' ')|title }}</td><td class="gutter"></td>{% if row.right %}<td>{{ row.right.name }}</td><td>{{ row.right.entity_type|replace('_',' ')|title }}</td>{% else %}<td></td><td></td>{% endif %}</tr>{% endfor %}
+      </tbody></table>
+      {% else %}
+      <table class="inventory-table"><thead><tr><th>Item</th><th>Type</th></tr></thead><tbody>{% for item in derived.equipment %}<tr><td>{{ item.name }}</td><td>{{ item.entity_type|replace('_',' ')|title }}</td></tr>{% else %}<tr><td colspan="2" class="empty-note">No equipment selected.</td></tr>{% endfor %}</tbody></table>
+      {% endif %}
+      <p class="equipment-note">Currency is summarized on the core page. Automatically granted and selected equipment are shown together here.</p>
     </div></section>
-    <div>
-      <section class="panel"><h2 class="panel-title">Skill Proficiencies</h2><div class="panel-body">{{ derived.skill_proficiencies|join(' · ') or '—' }}</div></section>
-      <section class="panel"><h2 class="panel-title">Saving Throw Proficiencies</h2><div class="panel-body">{% for save in derived.saves if save.proficient %}{{ save.name }}{% if not loop.last %} · {% endif %}{% else %}—{% endfor %}</div></section>
-    </div>
+    <div><section class="panel"><h2 class="panel-title">Skill Proficiencies</h2><div class="panel-body">{{ derived.skill_proficiencies|join(' · ') or '—' }}</div></section><section class="panel"><h2 class="panel-title">Saving Throw Proficiencies</h2><div class="panel-body">{% for save in derived.saves if save.proficient %}{{ save.name }}{% if not loop.last %} · {% endif %}{% else %}—{% endfor %}</div></section></div>
   </div>
 
-  <div class="section-banner"><h2>Traits</h2><p>Species, background, class, and subclass identity information.</p></div>
-  <div class="two-col">
-    <div>
-      {% if derived.species %}<article class="rich-card"><h3>{{ derived.species.name }}</h3><div class="meta">Species</div><div class="rich">{{ entity_summary(derived.species)|render_markdown }}</div></article>{% endif %}
-      {% if derived.background %}<article class="rich-card"><h3>{{ derived.background.name }}</h3><div class="meta">Background</div><div class="rich">{{ entity_summary(derived.background)|render_markdown }}</div></article>{% endif %}
-    </div>
-    <div>
-      {% if derived.class_entity %}<article class="rich-card"><h3>{{ derived.class_entity.name }}</h3><div class="meta">Class</div><div class="rich">{{ entity_summary(derived.class_entity)|render_markdown }}</div></article>{% endif %}
-      {% if derived.subclass %}<article class="rich-card"><h3>{{ derived.subclass.name }}</h3><div class="meta">Subclass</div><div class="rich">{{ entity_summary(derived.subclass)|render_markdown }}</div></article>{% endif %}
-    </div>
+  <div class="section-banner"><h2>Traits</h2><p>Species, background, class, and subclass information from the cached compendium record.</p></div>
+  <div class="trait-grid">
+    {% if derived.species %}<article class="rich-card"><h3>{{ derived.species.name }}</h3><div class="meta">Species</div><div class="rich">{{ derived.print_profiles.species|render_markdown }}</div></article>{% endif %}
+    {% if derived.class_entity %}<article class="rich-card"><h3>{{ derived.class_entity.name }}</h3><div class="meta">Class</div><div class="rich">{{ derived.print_profiles.class|render_markdown }}</div></article>{% endif %}
+    {% if derived.background %}<article class="rich-card"><h3>{{ derived.background.name }}</h3><div class="meta">Background</div><div class="rich">{{ derived.print_profiles.background|render_markdown }}</div></article>{% endif %}
+    {% if derived.subclass %}<article class="rich-card"><h3>{{ derived.subclass.name }}</h3><div class="meta">Subclass</div><div class="rich">{{ derived.print_profiles.subclass|render_markdown }}</div></article>{% endif %}
   </div>
+</section>
 
-  <div class="section-banner"><h2>Features</h2><p>Rules text is preserved and Markdown tables/emphasis are rendered for print.</p></div>
-  <div class="two-col">
-    <div>{% for feature in derived.class_features %}{% if loop.index0 % 2 == 0 %}<article class="rich-card flow-block"><h3>{{ feature.name }}</h3><div class="rich">{% if feature.description %}{{ feature.description|render_markdown }}{% else %}<span class="empty-note">No description available.</span>{% endif %}</div></article>{% endif %}{% endfor %}</div>
-    <div>{% for feature in derived.class_features %}{% if loop.index0 % 2 == 1 %}<article class="rich-card flow-block"><h3>{{ feature.name }}</h3><div class="rich">{% if feature.description %}{{ feature.description|render_markdown }}{% else %}<span class="empty-note">No description available.</span>{% endif %}</div></article>{% endif %}{% endfor %}</div>
-  </div>
-
+<section class="print-page features-section">
+  <div class="page-title"><h2>Features & Feats</h2><span>Rules reference for this character</span></div>
+  <div class="section-banner"><h2>Features</h2><p>Only normalized feature prose is printed; Open5e progression-table placeholders are omitted.</p></div>
+  {% for feature in derived.class_features %}<article class="rich-card feature-card"><h3>{{ feature.name }}</h3><div class="rich">{% if feature.description %}{{ feature.description|render_markdown }}{% else %}<span class="empty-note">No descriptive text is stored for this feature.</span>{% endif %}</div></article>{% else %}<article class="rich-card"><div class="empty-note">No class features are available in the cached character data.</div></article>{% endfor %}
   <div class="section-banner"><h2>Feats</h2><p>Selected feats are separated from class features for quick reference.</p></div>
-  <div class="two-col">
-    <div>{% for feat in derived.feats %}{% if loop.index0 % 2 == 0 %}<article class="rich-card flow-block"><h3>{{ feat.name }}</h3><div class="rich">{{ entity_summary(feat)|render_markdown }}</div></article>{% endif %}{% endfor %}</div>
-    <div>{% for feat in derived.feats %}{% if loop.index0 % 2 == 1 %}<article class="rich-card flow-block"><h3>{{ feat.name }}</h3><div class="rich">{{ entity_summary(feat)|render_markdown }}</div></article>{% endif %}{% endfor %}</div>
-  </div>
-  {% if not derived.feats %}<div class="story-card"><div class="story-content"></div></div>{% endif %}
+  {% for feat in derived.feats %}<article class="rich-card feature-card"><h3>{{ feat.name }}</h3><div class="rich">{{ entity_summary(feat)|render_markdown }}</div></article>{% else %}<article class="rich-card"><div class="empty-note">No feats selected.</div></article>{% endfor %}
 </section>
 
 <section class="print-page story-page">
   <div class="page-title"><h2>Character & Story</h2><span>Roleplay, history, affiliations, and notes</span></div>
-  <div class="identity-header">
-    <div class="character-name"><span class="eyebrow">Character</span><h1>{{ character.name }}</h1></div>
-    <div class="identity-fields">
-      {% for key,label in [('age','Age'),('height','Height'),('weight','Weight'),('eyes','Eyes'),('skin','Skin'),('hair','Hair')] %}<div class="identity-field"><span class="k">{{ label }}</span><span class="v">{{ derived.details.get(key,'') or '—' }}</span></div>{% endfor %}
-    </div>
-  </div>
+  <div class="identity-header"><div class="character-name"><span class="eyebrow">Character</span><h1>{{ character.name }}</h1></div><div class="identity-fields">{% for key,label in [('age','Age'),('height','Height'),('weight','Weight'),('eyes','Eyes'),('skin','Skin'),('hair','Hair')] %}<div class="identity-field"><span class="k">{{ label }}</span><span class="v">{{ derived.details.get(key,'') or '—' }}</span></div>{% endfor %}</div></div>
   <div class="story-grid">
     <table class="story-pair"><tr><td><article class="story-card"><h3>Personality Traits</h3><div class="story-content">{{ derived.details.get('personality_traits','') }}</div></article></td><td><article class="story-card"><h3>Ideals</h3><div class="story-content">{{ derived.details.get('ideals','') }}</div></article></td></tr><tr><td><article class="story-card"><h3>Bonds</h3><div class="story-content">{{ derived.details.get('bonds','') }}</div></article></td><td><article class="story-card"><h3>Flaws</h3><div class="story-content">{{ derived.details.get('flaws','') }}</div></article></td></tr></table>
     <table class="story-pair"><tr><td><article class="story-card"><h3>Appearance</h3><div class="story-content">{{ derived.details.get('appearance','') }}</div></article></td><td><article class="story-card"><h3>Allies & Organizations</h3><div class="story-content">{{ derived.details.get('allies','') }}</div>{% if derived.details.get('symbol') %}<h3 style="margin-top:8px">Symbol / Affiliation</h3><div class="story-content">{{ derived.details.get('symbol','') }}</div>{% endif %}</article></td></tr></table>
@@ -244,25 +244,11 @@ body { color:#1c1b19; font-family: Arial, Helvetica, sans-serif; background:#e5e
 {% if derived.spellcasting_ability or derived.spells %}
 <section class="print-page spell-page">
   <div class="page-title"><h2>Spellcasting</h2><span>{{ derived.class_entity.name if derived.class_entity else character.name }}</span></div>
-  <div class="spell-summary">
-    <div class="stat-chip"><span class="k">Ability</span><span class="v">{{ derived.spellcasting_ability|upper if derived.spellcasting_ability else '—' }}</span></div>
-    <div class="stat-chip"><span class="k">Save DC</span><span class="v">{{ derived.spell_save_dc or '—' }}</span></div>
-    <div class="stat-chip"><span class="k">Attack</span><span class="v">{% if derived.spell_attack_bonus is not none %}{{ '%+d'|format(derived.spell_attack_bonus) }}{% else %}—{% endif %}</span></div>
-    <div class="stat-chip"><span class="k">Prepared</span><span class="v">{{ character.prepared_spells|length }}</span></div>
-  </div>
-  <div class="spell-columns">
-  {% for level in range(0,10) %}
-    {% set spells = derived.spells_by_level.get(level,[]) %}
-    {% if spells or level <= 1 %}<section class="spell-level"><h3><span>{{ 'Cantrips' if level == 0 else 'Level '~level }}</span><span>{% if level > 0 %}Slots ____ / ____{% endif %}</span></h3>
-      {% for spell in spells %}<div class="spell-line"><i class="prepared {% if spell.prepared %}on{% endif %}"></i><span>{{ spell.entity.name }}</span></div>{% endfor %}
-      {% if not spells %}<div class="spell-line"><i class="prepared"></i><span>&nbsp;</span></div><div class="spell-line"><i class="prepared"></i><span>&nbsp;</span></div>{% endif %}
-    </section>{% endif %}
-  {% endfor %}
-  </div>
+  <div class="spell-summary"><div class="stat-chip"><span class="k">Ability</span><span class="v">{{ derived.spellcasting_ability|upper if derived.spellcasting_ability else '—' }}</span></div><div class="stat-chip"><span class="k">Save DC</span><span class="v">{{ derived.spell_save_dc or '—' }}</span></div><div class="stat-chip"><span class="k">Attack</span><span class="v">{% if derived.spell_attack_bonus is not none %}{{ '%+d'|format(derived.spell_attack_bonus) }}{% else %}—{% endif %}</span></div><div class="stat-chip"><span class="k">Prepared</span><span class="v">{{ character.prepared_spells|length }}</span></div></div>
+  <div class="spell-columns">{% for level in range(0,10) %}{% set spells = derived.spells_by_level.get(level,[]) %}{% if spells or level <= 1 %}<section class="spell-level"><h3><span>{{ 'Cantrips' if level == 0 else 'Level '~level }}</span><span>{% if level > 0 %}Slots ____ / ____{% endif %}</span></h3>{% for spell in spells %}<div class="spell-line"><i class="prepared {% if spell.prepared %}on{% endif %}"></i><span>{{ spell.entity.name }}</span></div>{% endfor %}{% if not spells %}<div class="spell-line"><i class="prepared"></i><span>&nbsp;</span></div><div class="spell-line"><i class="prepared"></i><span>&nbsp;</span></div>{% endif %}</section>{% endif %}{% endfor %}</div>
 </section>
 {% endif %}
-
 </div>
-<footer class="print-footer">Generated with Rob's D&amp;D Compendium - {{ app_version }} - {{ generated_date }}</footer>
+{% if not pdf_mode %}<div class="footer-preview"><span>Generated with Rob's D&amp;D Compendium - {{ app_version }} - {{ generated_date }}</span><span>{{ character.name }} - {{ derived.details.get('player_name','') or 'Player' }} - page numbering appears in print/PDF</span></div>{% endif %}
 </body>
 </html>

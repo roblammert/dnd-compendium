@@ -6,7 +6,7 @@ def test_v0320_print_sheet_is_full_rework():
     assert 'class="combat-ribbon"' in template
     assert 'class="ability-board"' in template
     assert 'skill.ability == save.ability' in template
-    assert 'Inventory & Character Features' in template
+    assert 'Inventory & Character Traits' in template
     assert 'Character & Story' in template
     assert '{% if derived.spellcasting_ability or derived.spells %}' in template
     assert 'Generated with Rob\'s D&amp;D Compendium - {{ app_version }} - {{ generated_date }}' in template
@@ -17,7 +17,7 @@ def test_v0320_print_sheet_has_overflow_safe_paged_css():
     assert 'break-inside:avoid-page' in template
     assert 'page-break-inside:avoid' in template
     assert 'display:table-header-group' in template
-    assert 'position:fixed' in template
+    assert '@bottom-left' in template and '@bottom-right' in template
     assert '.story-content { white-space:pre-wrap; overflow-wrap:anywhere;' in template
     assert '.flow-block { break-inside:auto; page-break-inside:auto; }' in template
 
