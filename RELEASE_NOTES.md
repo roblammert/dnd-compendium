@@ -594,7 +594,15 @@ Using the supplied standard Medium thresholds, levels 2, 4, 6, 7, 8, and 10 tota
 
 ## v0.33.3 — Player Architect class endpoint correction
 
-- Correct Player Architect class discovery to query the cached Open5e `classe` entity type.
-- Match the working SQLite subclass query exactly: a class is a subclass when `$.subclass_of` exists and its JSON value is not `null`.
-- Treat the inverse set as primary classes: `$.subclass_of` is absent or JSON `null`.
-- Do not use any other class metadata to decide primary-vs-subclass status.
+- Correct Player Architect class discovery to use the cached Open5e `classe` entity type.
+- Define subclasses exactly as SQLite does: `data_json.subclass_of` exists and is not JSON null.
+- Define primary classes as the exact inverse: `subclass_of` is missing or JSON null.
+- Keep all other class metadata out of primary/subclass classification.
+## v0.33.4 — Player Architect class proficiency Blueprint
+
+- Parse class and subclass proficiency/core-trait data across 2014 prose and 2024 Markdown-table shapes.
+- Add fixed weapon, armor, tool, saving-throw, skill, language, cantrip, spell, and feat rules to the locked Character Blueprint when they can be applied deterministically.
+- Add a **Needs Your Choice** ledger section for class/subclass instructions such as `Choose one tool`, `Choose 2 skills`, starting-equipment choices, and other unresolved player decisions.
+- Preserve primary-class Blueprint entries when an optional subclass is selected so subclass rules layer on top of inherited class rules.
+- Expand manual Blueprint stat categories to include Weapons, Armor, Tools, Saving Throws, Skills, Cantrips, Spells, and Feats.
+

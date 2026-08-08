@@ -29,6 +29,18 @@
     <div class="pa-blueprint-table-wrap"><table class="pa-blueprint-table"><thead><tr><th></th><th>How</th><th>Mod</th><th>Stat</th><th>Note</th><th></th></tr></thead><tbody>
       {% for row in blueprint_rows %}<tr class="{% if row.is_locked %}locked{% endif %}" data-pa-blueprint-row data-origin="{{ row.how }}" data-stat="{{ row.stat }}" data-mod="{{ row.modifier }}"><td>{{ '🔒' if row.is_locked else '✎' }}</td><td>{{ row.how }}</td><td>{{ row.modifier }}</td><td>{{ row.stat }}</td><td>{{ row.note or '' }}</td><td>{% if not row.is_locked %}<button type="button" class="pa-row-edit" data-pa-edit-blueprint='{{ {"id":row.public_id,"how":row.how,"modifier":row.modifier,"stat":row.stat,"note":row.note or ""}|tojson|forceescape }}'>Edit</button>{% endif %}</td></tr>{% else %}<tr><td colspan="6" class="pa-empty">No modifiers yet.</td></tr>{% endfor %}
     </tbody></table></div>
+    <section class="pa-blueprint-choice-notes" data-pa-choice-section aria-labelledby="pa-choice-notes-title" {% if not blueprint_choice_notes %}hidden{% endif %}>
+      <div class="pa-blueprint-choice-head">
+        <div><p class="eyebrow">Needs Your Choice</p><h3 id="pa-choice-notes-title">Player Decisions</h3></div>
+        <span data-pa-choice-count>{{ blueprint_choice_notes|length }} open</span>
+      </div>
+      <p>These rules cannot be applied automatically because the source requires you to choose an option. Resolve them on the appropriate Architect step or add a verified manual Blueprint entry when needed.</p>
+      <ul data-pa-choice-list>
+      {% for item in blueprint_choice_notes %}
+        <li data-pa-choice-row data-origin="{{ item.how }}"><strong>{{ item.stat }}</strong><span>{{ item.instruction }}</span><small>{{ item.how }} · {{ item.note }}</small></li>
+      {% endfor %}
+      </ul>
+    </section>
     <button type="button" class="primary-action pa-add-blueprint" data-pa-open="pa-blueprint-add">+ Manual Blueprint Entry</button>
   </aside>
 

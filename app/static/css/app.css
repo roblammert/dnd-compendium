@@ -541,3 +541,16 @@ body.pa-architect-active .page,body:has(.pa-app-shell) .page{max-width:none!impo
 @media(max-width:1100px){.pa-app-shell{--pa-left:205px}.pa-workspace{padding-inline:1.25rem!important}.pa-ability-editor{grid-template-columns:repeat(2,minmax(250px,1fr))!important}.pa-blueprint-drawer{width:78vw!important}}
 @media(max-width:900px){body.pa-architect-active,body:has(.pa-app-shell){overflow:auto}.pa-app-shell{display:block!important;height:auto!important;min-height:calc(100dvh - var(--pa-site-header-height,72px))!important;padding-bottom:var(--pa-footer)!important}.pa-step-sidebar{position:sticky!important;top:0!important;height:auto!important;display:block!important;overflow:visible!important}.pa-step-nav{display:flex!important;overflow-x:auto!important;overflow-y:hidden!important}.pa-sidebar-actions{grid-template-columns:1fr 1fr 1fr;padding:.5rem}.pa-back-tools{grid-column:1/-1}.pa-workspace{height:calc(100dvh - var(--pa-site-header-height,72px) - var(--pa-footer) - 126px)!important;min-height:440px;padding:1rem!important}.pa-blueprint-drawer{width:92vw!important}.pa-choice-main{grid-template-columns:1.25rem minmax(140px,190px) minmax(0,1fr)!important}.pa-ability-editor{grid-template-columns:repeat(2,minmax(220px,1fr))!important}}
 @media(max-width:650px){.pa-sidebar-actions{grid-template-columns:1fr 1fr}.pa-view-blueprint{grid-column:1/-1}.pa-choice-main{grid-template-columns:1.2rem minmax(0,1fr)!important}.pa-choice-summary{grid-column:2!important}.pa-ability-editor{grid-template-columns:1fr!important}.pa-ability-card{grid-template-columns:44px 72px minmax(0,1fr)!important}}
+
+/* Player Architect v0.33.4 — unresolved class/subclass choices */
+.pa-blueprint-choice-notes{margin:1rem 0;padding:1rem;border:1px solid rgba(180,126,29,.48);border-left:4px solid #b47e1d;background:#fff8e6}
+.pa-blueprint-choice-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:.35rem}
+.pa-blueprint-choice-head h3{margin:.1rem 0 0;font-size:1.05rem;color:#183946}
+.pa-blueprint-choice-head>span{white-space:nowrap;padding:.22rem .5rem;border:1px solid #b47e1d;border-radius:999px;color:#74500d;font-size:.72rem;font-weight:800;text-transform:uppercase}
+.pa-blueprint-choice-notes>p{margin:.25rem 0 .75rem;color:#5f5545;font-size:.88rem;line-height:1.45}
+.pa-blueprint-choice-notes ul{list-style:none;margin:0;padding:0;display:grid;gap:.5rem}
+.pa-blueprint-choice-notes li{display:grid;grid-template-columns:minmax(7rem,.25fr) 1fr;gap:.18rem .75rem;padding:.6rem .7rem;border:1px solid rgba(180,126,29,.32);background:#fff}
+.pa-blueprint-choice-notes li strong{color:#183946}
+.pa-blueprint-choice-notes li span{line-height:1.35}
+.pa-blueprint-choice-notes li small{grid-column:2;color:#7b6f5d}
+@media(max-width:700px){.pa-blueprint-choice-notes li{grid-template-columns:1fr}.pa-blueprint-choice-notes li small{grid-column:1}}

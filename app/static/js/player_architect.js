@@ -103,10 +103,17 @@
     (entries||[]).forEach(item=>{ const tr=document.createElement('tr'); tr.className='locked pa-preview-row'; tr.dataset.paPreviewRow='1'; tr.dataset.origin=origin; tr.dataset.stat=item.stat; tr.dataset.mod=item.modifier; tr.innerHTML=`<td>🔒</td><td>${origin}</td><td>${item.modifier}</td><td>${item.stat}</td><td>${item.note||''} <em>(pending save)</em></td><td></td>`; tbody.appendChild(tr); });
     recalcBlueprintScores();
   }
+  function previewChoiceNotes(origin, notes){
+    $$(`[data-pa-choice-row][data-origin="${origin}"]`).forEach(r=>r.remove());
+    const section=$('[data-pa-choice-section]'), list=$('[data-pa-choice-list]'); if(!section||!list) return;
+    (notes||[]).forEach(item=>{ const li=document.createElement('li'); li.dataset.paChoiceRow='1'; li.dataset.origin=origin; li.innerHTML=`<strong>${item.stat||'Choice'}</strong><span>${item.instruction||''}</span><small>${origin} · ${item.note||'player decision required'} <em>(pending save)</em></small>`; list.appendChild(li); });
+    const count=$$('[data-pa-choice-row]').length, badge=$('[data-pa-choice-count]'); if(badge) badge.textContent=`${count} open`; section.hidden=count===0;
+  }
   $$('[data-pa-auto-origin] input[type=radio]').forEach(input=>input.addEventListener('change',()=>{
     const card=input.closest('[data-pa-auto-origin]');
     if(!input.checked) return;
     previewAutomatic(card.dataset.paAutoOrigin, JSON.parse(card.dataset.paAuto||'[]'));
+    if(card.dataset.paChoice!==undefined) previewChoiceNotes(card.dataset.paAutoOrigin, JSON.parse(card.dataset.paChoice||'[]'));
     const identity=card.querySelector('.pa-choice-identity strong')?.textContent?.trim();
     if(card.dataset.paAutoOrigin==='Race'){ const target=$('[data-pa-status-race]'); if(target) target.textContent=identity||'—'; }
     if(card.dataset.paAutoOrigin==='Class'){ const target=$('[data-pa-status-class]'); if(target) target.textContent=identity||'—'; }
@@ -119,7 +126,7 @@
   function filterSubclasses(){
     const checked=primaryClassInputs.find(i=>i.checked), card=checked?.closest('[data-pa-class-card]'); const tokens=[card?.dataset.className,card?.dataset.classKey].filter(Boolean);
     let shown=0;
-    $$('.pa-subclass-card').forEach(sub=>{ const text=(sub.dataset.parentText||'').toLowerCase(); const visible=tokens.some(t=>text.includes(t)); sub.hidden=!visible; if(visible) shown++; else { const r=sub.querySelector('input[type=radio]'); if(r) r.checked=false; } });
+    $$('.pa-subclass-card').forEach(sub=>{ const text=(sub.dataset.parentText||'').toLowerCase(); const visible=tokens.some(t=>text.includes(t)); sub.hidden=!visible; if(visible) shown++; else { const r=sub.querySelector('input[type=radio]'); if(r && r.checked){ r.checked=false; previewAutomatic('Subclass',[]); previewChoiceNotes('Subclass',[]); } } });
     const prompt=$('[data-pa-subclass-prompt]'); if(prompt) prompt.textContent=checked?(shown?`${shown} subclass option${shown===1?'':'s'} available for ${card.dataset.className}.`:'No cached subclasses identify this primary class.'):'Select a primary class to see its available subclasses.';
   }
   primaryClassInputs.forEach(i=>i.addEventListener('change',filterSubclasses)); filterSubclasses();

@@ -45,7 +45,7 @@ STEPS = [
     ("review", "Review & Sheet"),
 ]
 STEP_KEYS = {key for key, _ in STEPS}
-STAT_OPTIONS = ["STR","DEX","CON","INT","WIS","CHA","HP","AC","PB","Speed","Languages","Proficiencies","Other"]
+STAT_OPTIONS = ["STR","DEX","CON","INT","WIS","CHA","HP","AC","PB","Speed","Weapons","Armor","Tools","Saving Throws","Skills","Languages","Proficiencies","Cantrips","Spells","Feats","Other"]
 
 
 def _uid(prefix: str) -> str:
@@ -149,6 +149,184 @@ def _ability_key(text: str) -> str | None:
     return None
 
 
+
+CORE_TRAIT_ALIASES = {
+    "armor": "Armor",
+    "armor training": "Armor",
+    "armor proficiencies": "Armor",
+    "weapon": "Weapons",
+    "weapons": "Weapons",
+    "weapon proficiency": "Weapons",
+    "weapon proficiencies": "Weapons",
+    "tool": "Tools",
+    "tools": "Tools",
+    "tool proficiency": "Tools",
+    "tool proficiencies": "Tools",
+    "saving throw": "Saving Throws",
+    "saving throws": "Saving Throws",
+    "saving throw proficiency": "Saving Throws",
+    "saving throw proficiencies": "Saving Throws",
+    "skill": "Skills",
+    "skills": "Skills",
+    "skill proficiency": "Skills",
+    "skill proficiencies": "Skills",
+    "languages": "Languages",
+    "language": "Languages",
+    "cantrips": "Cantrips",
+    "spells": "Spells",
+    "feats": "Feats",
+    "starting equipment": "Other",
+}
+
+
+def _clean_rule_value(value: Any) -> str:
+    text = re.sub(r"\s+", " ", _text(value or "")).strip()
+    return text.strip(" |-:")
+
+
+def _markdown_table_pairs(text: str) -> list[tuple[str, str]]:
+    """Extract simple two-column Markdown tables used by Open5e core-trait rows."""
+    rows: list[tuple[str, str]] = []
+    for line in str(text or "").splitlines():
+        line = line.strip()
+        if not (line.startswith("|") and line.endswith("|")):
+            continue
+        cells = [cell.strip() for cell in line.strip("|").split("|")]
+        if len(cells) < 2 or all(re.fullmatch(r"[-: ]+", cell or "-") for cell in cells[:2]):
+            continue
+        label, value = cells[0], " | ".join(cells[1:]).strip()
+        if label and value and label.casefold() not in {"detail", "value"}:
+            rows.append((label, value))
+    return rows
+
+
+def _bold_label_pairs(text: str) -> list[tuple[str, str]]:
+    """Extract ``**Weapons:** ...`` style proficiency lines from 2014 class data."""
+    pairs: list[tuple[str, str]] = []
+    for match in re.finditer(r"\*\*([^*:\r\n]+):\*\*\s*([^\r\n]+)", str(text or "")):
+        label, value = match.group(1).strip(), match.group(2).strip()
+        if label and value:
+            pairs.append((label, value))
+    return pairs
+
+
+def _walk_rule_nodes(value: Any):
+    if isinstance(value, dict):
+        yield value
+        for child in value.values():
+            yield from _walk_rule_nodes(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from _walk_rule_nodes(child)
+
+
+def _class_rule_pairs(entity: Entity | None) -> list[tuple[str, str]]:
+    """Collect normalized class rule labels from raw Open5e class JSON.
+
+    This intentionally accepts both older prose proficiency features and newer
+    CORE_TRAITS_TABLE Markdown tables.  It is source agnostic because Player
+    Architect can use the entire cached compendium.
+    """
+    if not entity:
+        return []
+    data = entity.data_json or {}
+    pairs: list[tuple[str, str]] = []
+
+    # Direct structured keys found across Open5e and third-party sources.
+    direct = {
+        "armor": ("armor", "armor_training", "armor_proficiencies"),
+        "weapons": ("weapons", "weapon_proficiencies"),
+        "tools": ("tools", "tool_proficiencies"),
+        "saving throws": ("saving_throws", "saving_throw_proficiencies"),
+        "skills": ("skills", "skill_proficiencies"),
+        "languages": ("languages",),
+        "cantrips": ("cantrips",),
+        "spells": ("spells", "spellcasting"),
+        "feats": ("feats",),
+        "starting equipment": ("starting_equipment",),
+    }
+    for label, keys in direct.items():
+        for key in keys:
+            if data.get(key) not in (None, "", [], {}):
+                pairs.append((label, _clean_rule_value(data[key])))
+                break
+
+    # Feature-shaped objects can embed either prose or Markdown tables.
+    for node in _walk_rule_nodes(data):
+        desc = node.get("desc") or node.get("description")
+        if not isinstance(desc, str) or not desc.strip():
+            continue
+        ftype = str(node.get("feature_type") or node.get("type") or "").casefold()
+        name = str(node.get("name") or "").casefold()
+        if ftype in {"proficiencies", "core_traits_table", "core traits table"} or "proficien" in name or "core" in name:
+            pairs.extend(_markdown_table_pairs(desc))
+            pairs.extend(_bold_label_pairs(desc))
+
+    # Some class records store the proficiency/core-traits description at top level.
+    top_desc = data.get("desc") or data.get("description")
+    if isinstance(top_desc, str):
+        pairs.extend(_markdown_table_pairs(top_desc))
+        pairs.extend(_bold_label_pairs(top_desc))
+
+    normalized: list[tuple[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for label, value in pairs:
+        label_key = re.sub(r"\s+", " ", str(label).replace("_", " ")).strip().casefold()
+        stat = CORE_TRAIT_ALIASES.get(label_key)
+        cleaned = _clean_rule_value(value)
+        if stat and cleaned:
+            key = (stat, cleaned.casefold())
+            if key not in seen:
+                seen.add(key)
+                normalized.append((stat, cleaned))
+    return normalized
+
+
+def _requires_choice(text: str) -> bool:
+    return bool(re.search(r"\b(choose|choice|select|pick|one of|either\b|or another)\b", str(text or ""), re.I))
+
+
+def _class_choice_notes(entity: Entity | None, how: str = "Class") -> list[dict[str, str]]:
+    if not entity:
+        return []
+    notes: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for stat, instruction in _class_rule_pairs(entity):
+        if _requires_choice(instruction):
+            key = (stat, instruction.casefold())
+            if key not in seen:
+                seen.add(key)
+                notes.append({
+                    "how": how,
+                    "stat": stat,
+                    "instruction": instruction,
+                    "note": f"{entity.name}: player decision required",
+                })
+    return notes
+
+
+def _class_proficiency_entries(entity: Entity | None, how: str = "Class") -> list[dict[str, str]]:
+    """Convert fixed class proficiencies into locked Blueprint entries.
+
+    Player-choice rules are deliberately excluded here and surfaced by
+    ``_class_choice_notes`` instead, preventing the automatic ledger from
+    pretending a choice has already been made.
+    """
+    if not entity:
+        return []
+    result: list[dict[str, str]] = []
+    for stat, value in _class_rule_pairs(entity):
+        if stat not in {"Weapons", "Armor", "Tools", "Saving Throws", "Skills", "Languages", "Cantrips", "Spells", "Feats"}:
+            continue
+        if _requires_choice(value):
+            continue
+        if value.casefold() in {"none", "n/a", "—", "-"}:
+            # Keep explicit armor/tool absence visible without representing it as a bonus.
+            result.append({"modifier": "None", "stat": stat, "note": f"{entity.name} {stat.lower()}"})
+        else:
+            result.append({"modifier": f"+{value}" if not str(value).startswith(('+','-')) else str(value), "stat": stat, "note": f"{entity.name} {stat.lower()}"})
+    return result
+
 def _auto_entries(entity: Entity | None, how: str) -> list[dict[str, str]]:
     """Best-effort, source-agnostic modifier extraction from cached compendium JSON."""
     if not entity:
@@ -212,15 +390,14 @@ def _auto_entries(entity: Entity | None, how: str) -> list[dict[str, str]]:
         if name and name.casefold() not in {"any","choice","choose"}:
             add(f"+{name}","Languages",f"{entity.name} language")
 
-    if how == "Class":
-        hit=data.get("hit_die") or data.get("hit_dice")
-        if hit:
-            text=str(hit); text = text if text.lower().startswith("d") else f"d{text}"
-            add(text,"HP",f"{entity.name} class Hit Die")
-        saves=data.get("saving_throws") or data.get("saving_throw_proficiencies")
-        if saves:
-            names=", ".join(_extract_named(x) for x in (saves if isinstance(saves,list) else [saves]) if _extract_named(x))
-            if names: add(f"+{names}","Proficiencies",f"{entity.name} saving throw proficiencies")
+    if how in {"Class", "Subclass"}:
+        if how == "Class":
+            hit=data.get("hit_die") or data.get("hit_dice")
+            if hit:
+                text=str(hit); text = text if text.lower().startswith("d") else f"d{text}"
+                add(text,"HP",f"{entity.name} class Hit Die")
+        for item in _class_proficiency_entries(entity, how):
+            add(item["modifier"], item["stat"], item["note"])
     return entries
 
 
@@ -297,10 +474,11 @@ def _context(db: Session, char: ArchitectCharacter, step: str, **extra):
     implemented_step = step in {"identity", "race", "class", "abilities", "background"}
     return {
         "tools_section":"player-architect","character":char,"step":step,"steps":STEPS,"blueprint_rows":_blueprint(db,char),
+        "blueprint_choice_notes":_class_choice_notes(cls, "Class") + _class_choice_notes(sub, "Subclass"),
         "prev_step": prev_step, "next_step": next_step, "implemented_step": implemented_step,
         "derived":_derived(db,char),"race_entity":race,"class_entity":cls,"subclass_entity":sub,"background_entity":bg,"alignment_entity":align,
         "race_rows":_all_entities(db,["species","race"]),"class_rows":primary_classes,"subclass_rows":subclasses,"all_subclass_rows":all_subclasses,
-        "auto_entries":_auto_entries,
+        "auto_entries":_auto_entries,"class_choice_notes":_class_choice_notes,
         "background_rows":_all_entities(db,["background"]),"alignment_rows":_all_entities(db,["alignment"]),
         "ability_labels":ABILITY_LABELS,"ability_names":ABILITY_NAMES,"abilities":ABILITIES,"level_xp":LEVEL_XP,"stat_options":STAT_OPTIONS,
         "entity_description":_entity_description,"subclass_parent_text":_subclass_parent_text, **extra,

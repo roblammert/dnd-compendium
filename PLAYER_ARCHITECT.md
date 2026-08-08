@@ -57,3 +57,7 @@ The PA shell now owns viewport-height scrolling, pinned workflow controls, overl
 ## v0.33.3 class catalog rule
 
 Player Architect reads primary classes and subclasses from the cached `classe` entity type. Subclass detection mirrors SQLite JSON semantics: a record is a subclass only when `$.subclass_of` exists and its JSON value is not null. A primary class is the inverse: `subclass_of` is absent or JSON null.
+
+## v0.33.4 class proficiency and choice ledger
+
+Step 03 now parses source-wide class/subclass proficiency structures instead of assuming a single Open5e schema. Older `**Weapons:** ...` / `**Tools:** ...` proficiency prose and newer `CORE_TRAITS_TABLE` Markdown rows are normalized into Blueprint facts. Deterministic rules become locked automated Blueprint entries. Any rule containing a player decision such as `Choose`, `Select`, `Pick`, `one of`, or an either/or equipment choice is surfaced under **Needs Your Choice** rather than being guessed. Selecting a subclass never removes the primary class Blueprint entries; subclass entries are a separate locked origin layered on top.

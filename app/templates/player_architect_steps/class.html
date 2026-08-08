@@ -6,7 +6,7 @@
     {% if class_rows %}
     <div class="pa-choice-list" role="radiogroup" aria-label="Primary class">
       {% for e in class_rows %}
-      <article class="pa-choice-row {% if character.class_entity_id==e.id %}selected{% endif %}" data-pa-class-card data-class-id="{{ e.id }}" data-class-name="{{ e.name|lower }}" data-class-key="{{ (e.canonical_key or e.slug or '')|lower }}" data-pa-auto-origin="Class" data-pa-auto='{{ auto_entries(e,"Class")|tojson|forceescape }}'>
+      <article class="pa-choice-row {% if character.class_entity_id==e.id %}selected{% endif %}" data-pa-class-card data-class-id="{{ e.id }}" data-class-name="{{ e.name|lower }}" data-class-key="{{ (e.canonical_key or e.slug or '')|lower }}" data-pa-auto-origin="Class" data-pa-auto='{{ auto_entries(e,"Class")|tojson|forceescape }}' data-pa-choice='{{ class_choice_notes(e,"Class")|tojson|forceescape }}'>
         <label class="pa-choice-main"><input type="radio" name="class_entity_id" value="{{ e.id }}" {% if character.class_entity_id==e.id %}checked{% endif %} required><span class="pa-choice-identity"><strong>{{ e.name }}</strong><small>{{ e.source_display_name or e.source_document or 'Local Compendium' }}</small></span><span class="pa-choice-summary">{{ entity_description(e,230) or 'No brief description is available in this cached record.' }}</span></label>
         <button type="button" class="pa-more-info" data-pa-info-url="/tools/player-architect/entity/{{ e.id }}/info">More Info</button>
       </article>
@@ -21,7 +21,7 @@
       <p class="pa-subclass-prompt" data-pa-subclass-prompt>{% if class_entity %}Showing subclasses linked to {{ class_entity.name }}.{% else %}Select a primary class to see its available subclasses.{% endif %}</p>
       <div class="pa-choice-list compact" data-pa-subclass-grid>
         {% for e in all_subclass_rows %}
-        <article class="pa-choice-row pa-subclass-card" data-parent-text="{{ subclass_parent_text(e)|e }}" data-pa-auto-origin="Subclass" data-pa-auto='{{ auto_entries(e,"Subclass")|tojson|forceescape }}' hidden>
+        <article class="pa-choice-row pa-subclass-card" data-parent-text="{{ subclass_parent_text(e)|e }}" data-pa-auto-origin="Subclass" data-pa-auto='{{ auto_entries(e,"Subclass")|tojson|forceescape }}' data-pa-choice='{{ class_choice_notes(e,"Subclass")|tojson|forceescape }}' hidden>
           <label class="pa-choice-main"><input type="radio" name="subclass_entity_id" value="{{ e.id }}" {% if character.subclass_entity_id==e.id %}checked{% endif %}><span class="pa-choice-identity"><strong>{{ e.name }}</strong><small>{{ e.source_display_name or e.source_document or 'Local Compendium' }}</small></span><span class="pa-choice-summary">{{ entity_description(e,200) or 'Subclass details are available in More Info.' }}</span></label>
           <button type="button" class="pa-more-info" data-pa-info-url="/tools/player-architect/entity/{{ e.id }}/info">More Info</button>
         </article>
