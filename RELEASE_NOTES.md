@@ -627,3 +627,11 @@ Player Architect Ability Score and navigation workflow improvements.
 - Previous-step, step-navigation, and Character Library actions guard against unsaved changes.
 - Dirty navigation modal offers Save & Continue, Discard Changes, or Cancel.
 - Forward action renamed to Save & Next Step.
+
+## v0.33.7 — Player Architect Background Benefits Parser
+
+- Background `benefits[]` now drives automatic Blueprint parsing.
+- 2024 Acolyte-style ability pools, skills, and tools are normalized into locked rows.
+- 2014 fixed starting equipment becomes Player Attention; language choices become Player Choice.
+- A5E partial ability/skill alternatives are never partially auto-applied.
+- Starting Equipment class decisions are categorized as Equipment.

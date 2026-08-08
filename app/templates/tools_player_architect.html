@@ -42,6 +42,18 @@
       {% endfor %}
       </ul>
     </section>
+    <section class="pa-blueprint-attention-notes" data-pa-attention-section aria-labelledby="pa-attention-title" {% if not blueprint_attention_notes %}hidden{% endif %}>
+      <div class="pa-blueprint-choice-head">
+        <div><p class="eyebrow">Player Attention</p><h3 id="pa-attention-title">Remember to Apply</h3></div>
+        <span data-pa-attention-count>{{ blueprint_attention_notes|length }} open</span>
+      </div>
+      <p>These items are deterministic, but they are not direct numeric/proficiency modifiers. Apply or record them on the appropriate Architect step.</p>
+      <ul data-pa-attention-list>
+      {% for item in blueprint_attention_notes %}
+        <li data-pa-attention-row data-origin="{{ item.how }}"><strong>{{ item.stat }}</strong><span>{{ item.instruction }}</span><small>{{ item.how }} · {{ item.note }}</small></li>
+      {% endfor %}
+      </ul>
+    </section>
   </aside>
 
   <footer class="pa-status-bar">

@@ -71,3 +71,7 @@ Every persisted Blueprint row can carry a Source label. Automated rows inherit t
 ## v0.33.6 ability math and navigation guards
 
 Ability Score cards preserve the stored Roll value separately from Blueprint modifiers. The interface shows `Roll (N) + Blueprint (+N) = Live`, while the displayed D&D modifier is always calculated from the Live score. Navigation away from an implemented PA step performs a form snapshot comparison and prompts to save, discard, or cancel when the step is dirty.
+
+## v0.33.7 Background benefit parsing
+
+Background parsing now treats `benefits[]` as the authoritative source for Background Blueprint behavior. Deterministic ability pools, skill proficiencies, and tool proficiencies become locked Background ledger rows. Alternatives such as equipment packages, language counts, partially-defined skill selections, and ability-score choices are surfaced under **Needs Your Choice**. Fixed non-modifier obligations such as a 2014 starting-equipment list or a granted feat are surfaced under **Player Attention** so they can be applied at the appropriate later Architect step without pretending they are numeric modifiers.

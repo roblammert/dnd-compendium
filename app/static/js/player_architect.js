@@ -166,7 +166,13 @@
     if(card.dataset.paAutoOrigin==='Class'){ const target=$('[data-pa-status-class]'); if(target) target.textContent=identity||'—'; }
     updateNextState();
   }));
-  $('[name="background_entity_id"]')?.addEventListener('change',event=>{ const option=event.target.selectedOptions[0]; previewAutomatic('Background', option?.dataset.paAuto?JSON.parse(option.dataset.paAuto):[]); updateNextState(); });
+  function previewAttentionNotes(origin, notes){
+    $$(`[data-pa-attention-row][data-origin="${origin}"]`).forEach(r=>r.remove());
+    const section=$('[data-pa-attention-section]'), list=$('[data-pa-attention-list]'); if(!section||!list) return;
+    (notes||[]).forEach(item=>{ const li=document.createElement('li'); li.dataset.paAttentionRow='1'; li.dataset.origin=origin; li.innerHTML=`<strong>${item.stat||'Attention'}</strong><span>${item.instruction||''}</span><small>${origin} · ${item.note||'apply during character build'} <em>(pending save)</em></small>`; list.appendChild(li); });
+    const count=$$('[data-pa-attention-row]').length, badge=$('[data-pa-attention-count]'); if(badge) badge.textContent=`${count} open`; section.hidden=count===0;
+  }
+  $('[name="background_entity_id"]')?.addEventListener('change',event=>{ const option=event.target.selectedOptions[0]; previewAutomatic('Background', option?.dataset.paAuto?JSON.parse(option.dataset.paAuto):[]); previewChoiceNotes('Background', option?.dataset.paChoice?JSON.parse(option.dataset.paChoice):[]); previewAttentionNotes('Background', option?.dataset.paAttention?JSON.parse(option.dataset.paAttention):[]); updateNextState(); });
   $('[name="alignment_entity_id"]')?.addEventListener('change',updateNextState);
 
   const primaryClassInputs=$$('input[name="class_entity_id"]');

@@ -27,7 +27,7 @@ def test_2024_core_traits_table_is_parsed_without_guessing_choices():
     assert any(row["stat"] == "Weapon Proficiencies" and "Martial weapons" in row["modifier"] for row in entries)
     assert not any(row["stat"] == "Armor Proficiencies" for row in entries)
     notes = _class_choice_notes(monk)
-    assert {row["stat"] for row in notes} >= {"Skill Proficiencies", "Tool Proficiencies", "Other"}
+    assert {row["stat"] for row in notes} >= {"Skill Proficiencies", "Tool Proficiencies", "Equipment"}
 
 
 def test_blueprint_drawer_has_player_decision_section_and_extended_stats():
@@ -41,4 +41,4 @@ def test_blueprint_drawer_has_player_decision_section_and_extended_stats():
 
 
 def test_version_0334():
-    assert Path("app/version.py").read_text().strip() == 'APP_VERSION = "0.33.6"'
+    assert Path("app/version.py").read_text().strip() == 'APP_VERSION = "0.33.7"'

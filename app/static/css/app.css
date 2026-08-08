@@ -578,3 +578,9 @@ body.pa-architect-active .page,body:has(.pa-app-shell) .page{max-width:none!impo
 .pa-dirty-dialog form{min-width:min(520px,86vw)}
 .pa-dirty-actions{display:flex;justify-content:flex-end;gap:.6rem;flex-wrap:wrap}
 @media(max-width:650px){.pa-ability-card{grid-template-columns:44px 88px 54px!important}.pa-dirty-actions>*{flex:1 1 100%}}
+
+/* Player Architect v0.33.7 background attention ledger */
+.pa-blueprint-attention-notes{margin-top:1rem;border-left:3px solid var(--pa-accent,#b9821b);background:#fff8e7;padding:1rem}
+.pa-blueprint-attention-notes ul{list-style:none;margin:.75rem 0 0;padding:0;display:grid;gap:.5rem}
+.pa-blueprint-attention-notes li{display:grid;grid-template-columns:minmax(8rem,18%) 1fr;gap:.35rem 1rem;border:1px solid #dfc58d;background:#fff;padding:.75rem}
+.pa-blueprint-attention-notes li small{grid-column:2;color:#876d45}

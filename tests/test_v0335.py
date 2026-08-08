@@ -79,4 +79,4 @@ def test_schema_adds_blueprint_source_column():
 
 
 def test_version_0335():
-    assert Path("app/version.py").read_text().strip() == 'APP_VERSION = "0.33.6"'
+    assert Path("app/version.py").read_text().strip() == 'APP_VERSION = "0.33.7"'

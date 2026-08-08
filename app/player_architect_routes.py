@@ -45,7 +45,7 @@ STEPS = [
     ("review", "Review & Sheet"),
 ]
 STEP_KEYS = {key for key, _ in STEPS}
-STAT_OPTIONS = ["STR","DEX","CON","INT","WIS","CHA","HP","AC","PB","Speed","Hit Dice","Weapon Proficiencies","Armor Proficiencies","Tool Proficiencies","Saving Throws","Skill Proficiencies","Languages","Proficiencies","Cantrips","Spells","Feats","Other"]
+STAT_OPTIONS = ["STR","DEX","CON","INT","WIS","CHA","HP","AC","PB","Speed","Hit Dice","Weapon Proficiencies","Armor Proficiencies","Tool Proficiencies","Saving Throws","Skill Proficiencies","Languages","Proficiencies","Equipment","Cantrips","Spells","Feats","Other"]
 
 
 def _uid(prefix: str) -> str:
@@ -176,7 +176,7 @@ CORE_TRAIT_ALIASES = {
     "cantrips": "Cantrips",
     "spells": "Spells",
     "feats": "Feats",
-    "starting equipment": "Other",
+    "starting equipment": "Equipment",
 }
 
 
@@ -287,7 +287,7 @@ def _class_rule_pairs(entity: Entity | None) -> list[tuple[str, str]]:
 
 
 def _requires_choice(text: str) -> bool:
-    return bool(re.search(r"\b(choose|choice|select|pick|one of|either\b|or another)\b", str(text or ""), re.I))
+    return bool(re.search(r"\b(choose|choice|select|pick|one of|either\b|or another|one other|any other)\b", str(text or ""), re.I))
 
 
 def _class_choice_notes(entity: Entity | None, how: str = "Class") -> list[dict[str, str]]:
@@ -308,6 +308,81 @@ def _class_choice_notes(entity: Entity | None, how: str = "Class") -> list[dict[
                 })
     return notes
 
+
+
+def _background_benefits(entity: Entity | None) -> list[dict[str, str]]:
+    if not entity:
+        return []
+    benefits=(entity.data_json or {}).get("benefits")
+    return [b for b in benefits if isinstance(b,dict)] if isinstance(benefits,list) else []
+
+def _background_ability_list(text: str) -> list[str]:
+    found=[]
+    for name in ABILITY_NAMES.values():
+        if re.search(rf"\b{re.escape(name)}\b", text or "", re.I):
+            short=_ability_key(name)
+            if short and short not in found: found.append(short)
+    return found
+
+def _background_auto_entries(entity: Entity | None) -> list[dict[str,str]]:
+    if not entity: return []
+    out=[]; source=_entity_source(entity); seen=set()
+    def add(mod,stat,note):
+        mod=str(mod or '').strip(); stat=str(stat or '').strip()
+        if not _meaningful_modifier(mod) or not stat: return
+        key=(mod.casefold(),stat.casefold())
+        if key in seen: return
+        seen.add(key); out.append({"modifier":mod,"stat":stat,"source":source,"note":note})
+    for b in _background_benefits(entity):
+        typ=str(b.get('type') or '').casefold(); desc=_clean_rule_value(b.get('desc')); name=str(b.get('name') or '')
+        if not desc: continue
+        if typ=='ability_score':
+            if _requires_choice(desc) or re.search(r"\bor\b",desc,re.I): continue
+            abilities=_background_ability_list(desc)
+            if abilities:
+                add('+1', ','.join(abilities), f"{entity.name} Bg Enhancement")
+        elif typ=='skill_proficiency':
+            if _requires_choice(desc) or re.search(r"\bor\b",desc,re.I): continue
+            vals=[v.strip().strip('.') for v in re.split(r",|\band\b",desc,flags=re.I) if v.strip()]
+            if vals: add('+'+','.join(vals),'Skill Proficiencies',f"{entity.name} skill proficiencies")
+        elif typ=='tool_proficiency':
+            if _requires_choice(desc) or re.search(r"\bor\b",desc,re.I): continue
+            vals=[v.strip().strip('.') for v in re.split(r",|\band\b",desc,flags=re.I) if v.strip()]
+            if vals: add('+'+','.join(vals),'Tool Proficiencies',f"{entity.name} tool proficiencies")
+    return out
+
+def _background_choice_notes(entity: Entity | None) -> list[dict[str,str]]:
+    if not entity: return []
+    notes=[]; seen=set()
+    for b in _background_benefits(entity):
+        typ=str(b.get('type') or '').casefold(); desc=_clean_rule_value(b.get('desc')); name=str(b.get('name') or '')
+        if not desc: continue
+        stat=None
+        if typ=='equipment' and _requires_choice(desc): stat='Equipment'
+        elif typ=='language' and (_requires_choice(desc) or re.search(r"\b(two|one|three) of your choice\b",desc,re.I)): stat='Languages'
+        elif typ=='skill_proficiency' and (_requires_choice(desc) or re.search(r"\bor\b",desc,re.I)): stat='Skill Proficiencies'
+        elif typ=='ability_score' and (_requires_choice(desc) or re.search(r"\bor\b",desc,re.I)): stat='Ability Scores'
+        elif typ in {'feat','cantrip','spell'} and _requires_choice(desc): stat={'feat':'Feats','cantrip':'Cantrips','spell':'Spells'}[typ]
+        if stat:
+            key=(stat,desc.casefold())
+            if key not in seen:
+                seen.add(key); notes.append({'how':'Background','stat':stat,'instruction':desc,'note':f'{entity.name}: player decision required'})
+    return notes
+
+def _background_attention_notes(entity: Entity | None) -> list[dict[str,str]]:
+    if not entity: return []
+    notes=[]; seen=set()
+    for b in _background_benefits(entity):
+        typ=str(b.get('type') or '').casefold(); desc=_clean_rule_value(b.get('desc'))
+        if not desc: continue
+        stat=None
+        if typ=='equipment' and not _requires_choice(desc): stat='Equipment'
+        elif typ=='feat' and not _requires_choice(desc): stat='Feats'
+        if stat:
+            key=(stat,desc.casefold())
+            if key not in seen:
+                seen.add(key); notes.append({'how':'Background','stat':stat,'instruction':desc,'note':f'{entity.name}: apply during character build'})
+    return notes
 
 def _meaningful_modifier(value: Any) -> bool:
     text = str(value or "").strip()
@@ -448,6 +523,10 @@ def _auto_entries(entity: Entity | None, how: str) -> list[dict[str, str]]:
         if name and name.casefold() not in {"any","choice","choose"}:
             add(f"+{name}","Languages",f"{entity.name} language")
 
+    if how == "Background":
+        # Background benefits are authoritative for PA; do not duplicate generic prose extraction.
+        return _background_auto_entries(entity)
+
     if how in {"Class", "Subclass"}:
         if how == "Class":
             hit = _class_hit_dice_entry(entity)
@@ -545,11 +624,12 @@ def _context(db: Session, char: ArchitectCharacter, step: str, **extra):
     implemented_step = step in {"identity", "race", "class", "abilities", "background"}
     return {
         "tools_section":"player-architect","character":char,"step":step,"steps":STEPS,"blueprint_rows":_blueprint(db,char),
-        "blueprint_choice_notes":_class_choice_notes(cls, "Class") + _class_choice_notes(sub, "Subclass"),
+        "blueprint_choice_notes":_class_choice_notes(cls, "Class") + _class_choice_notes(sub, "Subclass") + _background_choice_notes(bg),
+        "blueprint_attention_notes":_background_attention_notes(bg),
         "prev_step": prev_step, "next_step": next_step, "implemented_step": implemented_step,
         "derived":_derived(db,char),"race_entity":race,"class_entity":cls,"subclass_entity":sub,"background_entity":bg,"alignment_entity":align,
         "race_rows":_all_entities(db,["species","race"]),"class_rows":primary_classes,"subclass_rows":subclasses,"all_subclass_rows":all_subclasses,
-        "auto_entries":_auto_entries,"class_choice_notes":_class_choice_notes,
+        "auto_entries":_auto_entries,"class_choice_notes":_class_choice_notes,"background_choice_notes":_background_choice_notes,"background_attention_notes":_background_attention_notes,
         "background_rows":_all_entities(db,["background"]),"alignment_rows":_all_entities(db,["alignment"]),
         "ability_labels":ABILITY_LABELS,"ability_names":ABILITY_NAMES,"abilities":ABILITIES,"level_xp":LEVEL_XP,"stat_options":STAT_OPTIONS,
         "entity_description":_entity_description,"subclass_parent_text":_subclass_parent_text, **extra,
