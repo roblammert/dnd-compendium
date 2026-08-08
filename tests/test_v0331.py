@@ -16,9 +16,10 @@ def test_pa_race_and_class_use_rows_not_card_grids():
     assert 'pa-choice-list' in CLASS and 'pa-choice-row' in CLASS
 
 
-def test_pa_primary_class_catalog_ignores_generic_class_field():
-    assert 'explicit_parent = bool((row.data_json or {}).get("subclass_of") or (row.data_json or {}).get("parent_class"))' in ROUTES
-    assert 'if not parent and entity.entity_type == "subclass"' in ROUTES
+def test_pa_primary_class_catalog_uses_only_subclass_of_for_class_endpoint():
+    assert '_all_entities(db, ["class"])' in ROUTES
+    assert 'if (row.data_json or {}).get("subclass_of")' in ROUTES
+    assert 'parent_class' not in ROUTES[ROUTES.index('def _class_catalog'):ROUTES.index('def _extract_named')]
     assert 'subclass_parent_text' in CLASS
 
 

@@ -21,5 +21,5 @@ def test_print_markdown_has_table_and_emphasis_styles():
 
 
 def test_version_is_current_or_newer_than_03114():
-    assert 'version = "0.33.1"' in Path("pyproject.toml").read_text()
-    assert 'APP_VERSION = "0.33.1"' in Path("app/version.py").read_text()
+    assert 'version = "0.33.2"' in Path("pyproject.toml").read_text()
+    assert 'APP_VERSION = "0.33.2"' in Path("app/version.py").read_text()

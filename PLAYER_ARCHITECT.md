@@ -49,3 +49,7 @@ Base ability scores are never rewritten by Blueprint modifiers. Live values are 
 ## v0.33.1 Stage 1 UI corrections
 
 The main workspace is full width. Character Blueprint is now an overlay drawer rather than a permanent third column. Race/Species and Class/Subclass use row selectors; Ability Scores uses a responsive 3x2 card layout; Background and Alignment use dedicated selector/description rows. Primary class detection ignores generic self-referential `class` fields and only treats explicit parent relationships as subclass metadata.
+
+
+## v0.33.2 shell corrections
+The PA shell now owns viewport-height scrolling, pinned workflow controls, overlay Blueprint behavior, strict `subclass_of` class classification, and broader automatic modifier extraction.

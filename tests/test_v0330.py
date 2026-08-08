@@ -54,7 +54,8 @@ def test_blueprint_supports_locked_and_manual_entries():
 def test_first_five_steps_are_implemented_and_rest_stubbed():
     for name in ['identity','race','class','abilities','background']:
         text=Path(f'app/templates/player_architect_steps/{name}.html').read_text()
-        assert 'Save & Continue' in text
+        assert 'id="pa-step-form"' in text
+    assert 'Next Step' in SHELL and 'Previous Step' in SHELL and 'View Blueprint' in SHELL
     for name in ['proficiencies','languages','feats','spells','details','review']:
         text=Path(f'app/templates/player_architect_steps/{name}.html').read_text()
         assert 'STUB' in text

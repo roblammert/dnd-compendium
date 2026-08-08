@@ -1,17 +1,22 @@
 {% extends "base.html" %}
 {% block title %}{{ character.name }} · Player Architect{% endblock %}
 {% block content %}
-<div class="pa-app-shell" data-pa-shell data-character-id="{{ character.public_id }}">
+<div class="pa-app-shell" data-pa-shell data-character-id="{{ character.public_id }}" data-pa-current-step="{{ step }}">
   <aside class="pa-step-sidebar">
     <div class="pa-sidebar-brand"><span>PA</span><div><strong>Player Architect</strong><small>IN DEVELOPMENT</small></div></div>
     <nav class="pa-step-nav" aria-label="Architect steps">
       {% for key,label in steps %}<a href="/tools/player-architect/{{ character.public_id }}?step={{ key }}" class="{% if key==step %}active{% endif %}"><span>{{ '%02d'|format(loop.index) }}</span><b>{{ label }}</b>{% if loop.index > 5 %}<em>STUB</em>{% endif %}</a>{% endfor %}
     </nav>
-    <a class="pa-back-tools" href="/tools/player-architect">← Character Library</a>
+    <div class="pa-sidebar-actions">
+      <a class="pa-shell-action pa-prev-step {% if not prev_step %}disabled{% endif %}" {% if prev_step %}href="/tools/player-architect/{{ character.public_id }}?step={{ prev_step }}"{% else %}aria-disabled="true"{% endif %} title="Previous Step"><span aria-hidden="true">←</span><b>Previous Step</b></a>
+      <button type="submit" form="pa-step-form" class="pa-shell-action pa-next-step" data-pa-next-step {% if not implemented_step or error %}disabled{% endif %}><b>Next Step</b><span aria-hidden="true">→</span></button>
+      <button type="button" class="pa-shell-action pa-view-blueprint" data-pa-blueprint-toggle aria-expanded="false"><span class="pa-blueprint-action-icon" aria-hidden="true">▤</span><b>View Blueprint</b></button>
+      <a class="pa-back-tools" href="/tools/player-architect">← Character Library</a>
+    </div>
   </aside>
 
   <main class="pa-workspace">
-    <header class="pa-workspace-head"><div><p class="eyebrow">Player Architect</p><h1>{{ character.name }}</h1></div><button type="button" class="pa-blueprint-toggle" data-pa-blueprint-toggle aria-expanded="false">Open Blueprint</button></header>
+    <header class="pa-workspace-head"><div><p class="eyebrow">Player Architect</p><h1>{{ character.name }}</h1></div></header>
     {% if error %}<div class="pa-error-banner">{{ error }}</div>{% endif %}
     {% include "player_architect_steps/" ~ step ~ ".html" %}
   </main>
@@ -19,7 +24,7 @@
   <button type="button" class="pa-blueprint-collapsed-tab" data-pa-blueprint-toggle aria-label="Open Character Blueprint" title="Open Character Blueprint"><span>Character Blueprint</span><b>‹</b></button>
   <div class="pa-blueprint-scrim" data-pa-blueprint-toggle aria-hidden="true"></div>
   <aside class="pa-blueprint-drawer" data-pa-blueprint aria-label="Character Blueprint">
-    <header><div><p class="eyebrow">Live Modifier Ledger</p><h2>Character Blueprint</h2></div><button type="button" class="pa-blueprint-collapse" data-pa-blueprint-toggle title="Collapse Blueprint" aria-label="Collapse Character Blueprint">›</button></header>
+    <header><div><p class="eyebrow">Live Modifier Ledger</p><h2>Character Blueprint</h2></div><button type="button" class="pa-blueprint-collapse" data-pa-blueprint-toggle title="Close Blueprint" aria-label="Close Character Blueprint"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/><path d="M20 5l-7 7 7 7"/></svg></button></header>
     <p class="pa-blueprint-help">Automated entries are locked. Manual entries remain editable and can be removed after confirmation.</p>
     <div class="pa-blueprint-table-wrap"><table class="pa-blueprint-table"><thead><tr><th></th><th>How</th><th>Mod</th><th>Stat</th><th>Note</th><th></th></tr></thead><tbody>
       {% for row in blueprint_rows %}<tr class="{% if row.is_locked %}locked{% endif %}" data-pa-blueprint-row data-origin="{{ row.how }}" data-stat="{{ row.stat }}" data-mod="{{ row.modifier }}"><td>{{ '🔒' if row.is_locked else '✎' }}</td><td>{{ row.how }}</td><td>{{ row.modifier }}</td><td>{{ row.stat }}</td><td>{{ row.note or '' }}</td><td>{% if not row.is_locked %}<button type="button" class="pa-row-edit" data-pa-edit-blueprint='{{ {"id":row.public_id,"how":row.how,"modifier":row.modifier,"stat":row.stat,"note":row.note or ""}|tojson|forceescape }}'>Edit</button>{% endif %}</td></tr>{% else %}<tr><td colspan="6" class="pa-empty">No modifiers yet.</td></tr>{% endfor %}
@@ -32,17 +37,17 @@
     <div><small>HP</small><strong data-pa-status-hp>{{ derived.hp }}</strong></div>
     <div><small>AC</small><strong data-pa-status-ac>{{ derived.ac }}</strong></div>
     <div><small>PB</small><strong data-pa-status-pb>+{{ derived.pb }}</strong></div>
-    <div><small>Race</small><strong>{{ race_entity.name if race_entity else '—' }}</strong></div>
-    <div><small>Class</small><strong>{{ class_entity.name if class_entity else '—' }}</strong></div>
+    <div><small>Race</small><strong data-pa-status-race>{{ race_entity.name if race_entity else '—' }}</strong></div>
+    <div><small>Class</small><strong data-pa-status-class>{{ class_entity.name if class_entity else '—' }}</strong></div>
     <div><small>Level</small><strong data-pa-status-level>{{ character.level }}</strong></div>
     {% for a in abilities %}<div class="pa-status-ability"><small>{{ ability_labels[a] }}</small><strong data-pa-status-score="{{ a }}" data-base="{{ derived.base[a] }}">{{ derived.scores[a] }}</strong><span data-pa-status-mod="{{ a }}">{{ '%+d'|format(derived.ability_mods[a]) }}</span></div>{% endfor %}
     <div class="pa-save-state"><small>Save</small><strong data-pa-save-state>Saved</strong></div>
   </footer>
 </div>
 
-<dialog id="pa-info-dialog" class="pa-dialog pa-info-dialog"><div class="pa-info-shell"><button type="button" class="pa-dialog-x" data-pa-close>×</button><div data-pa-info-body></div></div></dialog>
-<dialog id="pa-blueprint-add" class="pa-dialog"><form method="post" action="/tools/player-architect/{{ character.public_id }}/blueprint/add"><button type="button" class="pa-dialog-x" data-pa-close>×</button><h2>Add Manual Blueprint Entry</h2><p>Manual entries modify live calculations without altering the base score. Use a signed number for numerical stats (for example <code>+1</code>) and descriptive modifiers for non-numeric stats (for example <code>+Elvish</code>).</p><div class="pa-form-grid two"><label>How<input name="how" value="Manual" required></label><label>Stat<select name="stat" required>{% for s in stat_options %}<option>{{ s }}</option>{% endfor %}</select></label><label>Modifier<input name="modifier" placeholder="+1" required></label><label>Note<input name="note" placeholder="Why this modifier exists"></label></div><label class="pa-verify"><input type="checkbox" name="verified" value="1" required> I verified that this modifier is appropriate and will not duplicate an automated entry.</label><div class="pa-dialog-actions"><button type="button" class="secondary-action" data-pa-close>Cancel</button><button class="primary-action">Verify & Save</button></div></form></dialog>
-<dialog id="pa-blueprint-edit" class="pa-dialog"><form method="post" data-pa-blueprint-edit-form><button type="button" class="pa-dialog-x" data-pa-close>×</button><h2>Edit Manual Blueprint Entry</h2><div class="pa-form-grid two"><label>How<input name="how" data-pa-edit-how required></label><label>Stat<select name="stat" data-pa-edit-stat>{% for s in stat_options %}<option>{{ s }}</option>{% endfor %}</select></label><label>Modifier<input name="modifier" data-pa-edit-mod required></label><label>Note<input name="note" data-pa-edit-note></label></div><div class="pa-dialog-actions"><button type="button" class="secondary-action" data-pa-close>Cancel</button><button class="primary-action">Save Entry</button></div></form></dialog>
-<dialog id="pa-blueprint-delete" class="pa-dialog"><form method="post" data-pa-blueprint-delete-form><button type="button" class="pa-dialog-x" data-pa-close>×</button><h2>Delete Manual Entry?</h2><p>Remove this Blueprint modifier? The live character values will immediately stop including it.</p><div class="pa-dialog-actions"><button type="button" class="secondary-action" data-pa-close>Cancel</button><button class="danger-action">Delete Entry</button></div></form></dialog>
+<dialog id="pa-info-dialog" class="pa-dialog pa-info-dialog"><div class="pa-info-shell"><button type="button" class="pa-dialog-x" data-pa-close aria-label="Close"><span aria-hidden="true">×</span></button><div data-pa-info-body></div></div></dialog>
+<dialog id="pa-blueprint-add" class="pa-dialog"><form method="post" action="/tools/player-architect/{{ character.public_id }}/blueprint/add"><button type="button" class="pa-dialog-x" data-pa-close aria-label="Close"><span aria-hidden="true">×</span></button><h2>Add Manual Blueprint Entry</h2><p>Manual entries modify live calculations without altering the base score. Use a signed number for numerical stats (for example <code>+1</code>) and descriptive modifiers for non-numeric stats (for example <code>+Elvish</code>).</p><div class="pa-form-grid two"><label>How<input name="how" value="Manual" required></label><label>Stat<select name="stat" required>{% for s in stat_options %}<option>{{ s }}</option>{% endfor %}</select></label><label>Modifier<input name="modifier" placeholder="+1" required></label><label>Note<input name="note" placeholder="Why this modifier exists"></label></div><label class="pa-verify"><input type="checkbox" name="verified" value="1" required> I verified that this modifier is appropriate and will not duplicate an automated entry.</label><div class="pa-dialog-actions"><button type="button" class="secondary-action" data-pa-close>Cancel</button><button class="primary-action">Verify & Save</button></div></form></dialog>
+<dialog id="pa-blueprint-edit" class="pa-dialog"><form method="post" data-pa-blueprint-edit-form><button type="button" class="pa-dialog-x" data-pa-close aria-label="Close"><span aria-hidden="true">×</span></button><h2>Edit Manual Blueprint Entry</h2><div class="pa-form-grid two"><label>How<input name="how" data-pa-edit-how required></label><label>Stat<select name="stat" data-pa-edit-stat>{% for s in stat_options %}<option>{{ s }}</option>{% endfor %}</select></label><label>Modifier<input name="modifier" data-pa-edit-mod required></label><label>Note<input name="note" data-pa-edit-note></label></div><div class="pa-dialog-actions"><button type="button" class="secondary-action" data-pa-close>Cancel</button><button class="primary-action">Save Entry</button></div></form></dialog>
+<dialog id="pa-blueprint-delete" class="pa-dialog"><form method="post" data-pa-blueprint-delete-form><button type="button" class="pa-dialog-x" data-pa-close aria-label="Close"><span aria-hidden="true">×</span></button><h2>Delete Manual Entry?</h2><p>Remove this Blueprint modifier? The live character values will immediately stop including it.</p><div class="pa-dialog-actions"><button type="button" class="secondary-action" data-pa-close>Cancel</button><button class="danger-action">Delete Entry</button></div></form></dialog>
 <script src="/static/js/player_architect.js?v={{ app_version }}" defer></script>
 {% endblock %}

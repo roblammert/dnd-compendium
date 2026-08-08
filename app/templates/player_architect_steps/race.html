@@ -4,7 +4,7 @@
     <h2>Race / Species</h2>
     <p>Choose from every active Race or Species record in the compendium. Source restrictions are intentionally not applied in Player Architect.</p>
   </header>
-  <form method="post" action="/tools/player-architect/{{ character.public_id }}/step/race" data-pa-form>
+  <form method="post" action="/tools/player-architect/{{ character.public_id }}/step/race" id="pa-step-form" data-pa-form>
     <div class="pa-choice-list" role="radiogroup" aria-label="Race or species">
       {% for e in race_rows %}
       <article class="pa-choice-row {% if character.race_entity_id==e.id %}selected{% endif %}" data-pa-auto-origin="Race" data-pa-auto='{{ auto_entries(e,"Race")|tojson|forceescape }}'>
@@ -17,6 +17,6 @@
       </article>
       {% endfor %}
     </div>
-    <div class="pa-stage-actions"><a class="secondary-action" href="?step=identity">Previous</a><button class="primary-action">Save & Continue</button></div>
+    
   </form>
 </section>

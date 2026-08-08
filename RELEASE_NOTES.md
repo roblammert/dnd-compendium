@@ -578,3 +578,16 @@ Using the supplied standard Medium thresholds, levels 2, 4, 6, 7, 8, and 10 tota
 - Rebuilt Background & Alignment into four explicit rows with live description updates and More Info actions.
 - Converted Character Blueprint into a 70%-width overlay drawer with scrim, collapse control, and persistent vertical reopen tab.
 - Player Architect workspace now uses the full content width while the Blueprint is closed.
+
+## v0.33.2 — Player Architect shell and live-modifier repair
+
+- Docked Player Architect navigation and workflow controls inside a fixed-height application shell.
+- Moved Previous Step, Next Step, and View Blueprint actions to the pinned left sidebar.
+- Removed duplicate in-content workflow buttons and expanded the workspace to the available viewport.
+- Kept the PA content area between the website header and live status footer, with only the workspace scrolling.
+- Reclassified the PA class catalog strictly from the Open5e `class` endpoint: a populated `subclass_of` identifies a subclass; an empty/missing `subclass_of` identifies a primary class.
+- Expanded automatic Race/Species modifier extraction for Open5e mapping, attribute-list, nested, and prose JSON shapes.
+- Added immediate Race/Class footer updates and pending Blueprint previews before save.
+- Repaired Background and Alignment live description binding.
+- Restyled More Info, modal Close, and Blueprint collapse controls for visibility and touch use.
+- Added live Next Step enable/disable behavior based on the current form's minimum requirements.

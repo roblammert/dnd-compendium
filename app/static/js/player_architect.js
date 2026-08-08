@@ -3,6 +3,12 @@
   const $$ = (q, root=document) => [...root.querySelectorAll(q)];
   const openDialog = id => { const d=document.getElementById(id); if(d && !d.open) d.showModal(); return d; };
   const closeDialog = el => { const d=el.closest('dialog'); if(d) d.close(); };
+  const syncShellHeight = () => {
+    const header=document.querySelector('.site-header');
+    document.documentElement.style.setProperty('--pa-site-header-height', `${header?.offsetHeight || 72}px`);
+  };
+  if(document.querySelector('[data-pa-shell]')){ document.body.classList.add('pa-architect-active'); syncShellHeight(); window.addEventListener('resize', syncShellHeight); }
+
 
   document.addEventListener('click', async (event) => {
     const opener=event.target.closest('[data-pa-open]'); if(opener){ openDialog(opener.dataset.paOpen); return; }
@@ -74,7 +80,13 @@
   }
 
   $$('[data-pa-description-select]').forEach(select=>{
-    const update=()=>{ const option=select.selectedOptions[0], target=document.getElementById(select.dataset.target); if(target) target.textContent=option?.dataset.description||'Choose an option to see its brief description.'; const btn=document.querySelector(`[data-pa-select-info="${select.name}"]`); if(btn) btn.disabled=!option?.dataset.info; };
+    const update=()=>{
+      const option=select.options[select.selectedIndex];
+      const target=document.getElementById(select.dataset.target);
+      if(target) target.textContent=(option && option.value && option.dataset.description) ? option.dataset.description : (select.name==='alignment_entity_id' ? 'Choose an alignment to see what it means for this character.' : 'Choose a background to see its brief description.');
+      const btn=document.querySelector(`[data-pa-select-info="${select.name}"]`);
+      if(btn) btn.disabled=!(option && option.value && option.dataset.info);
+    };
     select.addEventListener('change',update); update();
   });
 
@@ -91,8 +103,17 @@
     (entries||[]).forEach(item=>{ const tr=document.createElement('tr'); tr.className='locked pa-preview-row'; tr.dataset.paPreviewRow='1'; tr.dataset.origin=origin; tr.dataset.stat=item.stat; tr.dataset.mod=item.modifier; tr.innerHTML=`<td>🔒</td><td>${origin}</td><td>${item.modifier}</td><td>${item.stat}</td><td>${item.note||''} <em>(pending save)</em></td><td></td>`; tbody.appendChild(tr); });
     recalcBlueprintScores();
   }
-  $$('[data-pa-auto-origin] input[type=radio]').forEach(input=>input.addEventListener('change',()=>{ const card=input.closest('[data-pa-auto-origin]'); if(input.checked) previewAutomatic(card.dataset.paAutoOrigin, JSON.parse(card.dataset.paAuto||'[]')); }));
-  $('[name="background_entity_id"]')?.addEventListener('change',event=>{ const option=event.target.selectedOptions[0]; previewAutomatic('Background', option?.dataset.paAuto?JSON.parse(option.dataset.paAuto):[]); });
+  $$('[data-pa-auto-origin] input[type=radio]').forEach(input=>input.addEventListener('change',()=>{
+    const card=input.closest('[data-pa-auto-origin]');
+    if(!input.checked) return;
+    previewAutomatic(card.dataset.paAutoOrigin, JSON.parse(card.dataset.paAuto||'[]'));
+    const identity=card.querySelector('.pa-choice-identity strong')?.textContent?.trim();
+    if(card.dataset.paAutoOrigin==='Race'){ const target=$('[data-pa-status-race]'); if(target) target.textContent=identity||'—'; }
+    if(card.dataset.paAutoOrigin==='Class'){ const target=$('[data-pa-status-class]'); if(target) target.textContent=identity||'—'; }
+    updateNextState();
+  }));
+  $('[name="background_entity_id"]')?.addEventListener('change',event=>{ const option=event.target.selectedOptions[0]; previewAutomatic('Background', option?.dataset.paAuto?JSON.parse(option.dataset.paAuto):[]); updateNextState(); });
+  $('[name="alignment_entity_id"]')?.addEventListener('change',updateNextState);
 
   const primaryClassInputs=$$('input[name="class_entity_id"]');
   function filterSubclasses(){
@@ -103,6 +124,21 @@
   }
   primaryClassInputs.forEach(i=>i.addEventListener('change',filterSubclasses)); filterSubclasses();
 
+  function updateNextState(){
+    const button=$('[data-pa-next-step]'), form=document.getElementById('pa-step-form');
+    if(!button) return;
+    if(!form){ button.disabled=true; return; }
+    const step=$('[data-pa-shell]')?.dataset.paCurrentStep || '';
+    let ready=form.checkValidity();
+    if(step==='race') ready=ready && !!form.querySelector('input[name="race_entity_id"]:checked');
+    if(step==='class') ready=ready && !!form.querySelector('input[name="class_entity_id"]:checked');
+    if(step==='background') ready=ready && !!form.querySelector('[name="background_entity_id"]')?.value && !!form.querySelector('[name="alignment_entity_id"]')?.value;
+    button.disabled=!ready;
+  }
+  document.getElementById('pa-step-form')?.addEventListener('input',updateNextState);
+  document.getElementById('pa-step-form')?.addEventListener('change',updateNextState);
+  updateNextState();
+
   // Choice cards gain selected state immediately for touch/tablet feedback.
-  $$('.pa-choice-card input[type=radio], .pa-choice-row input[type=radio]').forEach(input=>input.addEventListener('change',()=>{ const name=input.name; $$(`input[name="${name}"]`).forEach(i=>{ const card=i.closest('.pa-choice-card, .pa-choice-row'); card?.classList.toggle('selected',i.checked); }); }));
+  $$('.pa-choice-card input[type=radio], .pa-choice-row input[type=radio]').forEach(input=>input.addEventListener('change',()=>{ const name=input.name; $$(`input[name="${name}"]`).forEach(i=>{ const card=i.closest('.pa-choice-card, .pa-choice-row'); card?.classList.toggle('selected',i.checked); }); updateNextState(); }));
 })();

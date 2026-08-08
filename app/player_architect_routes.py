@@ -92,24 +92,12 @@ def _all_entities(db: Session, kinds: list[str]) -> list[Entity]:
 
 
 def _subclass_parent_parts(entity: Entity) -> tuple[str, str]:
-    """Return normalized (key, name) for a genuine subclass parent.
-
-    Some Open5e class records contain a generic ``class`` field describing
-    themselves. Treating that field as a parent relationship emptied the PA
-    primary-class catalog. Only explicit subclass relationships classify a
-    normal ``class`` record as a subclass. For records from the dedicated
-    ``subclass`` endpoint, the legacy ``class`` field is accepted as a
-    fallback because several third-party sources use that shape.
-    """
-    data = entity.data_json or {}
-    parent = data.get("subclass_of") or data.get("parent_class")
-    if not parent and entity.entity_type == "subclass":
-        parent = data.get("class")
+    """Return normalized parent identifiers from a populated subclass_of key."""
+    parent = (entity.data_json or {}).get("subclass_of")
     if isinstance(parent, dict):
         return (str(parent.get("key") or "").casefold(), str(parent.get("name") or "").casefold())
     text = str(parent or "").casefold().strip()
     return (text, text)
-
 
 def _subclass_parent(entity: Entity) -> str:
     key, name = _subclass_parent_parts(entity)
@@ -122,14 +110,17 @@ def _subclass_parent_text(entity: Entity) -> str:
 
 
 def _class_catalog(db: Session) -> tuple[list[Entity], list[Entity]]:
-    rows = _all_entities(db, ["class", "subclass"])
+    """Split the PA class endpoint strictly by the Open5e ``subclass_of`` field.
+
+    Player Architect intentionally consumes the full ``class`` endpoint. A row
+    is a primary class when ``subclass_of`` is absent/empty; a populated
+    ``subclass_of`` makes it a subclass. No other metadata field is allowed to
+    demote a primary class.
+    """
+    rows = _all_entities(db, ["class"])
     primary, subclasses = [], []
     for row in rows:
-        # Dedicated subclass rows are always subclasses. A class-endpoint row
-        # moves under a parent only when it explicitly declares subclass_of or
-        # parent_class; a generic self-referential `class` field is ignored.
-        explicit_parent = bool((row.data_json or {}).get("subclass_of") or (row.data_json or {}).get("parent_class"))
-        if row.entity_type == "subclass" or explicit_parent:
+        if (row.data_json or {}).get("subclass_of"):
             subclasses.append(row)
         else:
             primary.append(row)
@@ -166,22 +157,45 @@ def _auto_entries(entity: Entity | None, how: str) -> list[dict[str, str]]:
     ability_fields = ["ability_score_increases","ability_score_increase","ability_bonuses","ability_bonus","ability_scores","asi"]
     for field in ability_fields:
         value=data.get(field)
+        # Common Open5e/third-party shape: {"dexterity": 2, "wisdom": 1}.
+        if isinstance(value, dict) and not any(k in value for k in ("ability","ability_score","attribute","attributes","stat","name","key","bonus","value","modifier","amount")):
+            for label, amount in value.items():
+                stat=_ability_key(str(label))
+                if stat and amount not in (None, ""):
+                    try: mod=f"{int(amount):+d}"
+                    except Exception: mod=str(amount)
+                    add(mod, stat, f"{entity.name} {how.lower()} enhancement")
+            value=[]
         if isinstance(value, dict): value=[value]
         if isinstance(value, list):
             for item in value:
-                if isinstance(item, dict):
-                    label=_extract_named(item.get("ability") or item.get("ability_score") or item.get("stat") or item)
+                if not isinstance(item, dict):
+                    continue
+                labels = item.get("attributes") or item.get("attribute") or item.get("ability") or item.get("ability_score") or item.get("stat") or item.get("name") or item.get("key")
+                labels = labels if isinstance(labels, list) else [labels]
+                amount=item.get("bonus", item.get("value", item.get("modifier", item.get("amount"))))
+                for label_value in labels:
+                    label=_extract_named(label_value)
                     stat=_ability_key(label)
-                    amount=item.get("bonus", item.get("value", item.get("modifier", item.get("amount"))))
                     if stat and amount not in (None, ""):
                         try: mod=f"{int(amount):+d}"
                         except Exception: mod=str(amount)
                         add(mod, stat, f"{entity.name} {how.lower()} enhancement")
-    # Many third-party sources put the bonus only in prose.
-    blob=" ".join([_text(data.get(k)) for k in ("desc","description","traits","benefits") if data.get(k)])
-    for amount, ability in re.findall(r"([+-]\d+)\s+(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma)", blob, re.I):
-        stat=_ability_key(ability)
-        if stat: add(amount,stat,f"{entity.name} {how.lower()} enhancement")
+    # Many sources put race bonuses only in prose. Support both compact
+    # "+2 Dexterity" wording and SRD-style "Dexterity score increases by 2".
+    blob=" ".join([_text(data.get(k)) for k in ("desc","description","traits","benefits","features") if data.get(k)])
+    patterns = [
+        r"([+-]\d+)\s+(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma)",
+        r"(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma)(?: score)?\s+(?:increases?|is increased)\s+by\s+(\d+)",
+    ]
+    for pattern_index, pattern in enumerate(patterns):
+        for first, second in re.findall(pattern, blob, re.I):
+            if pattern_index == 0:
+                amount, ability = first, second
+            else:
+                ability, amount = first, f"+{second}"
+            stat=_ability_key(ability)
+            if stat: add(amount,stat,f"{entity.name} {how.lower()} enhancement")
 
     languages=data.get("languages") or data.get("language")
     values=languages if isinstance(languages,list) else ([languages] if languages else [])
@@ -269,8 +283,13 @@ def _context(db: Session, char: ArchitectCharacter, step: str, **extra):
         for row in all_subclasses:
             parent=_subclass_parent(row)
             if any(token and token.casefold() in parent for token in selected_parent_tokens): subclasses.append(row)
+    step_index = [key for key, _ in STEPS].index(step)
+    prev_step = STEPS[step_index - 1][0] if step_index > 0 else None
+    next_step = STEPS[step_index + 1][0] if step_index + 1 < len(STEPS) else None
+    implemented_step = step in {"identity", "race", "class", "abilities", "background"}
     return {
         "tools_section":"player-architect","character":char,"step":step,"steps":STEPS,"blueprint_rows":_blueprint(db,char),
+        "prev_step": prev_step, "next_step": next_step, "implemented_step": implemented_step,
         "derived":_derived(db,char),"race_entity":race,"class_entity":cls,"subclass_entity":sub,"background_entity":bg,"alignment_entity":align,
         "race_rows":_all_entities(db,["species","race"]),"class_rows":primary_classes,"subclass_rows":subclasses,"all_subclass_rows":all_subclasses,
         "auto_entries":_auto_entries,

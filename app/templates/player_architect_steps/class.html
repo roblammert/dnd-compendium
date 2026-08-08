@@ -1,7 +1,7 @@
 <section class="pa-stage" data-pa-stage="class">
   <div class="pa-stage-kicker">03</div>
   <header><h2>Class & Subclass</h2><p>Select the primary class first. The optional subclass list is derived from cached <code>subclass_of</code> relationships and only shows children of the selected class.</p></header>
-  <form method="post" action="/tools/player-architect/{{ character.public_id }}/step/class" data-pa-form>
+  <form method="post" action="/tools/player-architect/{{ character.public_id }}/step/class" id="pa-step-form" data-pa-form>
     <h3>Primary Class</h3>
     {% if class_rows %}
     <div class="pa-choice-list" role="radiogroup" aria-label="Primary class">
@@ -28,6 +28,6 @@
         {% endfor %}
       </div>
     </section>
-    <div class="pa-stage-actions"><a class="secondary-action" href="?step=race">Previous</a><button class="primary-action">Save & Continue</button></div>
+    
   </form>
 </section>
