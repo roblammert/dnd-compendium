@@ -112,15 +112,23 @@ def _subclass_parent_text(entity: Entity) -> str:
 def _class_catalog(db: Session) -> tuple[list[Entity], list[Entity]]:
     """Split the PA class endpoint strictly by the Open5e ``subclass_of`` field.
 
-    Player Architect intentionally consumes the full ``class`` endpoint. A row
-    is a primary class when ``subclass_of`` is absent/empty; a populated
-    ``subclass_of`` makes it a subclass. No other metadata field is allowed to
-    demote a primary class.
+    Player Architect consumes the cached Open5e ``classe`` endpoint. This
+    mirrors the database query used to identify subclasses exactly:
+
+        json_type(data_json, '$.subclass_of') IS NOT NULL
+        AND json_type(data_json, '$.subclass_of') <> 'null'
+        AND entity_type = 'classe'
+
+    In Python terms, a row is a subclass when the ``subclass_of`` key exists
+    and its JSON value is not null. Primary classes are the exact inverse:
+    the key is absent or its value is JSON null. No other metadata participates
+    in this classification.
     """
-    rows = _all_entities(db, ["class"])
+    rows = _all_entities(db, ["classe"])
     primary, subclasses = [], []
     for row in rows:
-        if (row.data_json or {}).get("subclass_of"):
+        data = row.data_json or {}
+        if "subclass_of" in data and data.get("subclass_of") is not None:
             subclasses.append(row)
         else:
             primary.append(row)

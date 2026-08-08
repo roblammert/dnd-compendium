@@ -53,3 +53,7 @@ The main workspace is full width. Character Blueprint is now an overlay drawer r
 
 ## v0.33.2 shell corrections
 The PA shell now owns viewport-height scrolling, pinned workflow controls, overlay Blueprint behavior, strict `subclass_of` class classification, and broader automatic modifier extraction.
+
+## v0.33.3 class catalog rule
+
+Player Architect reads primary classes and subclasses from the cached `classe` entity type. Subclass detection mirrors SQLite JSON semantics: a record is a subclass only when `$.subclass_of` exists and its JSON value is not null. A primary class is the inverse: `subclass_of` is absent or JSON null.

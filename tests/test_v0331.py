@@ -17,8 +17,8 @@ def test_pa_race_and_class_use_rows_not_card_grids():
 
 
 def test_pa_primary_class_catalog_uses_only_subclass_of_for_class_endpoint():
-    assert '_all_entities(db, ["class"])' in ROUTES
-    assert 'if (row.data_json or {}).get("subclass_of")' in ROUTES
+    assert '_all_entities(db, ["classe"])' in ROUTES
+    assert 'if "subclass_of" in data and data.get("subclass_of") is not None' in ROUTES
     assert 'parent_class' not in ROUTES[ROUTES.index('def _class_catalog'):ROUTES.index('def _extract_named')]
     assert 'subclass_parent_text' in CLASS
 

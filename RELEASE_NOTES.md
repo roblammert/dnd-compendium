@@ -591,3 +591,10 @@ Using the supplied standard Medium thresholds, levels 2, 4, 6, 7, 8, and 10 tota
 - Repaired Background and Alignment live description binding.
 - Restyled More Info, modal Close, and Blueprint collapse controls for visibility and touch use.
 - Added live Next Step enable/disable behavior based on the current form's minimum requirements.
+
+## v0.33.3 — Player Architect class endpoint correction
+
+- Correct Player Architect class discovery to query the cached Open5e `classe` entity type.
+- Match the working SQLite subclass query exactly: a class is a subclass when `$.subclass_of` exists and its JSON value is not `null`.
+- Treat the inverse set as primary classes: `$.subclass_of` is absent or JSON `null`.
+- Do not use any other class metadata to decide primary-vs-subclass status.

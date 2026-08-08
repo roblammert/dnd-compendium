@@ -46,8 +46,8 @@ def test_pa_race_modifier_extraction_handles_open5e_shapes():
 
 def test_pa_primary_classes_are_defined_by_empty_subclass_of_only():
     section = ROUTES[ROUTES.index('def _class_catalog'):ROUTES.index('def _extract_named')]
-    assert '_all_entities(db, ["class"])' in section
-    assert '.get("subclass_of")' in section
+    assert '_all_entities(db, ["classe"])' in section
+    assert '"subclass_of" in data' in section
     assert 'entity_type == "subclass"' not in section
 
 
