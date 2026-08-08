@@ -1,0 +1,36 @@
+{% extends "tools_layout.html" %}
+{% block title %}Player Architect · {{ app_name }}{% endblock %}
+{% block tools_content %}
+<section class="pa-landing">
+  <header class="pa-hero">
+    <div><p class="eyebrow">Player Tool · Experimental</p><h1>Player Architect <span class="dev-pill large">IN DEVELOPMENT</span></h1><p>Build characters from the full local compendium while keeping every automatic and manual modification visible in a persistent Character Blueprint.</p></div>
+    <button class="pa-icon-button pa-create" type="button" data-pa-open="pa-create-dialog" title="Create Character" aria-label="Create Character">+</button>
+  </header>
+  <div class="pa-library-table-wrap">
+    <table class="pa-library-table">
+      <thead><tr><th>Name</th><th>Race / Species</th><th>Class</th><th>Level</th><th class="pa-actions-col">Actions</th></tr></thead>
+      <tbody>
+      {% for item in characters %}
+        {% set c=item.row %}
+        <tr>
+          <td><strong>{{ c.name }}</strong></td>
+          <td>{{ item.race.name if item.race else '—' }}</td>
+          <td>{{ item.class.name if item.class else '—' }}</td>
+          <td>{{ c.level }}</td>
+          <td class="pa-row-actions">
+            <a class="pa-mini-icon" href="/tools/player-architect/{{ c.public_id }}" title="Modify Character" aria-label="Modify Character">🔨</a>
+            <button class="pa-mini-icon" type="button" disabled title="PDF to Print (coming later)" aria-label="PDF to Print">🖨</button>
+            <button class="pa-mini-icon danger" type="button" data-pa-delete="{{ c.public_id }}" data-pa-name="{{ c.name|e }}" title="Delete Character" aria-label="Delete Character">🗑</button>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="5" class="pa-empty">No Player Architect characters yet. Use + to start one.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+<dialog id="pa-create-dialog" class="pa-dialog"><form method="post" action="/tools/player-architect/new"><button type="button" class="pa-dialog-x" data-pa-close>×</button><h2>Create Architect Character</h2><p>Give the new character a working name. You can change it in Step 1.</p><label>Character Name<input name="name" required maxlength="255" autofocus></label><div class="pa-dialog-actions"><button type="button" class="secondary-action" data-pa-close>Cancel</button><button class="primary-action">Create</button></div></form></dialog>
+<dialog id="pa-delete-dialog" class="pa-dialog"><form method="post" id="pa-delete-form"><button type="button" class="pa-dialog-x" data-pa-close>×</button><h2>Delete Character?</h2><p>Delete <strong id="pa-delete-name"></strong>? This removes the Architect character and its Blueprint entries.</p><div class="pa-dialog-actions"><button type="button" class="secondary-action" data-pa-close>Cancel</button><button class="danger-action">Delete Character</button></div></form></dialog>
+<script src="/static/js/player_architect.js?v={{ app_version }}" defer></script>
+{% endblock %}

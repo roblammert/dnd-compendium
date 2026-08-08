@@ -25,6 +25,7 @@ from app.auth import UserContextMiddleware, can, ensure_default_admin, require_a
 from app.user_routes import router as user_router, templates as user_templates
 from app.tools_routes import router as tools_router
 from app.character_routes import router as character_router
+from app.player_architect_routes import router as player_architect_router
 from app.visibility import VIEW_LABELS, can_view_type, ensure_visibility_rows, visibility_map, visible_types
 from app.endpoint_defaults import endpoint_default
 from app.version import APP_VERSION
@@ -37,6 +38,7 @@ app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, session_co
 app.include_router(user_router)
 app.include_router(tools_router)
 app.include_router(character_router)
+app.include_router(player_architect_router)
 app.mount("/static", StaticFiles(directory=base/"static"), name="static")
 app.mount("/assets", StaticFiles(directory=settings.asset_root), name="assets")
 templates=Jinja2Templates(directory=base/"templates")

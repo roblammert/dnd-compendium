@@ -199,3 +199,47 @@ class Character(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
     owner: Mapped[User] = relationship(back_populates="characters")
+
+
+class ArchitectCharacter(Base):
+    """Persistent state for the experimental Player Architect.
+
+    Deliberately separate from Character/Character Builder so Architect changes
+    cannot mutate or migrate the production Player Builder workflow.
+    """
+    __tablename__ = "architect_characters"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    public_id: Mapped[str] = mapped_column(String(48), unique=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(255), default="New Character")
+    brief_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    current_step: Mapped[str] = mapped_column(String(40), default="identity")
+    level: Mapped[int] = mapped_column(Integer, default=1)
+    experience_points: Mapped[int] = mapped_column(Integer, default=0)
+    race_entity_id: Mapped[int | None] = mapped_column(ForeignKey("entities.id", ondelete="SET NULL"), nullable=True, index=True)
+    class_entity_id: Mapped[int | None] = mapped_column(ForeignKey("entities.id", ondelete="SET NULL"), nullable=True, index=True)
+    subclass_entity_id: Mapped[int | None] = mapped_column(ForeignKey("entities.id", ondelete="SET NULL"), nullable=True, index=True)
+    background_entity_id: Mapped[int | None] = mapped_column(ForeignKey("entities.id", ondelete="SET NULL"), nullable=True, index=True)
+    alignment_entity_id: Mapped[int | None] = mapped_column(ForeignKey("entities.id", ondelete="SET NULL"), nullable=True, index=True)
+    ability_method: Mapped[str] = mapped_column(String(30), default="standard_array")
+    base_ability_scores: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    notes_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    is_complete: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class ArchitectBlueprintEntry(Base):
+    __tablename__ = "architect_blueprint_entries"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    public_id: Mapped[str] = mapped_column(String(48), unique=True, index=True)
+    architect_character_id: Mapped[int] = mapped_column(ForeignKey("architect_characters.id", ondelete="CASCADE"), index=True)
+    origin_kind: Mapped[str] = mapped_column(String(30), default="manual", index=True)  # automated/manual
+    origin_key: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    how: Mapped[str] = mapped_column(String(80))
+    modifier: Mapped[str] = mapped_column(String(80))
+    stat: Mapped[str] = mapped_column(String(80))
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_locked: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)

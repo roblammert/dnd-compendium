@@ -7,7 +7,7 @@ CSS = Path("app/static/css/app.css").read_text()
 
 def test_runtime_version_is_centralized():
     version = Path("app/version.py").read_text()
-    assert 'APP_VERSION = "0.32.8"' in version
+    assert 'APP_VERSION = "0.33.0"' in version
     for name in ["app/main.py", "app/tools_routes.py", "app/character_routes.py", "app/user_routes.py"]:
         text = Path(name).read_text()
         assert "from app.version import APP_VERSION" in text

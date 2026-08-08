@@ -575,3 +575,22 @@ This patch refines the printable character sheet's core reference and inventory 
 - Makes each printable spell-level box a fixed flex layout so all ten write-in rows remain inside the box.
 - Removes the two vertical separator borders between the Ability Score and modifier on printable ability cards.
 - Moves the Currency panel beneath At-a-Glance Features.
+
+
+# D&D Compendium v0.33.0 — Player Architect Stage 1
+
+- Adds the experimental **Player Architect** under Tools > Player with an **IN DEVELOPMENT** pill.
+- Keeps Player Architect code and persistent state separate from the existing Player Builder.
+- Adds the Player Architect character library with icon-driven Modify, PDF placeholder, and confirmed Delete actions plus a modal + Create flow.
+- Adds a responsive application shell with a persistent progress sidebar, scrollable work area, collapsible Character Blueprint drawer, and fixed live-stat footer.
+- Adds independent `architect_characters` and `architect_blueprint_entries` tables.
+- Implements Identity, Race/Species, Class/Subclass, Ability Scores, and Background/Alignment.
+- Reads Race/Species, Class/Subclass, Background, and Alignment options from all active compendium sources with no 2024-only source restriction.
+- Detects subclasses through cached `subclass_of`/parent metadata and filters them live by selected primary class.
+- Adds a Character Blueprint ledger with immutable automated entries and verified editable/deletable manual entries.
+- Stores base ability scores separately from Blueprint modifications and derives live scores, AC, PB, and HP without overwriting base values.
+- Adds best-effort automatic Blueprint extraction for ability modifiers, languages, Hit Die, and saving-throw proficiency metadata.
+- Adds detectable Race/Class/Subclass minimum ability checks before leaving Ability Scores.
+- Adds read-only More Info modals backed by cached Compendium entities.
+- Stubs Proficiencies, Languages, Feats, Cantrips & Spells, Character Details, and Review & Sheet for subsequent Player Architect milestones.
+- Bumps the application to v0.33.0.
