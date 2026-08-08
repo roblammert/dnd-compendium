@@ -43,11 +43,42 @@
     catch { body.innerHTML='<p>Unable to load this record.</p>'; }
   }
 
-  $$('[data-pa-form]').forEach(form => {
-    let initial=new FormData(form); const snapshot=()=>[...new FormData(form).entries()].map(([k,v])=>`${k}:${v}`).sort().join('|'); let initialText=[...initial.entries()].map(([k,v])=>`${k}:${v}`).sort().join('|');
-    form.addEventListener('input',()=>{ const state=$('[data-pa-save-state]'); if(state) state.textContent=snapshot()===initialText?'Saved':'Unsaved'; });
-    form.addEventListener('change',()=>{ const state=$('[data-pa-save-state]'); if(state) state.textContent=snapshot()===initialText?'Saved':'Unsaved'; });
-  });
+  const paStepForm=document.getElementById('pa-step-form');
+  let paInitialSnapshot='';
+  const paSnapshot=()=>paStepForm ? [...new FormData(paStepForm).entries()]
+    .filter(([key])=>key!=='pa_navigation_destination')
+    .map(([k,v])=>`${k}:${v}`).sort().join('|') : '';
+  const paIsDirty=()=>!!paStepForm && paSnapshot()!==paInitialSnapshot;
+  const paRefreshSaveState=()=>{ const state=$('[data-pa-save-state]'); if(state) state.textContent=paIsDirty()?'Unsaved':'Saved'; };
+  if(paStepForm){
+    paInitialSnapshot=paSnapshot();
+    paStepForm.addEventListener('input',paRefreshSaveState);
+    paStepForm.addEventListener('change',paRefreshSaveState);
+  }
+
+  let paPendingNavigation=null;
+  function paDestinationForHref(href){
+    const url=new URL(href,window.location.href);
+    if(url.pathname.replace(/\/$/,'')==='/tools/player-architect') return 'library';
+    return url.searchParams.get('step')||'';
+  }
+  function paNavigateWithSave(href){
+    if(!paStepForm){ window.location.href=href; return; }
+    let hidden=paStepForm.querySelector('[name="pa_navigation_destination"]');
+    if(!hidden){ hidden=document.createElement('input'); hidden.type='hidden'; hidden.name='pa_navigation_destination'; paStepForm.appendChild(hidden); }
+    hidden.value=paDestinationForHref(href);
+    paStepForm.requestSubmit();
+  }
+  $$('[data-pa-nav]').forEach(link=>link.addEventListener('click',event=>{
+    if(link.classList.contains('disabled') || link.getAttribute('aria-disabled')==='true'){ event.preventDefault(); return; }
+    if(!paIsDirty()) return;
+    event.preventDefault();
+    paPendingNavigation=link.href;
+    openDialog('pa-dirty-dialog');
+  }));
+  $('[data-pa-dirty-cancel]')?.addEventListener('click',()=>{ paPendingNavigation=null; document.getElementById('pa-dirty-dialog')?.close(); });
+  $('[data-pa-dirty-discard]')?.addEventListener('click',()=>{ if(paPendingNavigation) window.location.href=paPendingNavigation; });
+  $('[data-pa-dirty-save]')?.addEventListener('click',()=>{ const href=paPendingNavigation; paPendingNavigation=null; document.getElementById('pa-dirty-dialog')?.close(); if(href) paNavigateWithSave(href); });
 
   const xpTable={1:0,2:300,3:900,4:2700,5:6500,6:14000,7:23000,8:34000,9:48000,10:64000,11:85000,12:100000,13:120000,14:140000,15:165000,16:195000,17:225000,18:265000,19:305000,20:355000};
   const levelInput=$('[data-pa-level-input]'), xpInput=$('[data-pa-xp-input]');
@@ -63,7 +94,16 @@
     const initialScores={}; const initialMods={}; abilityInputs.forEach(i=>{ const a=i.dataset.paBaseScore; initialScores[a]=Number(i.value)||10; initialMods[a]=scoreMod(initialScores[a]+Number(i.dataset.paBlueprintMod||0)); });
     const initialHp=Number($('[data-pa-status-hp]')?.textContent||1), initialAc=Number($('[data-pa-status-ac]')?.textContent||10), level=Number($('[data-pa-status-level]')?.textContent||1);
     const update=()=>{
-      abilityInputs.forEach(i=>{ const a=i.dataset.paBaseScore, live=(Number(i.value)||10)+Number(i.dataset.paBlueprintMod||0), mod=scoreMod(live); $('[data-pa-status-score="'+a+'"]').textContent=live; $('[data-pa-status-mod="'+a+'"]').textContent=(mod>=0?'+':'')+mod; });
+      abilityInputs.forEach(i=>{
+        const a=i.dataset.paBaseScore, roll=Number(i.value)||10, blueprint=Number(i.dataset.paBlueprintMod||0), live=roll+blueprint, mod=scoreMod(live);
+        const statusScore=$('[data-pa-status-score="'+a+'"]'), statusMod=$('[data-pa-status-mod="'+a+'"]');
+        if(statusScore){ statusScore.textContent=live; statusScore.dataset.base=roll; }
+        if(statusMod) statusMod.textContent=(mod>=0?'+':'')+mod;
+        const card=i.closest('.pa-ability-card');
+        const calc=card?.querySelector(`[data-pa-ability-calc="${a}"]`), modBox=card?.querySelector('.pa-ability-modifier');
+        if(calc) calc.textContent=`Roll (${roll}) + Blueprint (${blueprint>=0?'+':''}${blueprint}) = ${live}`;
+        if(modBox) modBox.textContent=(mod>=0?'+':'')+mod;
+      });
       const dex=abilityInputs.find(i=>i.dataset.paBaseScore==='dex'), con=abilityInputs.find(i=>i.dataset.paBaseScore==='con');
       if(dex){ const mod=scoreMod((Number(dex.value)||10)+Number(dex.dataset.paBlueprintMod||0)); $('[data-pa-status-ac]').textContent=initialAc+(mod-initialMods.dex); }
       if(con){ const mod=scoreMod((Number(con.value)||10)+Number(con.dataset.paBlueprintMod||0)); $('[data-pa-status-hp]').textContent=Math.max(1,initialHp+(mod-initialMods.con)*level); }

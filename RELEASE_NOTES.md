@@ -617,3 +617,13 @@ Using the supplied standard Medium thresholds, levels 2, 4, 6, 7, 8, and 10 tota
 - Add a Source column to persistent Blueprint entries and automatically attribute imported rows to their compendium source.
 - Move `+ Manual Blueprint Entry` above the ledger table.
 - Keep unresolved `Choose...` class rules in Needs Your Choice rather than converting them into locked modifiers.
+
+# D&D Compendium v0.33.6 Patch
+
+Player Architect Ability Score and navigation workflow improvements.
+
+- Roll/Blueprint/Live equation shown under every ability input.
+- Ability modifier is calculated from the Live total and updates immediately.
+- Previous-step, step-navigation, and Character Library actions guard against unsaved changes.
+- Dirty navigation modal offers Save & Continue, Discard Changes, or Cancel.
+- Forward action renamed to Save & Next Step.

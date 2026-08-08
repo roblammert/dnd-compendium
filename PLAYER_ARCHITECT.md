@@ -67,3 +67,7 @@ Step 03 now parses source-wide class/subclass proficiency structures instead of 
 Player Architect now treats structured class JSON as authoritative where it exists. Hit Dice are represented as their own Blueprint stat (for example `1d10 /Fighter Level`) and do not directly modify HP. Saving Throws come only from the class record's `saving_throws` array; save text repeated in proficiency/core-traits descriptions is ignored for automatic ledger generation. Weapon, Armor, Tool, and Skill entries are labeled as proficiencies, no-op values such as `None` or `0` are discarded, and automatic rows are deduplicated by How + Mod + Stat.
 
 Every persisted Blueprint row can carry a Source label. Automated rows inherit the selected compendium entity's source display name/document, while user-entered rows are attributed to `Manual`.
+
+## v0.33.6 ability math and navigation guards
+
+Ability Score cards preserve the stored Roll value separately from Blueprint modifiers. The interface shows `Roll (N) + Blueprint (+N) = Live`, while the displayed D&D modifier is always calculated from the Live score. Navigation away from an implemented PA step performs a form snapshot comparison and prompts to save, discard, or cancel when the step is dirty.

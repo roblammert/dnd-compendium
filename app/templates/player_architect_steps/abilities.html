@@ -1,6 +1,6 @@
 <section class="pa-stage" data-pa-stage="abilities">
   <div class="pa-stage-kicker">04</div>
-  <header><h2>Ability Scores</h2><p>Base scores stay immutable underneath the Blueprint. Blueprint modifiers are layered on top for every live calculation and are never written back into these base values.</p></header>
+  <header><h2>Ability Scores</h2><p>Rolled/base scores stay immutable underneath the Blueprint. Blueprint modifiers are layered on top for every live calculation and are never written back into the Roll value.</p></header>
   <form id="pa-step-form" method="post" action="/tools/player-architect/{{ character.public_id }}/step/abilities" data-pa-form data-pa-ability-form>
     <div class="pa-method-row">
       {% for value,label in [('standard_array','Standard Array'),('point_buy','Point Buy'),('rolled','Rolled'),('manual','Manual')] %}<label><input type="radio" name="ability_method" value="{{ value }}" {% if character.ability_method==value %}checked{% endif %}><span>{{ label }}</span></label>{% endfor %}
@@ -10,8 +10,12 @@
       {% for a in abilities %}
       <label class="pa-ability-card">
         <span class="pa-ability-name">{{ ability_labels[a] }}</span>
-        <input type="number" min="1" max="30" name="{{ a }}" value="{{ derived.base[a] }}" data-pa-base-score="{{ a }}" data-pa-blueprint-mod="{{ derived.score_mods[a] }}">
-        <span class="pa-ability-breakdown"><b>Base {{ derived.base[a] }}</b><span>Blueprint {{ '%+d'|format(derived.score_mods[a]) }}</span><strong>Live {{ derived.scores[a] }}</strong></span>
+        <div class="pa-ability-roll">
+          <span class="pa-roll-label">Roll</span>
+          <input type="number" min="1" max="30" name="{{ a }}" value="{{ derived.base[a] }}" data-pa-base-score="{{ a }}" data-pa-blueprint-mod="{{ derived.score_mods[a] }}">
+        </div>
+        <div class="pa-ability-modifier" aria-label="{{ ability_labels[a] }} modifier">{{ '%+d'|format(derived.ability_mods[a]) }}</div>
+        <div class="pa-ability-breakdown" data-pa-ability-calc="{{ a }}">Roll ({{ derived.base[a] }}) + Blueprint ({{ '%+d'|format(derived.score_mods[a]) }}) = {{ derived.scores[a] }}</div>
       </label>
       {% endfor %}
     </div>

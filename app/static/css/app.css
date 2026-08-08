@@ -556,3 +556,25 @@ body.pa-architect-active .page,body:has(.pa-app-shell) .page{max-width:none!impo
 @media(max-width:700px){.pa-blueprint-choice-notes li{grid-template-columns:1fr}.pa-blueprint-choice-notes li small{grid-column:1}}
 
 .pa-preview-superseded{display:none !important}.pa-blueprint-drawer>.pa-add-blueprint{margin:0 0 .85rem 0;width:100%}
+
+/* v0.33.6 Player Architect ability math + guarded navigation */
+.pa-ability-card{
+  grid-template-columns:48px 92px 58px!important;
+  grid-template-areas:
+    "name roll modifier"
+    ". calc calc"!important;
+  align-items:center!important;
+  column-gap:.65rem!important;
+  row-gap:.35rem!important;
+}
+.pa-ability-name{grid-area:name}
+.pa-ability-roll{grid-area:roll;display:grid;grid-template-columns:auto 1fr;align-items:center;gap:.35rem;min-width:0}
+.pa-roll-label{font:800 .62rem/1 system-ui;text-transform:uppercase;letter-spacing:.05em;color:#6b6e68}
+.pa-ability-card .pa-ability-roll input{width:64px!important;font-size:1.25rem!important}
+.pa-ability-modifier{grid-area:modifier;display:flex;align-items:center;justify-content:center;min-height:42px;border-left:1px solid #d3c7aa;font:800 1.05rem/1 Georgia;color:#153945}
+.pa-ability-breakdown{grid-area:calc!important;display:block!important;white-space:normal;font:700 .68rem/1.25 system-ui;color:#536560!important}
+.pa-library-action{background:#f2e8ce!important;color:#173b46!important;border-color:#b6944c!important}
+.pa-library-action:hover{background:#ead9ae!important}
+.pa-dirty-dialog form{min-width:min(520px,86vw)}
+.pa-dirty-actions{display:flex;justify-content:flex-end;gap:.6rem;flex-wrap:wrap}
+@media(max-width:650px){.pa-ability-card{grid-template-columns:44px 88px 54px!important}.pa-dirty-actions>*{flex:1 1 100%}}

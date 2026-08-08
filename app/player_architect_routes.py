@@ -612,6 +612,11 @@ async def architect_save_step(request: Request, public_id: str, step: str, user:
     row.current_step=step; db.commit(); db.refresh(row)
     if error:
         return templates.TemplateResponse(request,"tools_player_architect.html",_context(db,row,step,error=error),status_code=422)
+    destination=str(form.get("pa_navigation_destination") or "").strip()
+    if destination == "library":
+        return RedirectResponse("/tools/player-architect",303)
+    if destination in STEP_KEYS:
+        return RedirectResponse(f"/tools/player-architect/{row.public_id}?step={destination}",303)
     idx=[key for key,_ in STEPS].index(step); next_step=STEPS[min(idx+1,len(STEPS)-1)][0]
     return RedirectResponse(f"/tools/player-architect/{row.public_id}?step={next_step}",303)
 

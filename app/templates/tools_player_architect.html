@@ -5,13 +5,13 @@
   <aside class="pa-step-sidebar">
     <div class="pa-sidebar-brand"><span>PA</span><div><strong>Player Architect</strong><small>IN DEVELOPMENT</small></div></div>
     <nav class="pa-step-nav" aria-label="Architect steps">
-      {% for key,label in steps %}<a href="/tools/player-architect/{{ character.public_id }}?step={{ key }}" class="{% if key==step %}active{% endif %}"><span>{{ '%02d'|format(loop.index) }}</span><b>{{ label }}</b>{% if loop.index > 5 %}<em>STUB</em>{% endif %}</a>{% endfor %}
+      {% for key,label in steps %}<a data-pa-nav href="/tools/player-architect/{{ character.public_id }}?step={{ key }}" class="{% if key==step %}active{% endif %}"><span>{{ '%02d'|format(loop.index) }}</span><b>{{ label }}</b>{% if loop.index > 5 %}<em>STUB</em>{% endif %}</a>{% endfor %}
     </nav>
     <div class="pa-sidebar-actions">
-      <a class="pa-shell-action pa-prev-step {% if not prev_step %}disabled{% endif %}" {% if prev_step %}href="/tools/player-architect/{{ character.public_id }}?step={{ prev_step }}"{% else %}aria-disabled="true"{% endif %} title="Previous Step"><span aria-hidden="true">←</span><b>Previous Step</b></a>
-      <button type="submit" form="pa-step-form" class="pa-shell-action pa-next-step" data-pa-next-step {% if not implemented_step or error %}disabled{% endif %}><b>Next Step</b><span aria-hidden="true">→</span></button>
+      <a class="pa-shell-action pa-prev-step {% if not prev_step %}disabled{% endif %}" data-pa-nav {% if prev_step %}href="/tools/player-architect/{{ character.public_id }}?step={{ prev_step }}"{% else %}aria-disabled="true"{% endif %} title="Previous Step"><span aria-hidden="true">←</span><b>Previous Step</b></a>
+      <button type="submit" form="pa-step-form" class="pa-shell-action pa-next-step" data-pa-next-step {% if not implemented_step or error %}disabled{% endif %}><b>Save & Next Step</b><span aria-hidden="true">→</span></button>
       <button type="button" class="pa-shell-action pa-view-blueprint" data-pa-blueprint-toggle aria-expanded="false"><span class="pa-blueprint-action-icon" aria-hidden="true">▤</span><b>View Blueprint</b></button>
-      <a class="pa-back-tools" href="/tools/player-architect">← Character Library</a>
+      <a class="pa-shell-action pa-library-action" data-pa-nav href="/tools/player-architect"><span aria-hidden="true">←</span><b>Character Library</b></a>
     </div>
   </aside>
 
@@ -57,6 +57,18 @@
   </footer>
 </div>
 
+<dialog id="pa-dirty-dialog" class="pa-dialog pa-dirty-dialog">
+  <form method="dialog">
+    <button type="button" class="pa-dialog-x" data-pa-close aria-label="Close"><span aria-hidden="true">×</span></button>
+    <h2>Unsaved Changes</h2>
+    <p>This step has changes that have not been saved. What would you like to do?</p>
+    <div class="pa-dialog-actions pa-dirty-actions">
+      <button type="button" class="secondary-action" data-pa-dirty-cancel>Cancel</button>
+      <button type="button" class="danger-outline" data-pa-dirty-discard>Discard Changes</button>
+      <button type="button" class="primary-action" data-pa-dirty-save>Save & Continue</button>
+    </div>
+  </form>
+</dialog>
 <dialog id="pa-info-dialog" class="pa-dialog pa-info-dialog"><div class="pa-info-shell"><button type="button" class="pa-dialog-x" data-pa-close aria-label="Close"><span aria-hidden="true">×</span></button><div data-pa-info-body></div></div></dialog>
 <dialog id="pa-blueprint-add" class="pa-dialog"><form method="post" action="/tools/player-architect/{{ character.public_id }}/blueprint/add"><button type="button" class="pa-dialog-x" data-pa-close aria-label="Close"><span aria-hidden="true">×</span></button><h2>Add Manual Blueprint Entry</h2><p>Manual entries modify live calculations without altering the base score. Use a signed number for numerical stats (for example <code>+1</code>) and descriptive modifiers for non-numeric stats (for example <code>+Elvish</code>).</p><div class="pa-form-grid two"><label>How<input name="how" value="Manual" required></label><label>Stat<select name="stat" required>{% for s in stat_options %}<option>{{ s }}</option>{% endfor %}</select></label><label>Modifier<input name="modifier" placeholder="+1" required></label><label>Note<input name="note" placeholder="Why this modifier exists"></label></div><label class="pa-verify"><input type="checkbox" name="verified" value="1" required> I verified that this modifier is appropriate and will not duplicate an automated entry.</label><div class="pa-dialog-actions"><button type="button" class="secondary-action" data-pa-close>Cancel</button><button class="primary-action">Verify & Save</button></div></form></dialog>
 <dialog id="pa-blueprint-edit" class="pa-dialog"><form method="post" data-pa-blueprint-edit-form><button type="button" class="pa-dialog-x" data-pa-close aria-label="Close"><span aria-hidden="true">×</span></button><h2>Edit Manual Blueprint Entry</h2><div class="pa-form-grid two"><label>How<input name="how" data-pa-edit-how required></label><label>Stat<select name="stat" data-pa-edit-stat>{% for s in stat_options %}<option>{{ s }}</option>{% endfor %}</select></label><label>Modifier<input name="modifier" data-pa-edit-mod required></label><label>Note<input name="note" data-pa-edit-note></label></div><div class="pa-dialog-actions"><button type="button" class="secondary-action" data-pa-close>Cancel</button><button class="primary-action">Save Entry</button></div></form></dialog>

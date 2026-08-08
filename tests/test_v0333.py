@@ -17,4 +17,4 @@ def test_pa_subclass_rule_matches_sqlite_json_type_semantics():
 
 
 def test_pa_version_0333():
-    assert Path("app/version.py").read_text().strip() == 'APP_VERSION = "0.33.5"'
+    assert Path("app/version.py").read_text().strip() == 'APP_VERSION = "0.33.6"'

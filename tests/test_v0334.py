@@ -41,4 +41,4 @@ def test_blueprint_drawer_has_player_decision_section_and_extended_stats():
 
 
 def test_version_0334():
-    assert Path("app/version.py").read_text().strip() == 'APP_VERSION = "0.33.5"'
+    assert Path("app/version.py").read_text().strip() == 'APP_VERSION = "0.33.6"'
