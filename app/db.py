@@ -61,3 +61,9 @@ def ensure_schema_columns() -> None:
         if "preferred_source_document" not in user_columns:
             connection.execute(text("ALTER TABLE users ADD COLUMN preferred_source_document VARCHAR(120)"))
         connection.execute(text("CREATE INDEX IF NOT EXISTS ix_users_preferred_source_document ON users(preferred_source_document)"))
+
+        # Player Architect Blueprint source attribution (v0.33.5).
+        if inspect(connection).has_table("architect_blueprint_entries"):
+            blueprint_columns = {column["name"] for column in inspect(connection).get_columns("architect_blueprint_entries")}
+            if "source" not in blueprint_columns:
+                connection.execute(text("ALTER TABLE architect_blueprint_entries ADD COLUMN source VARCHAR(255)"))

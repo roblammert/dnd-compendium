@@ -554,3 +554,5 @@ body.pa-architect-active .page,body:has(.pa-app-shell) .page{max-width:none!impo
 .pa-blueprint-choice-notes li span{line-height:1.35}
 .pa-blueprint-choice-notes li small{grid-column:2;color:#7b6f5d}
 @media(max-width:700px){.pa-blueprint-choice-notes li{grid-template-columns:1fr}.pa-blueprint-choice-notes li small{grid-column:1}}
+
+.pa-preview-superseded{display:none !important}.pa-blueprint-drawer>.pa-add-blueprint{margin:0 0 .85rem 0;width:100%}

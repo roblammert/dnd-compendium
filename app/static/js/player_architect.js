@@ -93,14 +93,21 @@
 
   function recalcBlueprintScores(){
     const sums={str:0,dex:0,con:0,int:0,wis:0,cha:0};
-    $$('[data-pa-blueprint-row], [data-pa-preview-row]').forEach(row=>{ const stat=(row.dataset.stat||'').toLowerCase(); const m=(row.dataset.mod||'').match(/^\s*([+-]?\d+)\s*$/); if(stat in sums && m) sums[stat]+=Number(m[1]); });
+    $$('[data-pa-blueprint-row]:not(.pa-preview-superseded), [data-pa-preview-row]').forEach(row=>{ const stat=(row.dataset.stat||'').toLowerCase(); const m=(row.dataset.mod||'').match(/^\s*([+-]?\d+)\s*$/); if(stat in sums && m) sums[stat]+=Number(m[1]); });
     Object.keys(sums).forEach(a=>{ const el=$(`[data-pa-status-score="${a}"]`); if(!el) return; const live=Number(el.dataset.base||10)+sums[a]; el.textContent=live; const m=Math.floor((live-10)/2), mod=$(`[data-pa-status-mod="${a}"]`); if(mod) mod.textContent=(m>=0?'+':'')+m; });
     const dex=Number($('[data-pa-status-score="dex"]')?.textContent||10), ac=$('[data-pa-status-ac]'); if(ac) ac.textContent=10+Math.floor((dex-10)/2);
   }
   function previewAutomatic(origin, entries){
     $$(`[data-pa-preview-row][data-origin="${origin}"]`).forEach(r=>r.remove());
+    $$(`[data-pa-blueprint-row][data-origin="${origin}"]`).forEach(r=>r.classList.add('pa-preview-superseded'));
     const tbody=$('.pa-blueprint-table tbody'); if(!tbody) return;
-    (entries||[]).forEach(item=>{ const tr=document.createElement('tr'); tr.className='locked pa-preview-row'; tr.dataset.paPreviewRow='1'; tr.dataset.origin=origin; tr.dataset.stat=item.stat; tr.dataset.mod=item.modifier; tr.innerHTML=`<td>🔒</td><td>${origin}</td><td>${item.modifier}</td><td>${item.stat}</td><td>${item.note||''} <em>(pending save)</em></td><td></td>`; tbody.appendChild(tr); });
+    const seen=new Set();
+    (entries||[]).forEach(item=>{
+      const key=`${origin}|${String(item.modifier||'').toLowerCase()}|${String(item.stat||'').toLowerCase()}`;
+      if(seen.has(key)) return; seen.add(key);
+      const tr=document.createElement('tr'); tr.className='locked pa-preview-row'; tr.dataset.paPreviewRow='1'; tr.dataset.origin=origin; tr.dataset.stat=item.stat; tr.dataset.mod=item.modifier;
+      tr.innerHTML=`<td>🔒</td><td>${origin}</td><td>${item.modifier}</td><td>${item.stat}</td><td>${item.source||''}</td><td>${item.note||''} <em>(pending save)</em></td><td></td>`; tbody.appendChild(tr);
+    });
     recalcBlueprintScores();
   }
   function previewChoiceNotes(origin, notes){

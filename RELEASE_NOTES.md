@@ -606,3 +606,14 @@ Using the supplied standard Medium thresholds, levels 2, 4, 6, 7, 8, and 10 tota
 - Preserve primary-class Blueprint entries when an optional subclass is selected so subclass rules layer on top of inherited class rules.
 - Expand manual Blueprint stat categories to include Weapons, Armor, Tools, Saving Throws, Skills, Cantrips, Spells, and Feats.
 
+
+## v0.33.5 — Player Architect structured class parser
+
+- Treat class Hit Dice as a dedicated `Hit Dice` Blueprint stat instead of an HP modifier, preferring `hit_points.hit_dice_name` / `hit_points.hit_dice` and normalizing values such as `1d10 /Fighter Level`.
+- Use only the class JSON `saving_throws` array for automatic Saving Throw Blueprint entries; do not duplicate save data parsed from prose/core-trait tables.
+- Rename deterministic class facts to `Weapon Proficiencies`, `Armor Proficiencies`, `Tool Proficiencies`, and `Skill Proficiencies` so the ledger reflects the actual rule category.
+- Ignore `None`, zero, `+0`, N/A, dash, and equivalent no-op modifiers instead of inserting them into the Blueprint.
+- Suppress duplicate ledger rows that share the same How, Mod, and Stat, including pending live previews.
+- Add a Source column to persistent Blueprint entries and automatically attribute imported rows to their compendium source.
+- Move `+ Manual Blueprint Entry` above the ledger table.
+- Keep unresolved `Choose...` class rules in Needs Your Choice rather than converting them into locked modifiers.

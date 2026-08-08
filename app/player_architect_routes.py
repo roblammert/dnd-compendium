@@ -45,7 +45,7 @@ STEPS = [
     ("review", "Review & Sheet"),
 ]
 STEP_KEYS = {key for key, _ in STEPS}
-STAT_OPTIONS = ["STR","DEX","CON","INT","WIS","CHA","HP","AC","PB","Speed","Weapons","Armor","Tools","Saving Throws","Skills","Languages","Proficiencies","Cantrips","Spells","Feats","Other"]
+STAT_OPTIONS = ["STR","DEX","CON","INT","WIS","CHA","HP","AC","PB","Speed","Hit Dice","Weapon Proficiencies","Armor Proficiencies","Tool Proficiencies","Saving Throws","Skill Proficiencies","Languages","Proficiencies","Cantrips","Spells","Feats","Other"]
 
 
 def _uid(prefix: str) -> str:
@@ -151,25 +151,26 @@ def _ability_key(text: str) -> str | None:
 
 
 CORE_TRAIT_ALIASES = {
-    "armor": "Armor",
-    "armor training": "Armor",
-    "armor proficiencies": "Armor",
-    "weapon": "Weapons",
-    "weapons": "Weapons",
-    "weapon proficiency": "Weapons",
-    "weapon proficiencies": "Weapons",
-    "tool": "Tools",
-    "tools": "Tools",
-    "tool proficiency": "Tools",
-    "tool proficiencies": "Tools",
+    "armor": "Armor Proficiencies",
+    "armor training": "Armor Proficiencies",
+    "armor proficiency": "Armor Proficiencies",
+    "armor proficiencies": "Armor Proficiencies",
+    "weapon": "Weapon Proficiencies",
+    "weapons": "Weapon Proficiencies",
+    "weapon proficiency": "Weapon Proficiencies",
+    "weapon proficiencies": "Weapon Proficiencies",
+    "tool": "Tool Proficiencies",
+    "tools": "Tool Proficiencies",
+    "tool proficiency": "Tool Proficiencies",
+    "tool proficiencies": "Tool Proficiencies",
     "saving throw": "Saving Throws",
     "saving throws": "Saving Throws",
     "saving throw proficiency": "Saving Throws",
     "saving throw proficiencies": "Saving Throws",
-    "skill": "Skills",
-    "skills": "Skills",
-    "skill proficiency": "Skills",
-    "skill proficiencies": "Skills",
+    "skill": "Skill Proficiencies",
+    "skills": "Skill Proficiencies",
+    "skill proficiency": "Skill Proficiencies",
+    "skill proficiencies": "Skill Proficiencies",
     "languages": "Languages",
     "language": "Languages",
     "cantrips": "Cantrips",
@@ -177,6 +178,7 @@ CORE_TRAIT_ALIASES = {
     "feats": "Feats",
     "starting equipment": "Other",
 }
+
 
 
 def _clean_rule_value(value: Any) -> str:
@@ -234,11 +236,10 @@ def _class_rule_pairs(entity: Entity | None) -> list[tuple[str, str]]:
 
     # Direct structured keys found across Open5e and third-party sources.
     direct = {
-        "armor": ("armor", "armor_training", "armor_proficiencies"),
-        "weapons": ("weapons", "weapon_proficiencies"),
-        "tools": ("tools", "tool_proficiencies"),
-        "saving throws": ("saving_throws", "saving_throw_proficiencies"),
-        "skills": ("skills", "skill_proficiencies"),
+        "armor proficiencies": ("armor", "armor_training", "armor_proficiencies"),
+        "weapon proficiencies": ("weapons", "weapon_proficiencies"),
+        "tool proficiencies": ("tools", "tool_proficiencies"),
+        "skill proficiencies": ("skills", "skill_proficiencies"),
         "languages": ("languages",),
         "cantrips": ("cantrips",),
         "spells": ("spells", "spellcasting"),
@@ -274,6 +275,9 @@ def _class_rule_pairs(entity: Entity | None) -> list[tuple[str, str]]:
         label_key = re.sub(r"\s+", " ", str(label).replace("_", " ")).strip().casefold()
         stat = CORE_TRAIT_ALIASES.get(label_key)
         cleaned = _clean_rule_value(value)
+        # Class saving throws are authoritative only from data_json.saving_throws.
+        if stat == "Saving Throws":
+            continue
         if stat and cleaned:
             key = (stat, cleaned.casefold())
             if key not in seen:
@@ -305,27 +309,74 @@ def _class_choice_notes(entity: Entity | None, how: str = "Class") -> list[dict[
     return notes
 
 
-def _class_proficiency_entries(entity: Entity | None, how: str = "Class") -> list[dict[str, str]]:
-    """Convert fixed class proficiencies into locked Blueprint entries.
+def _meaningful_modifier(value: Any) -> bool:
+    text = str(value or "").strip()
+    return bool(text) and text.casefold() not in {"none", "n/a", "na", "—", "-", "0", "+0", "0.0", "+0.0"}
 
-    Player-choice rules are deliberately excluded here and surfaced by
-    ``_class_choice_notes`` instead, preventing the automatic ledger from
-    pretending a choice has already been made.
+
+def _entity_source(entity: Entity | None) -> str:
+    if not entity:
+        return "Local Compendium"
+    return str(getattr(entity, "source_display_name", None) or getattr(entity, "source_document", None) or getattr(entity, "game_system_name", None) or "Local Compendium")
+
+
+def _class_hit_dice_entry(entity: Entity | None) -> dict[str, str] | None:
+    if not entity:
+        return None
+    data = entity.data_json or {}
+    hp = data.get("hit_points") if isinstance(data.get("hit_points"), dict) else {}
+    raw_name = hp.get("hit_dice_name") or ""
+    raw_die = hp.get("hit_dice") or data.get("hit_die") or data.get("hit_dice") or ""
+    text = str(raw_name or raw_die).strip()
+    if not text:
+        return None
+    m = re.search(r"(\d*d\d+|d\d+)", text, re.I)
+    if not m:
+        m = re.search(r"(\d+)", text)
+        die = f"1d{m.group(1)}" if m else ""
+    else:
+        die = m.group(1).lower()
+        if die.startswith("d"):
+            die = "1" + die
+    if not die:
+        return None
+    modifier = f"{die} /{entity.name} Level"
+    return {"modifier": modifier, "stat": "Hit Dice", "note": f"{entity.name} Hit Dice"}
+
+
+def _class_saving_throw_entry(entity: Entity | None) -> dict[str, str] | None:
+    if not entity:
+        return None
+    values = (entity.data_json or {}).get("saving_throws")
+    if not isinstance(values, list):
+        return None
+    names: list[str] = []
+    for item in values:
+        name = _extract_named(item).strip()
+        if name and name.casefold() not in {n.casefold() for n in names}:
+            names.append(name)
+    if not names:
+        return None
+    return {"modifier": "+" + ", ".join(names), "stat": "Saving Throws", "note": f"{entity.name} saving throws"}
+
+
+def _class_proficiency_entries(entity: Entity | None, how: str = "Class") -> list[dict[str, str]]:
+    """Convert deterministic class proficiency rules into locked Blueprint rows.
+
+    Saving throws and Hit Dice are parsed separately from their authoritative
+    structured JSON fields. Choice rules are surfaced by ``_class_choice_notes``.
     """
     if not entity:
         return []
     result: list[dict[str, str]] = []
+    allowed = {"Weapon Proficiencies", "Armor Proficiencies", "Tool Proficiencies", "Skill Proficiencies", "Languages", "Cantrips", "Spells", "Feats"}
     for stat, value in _class_rule_pairs(entity):
-        if stat not in {"Weapons", "Armor", "Tools", "Saving Throws", "Skills", "Languages", "Cantrips", "Spells", "Feats"}:
+        if stat not in allowed or _requires_choice(value) or not _meaningful_modifier(value):
             continue
-        if _requires_choice(value):
-            continue
-        if value.casefold() in {"none", "n/a", "—", "-"}:
-            # Keep explicit armor/tool absence visible without representing it as a bonus.
-            result.append({"modifier": "None", "stat": stat, "note": f"{entity.name} {stat.lower()}"})
-        else:
-            result.append({"modifier": f"+{value}" if not str(value).startswith(('+','-')) else str(value), "stat": stat, "note": f"{entity.name} {stat.lower()}"})
+        modifier = str(value) if str(value).startswith(("+", "-")) else f"+{value}"
+        result.append({"modifier": modifier, "stat": stat, "note": f"{entity.name} {stat.lower()}"})
     return result
+
 
 def _auto_entries(entity: Entity | None, how: str) -> list[dict[str, str]]:
     """Best-effort, source-agnostic modifier extraction from cached compendium JSON."""
@@ -333,55 +384,62 @@ def _auto_entries(entity: Entity | None, how: str) -> list[dict[str, str]]:
         return []
     data = entity.data_json or {}
     entries: list[dict[str, str]] = []
-    seen: set[tuple[str,str,str]] = set()
+    seen: set[tuple[str, str]] = set()
+    source = _entity_source(entity)
 
     def add(mod: str, stat: str, note: str):
-        key=(mod,stat,note)
-        if mod and stat and key not in seen:
-            seen.add(key); entries.append({"modifier":mod,"stat":stat,"note":note})
+        mod = str(mod or "").strip()
+        stat = str(stat or "").strip()
+        if not _meaningful_modifier(mod) or not stat:
+            return
+        key = (mod.casefold(), stat.casefold())
+        if key in seen:
+            return
+        seen.add(key)
+        entries.append({"modifier": mod, "stat": stat, "source": source, "note": note})
 
-    ability_fields = ["ability_score_increases","ability_score_increase","ability_bonuses","ability_bonus","ability_scores","asi"]
-    for field in ability_fields:
-        value=data.get(field)
-        # Common Open5e/third-party shape: {"dexterity": 2, "wisdom": 1}.
-        if isinstance(value, dict) and not any(k in value for k in ("ability","ability_score","attribute","attributes","stat","name","key","bonus","value","modifier","amount")):
-            for label, amount in value.items():
-                stat=_ability_key(str(label))
-                if stat and amount not in (None, ""):
-                    try: mod=f"{int(amount):+d}"
-                    except Exception: mod=str(amount)
-                    add(mod, stat, f"{entity.name} {how.lower()} enhancement")
-            value=[]
-        if isinstance(value, dict): value=[value]
-        if isinstance(value, list):
-            for item in value:
-                if not isinstance(item, dict):
-                    continue
-                labels = item.get("attributes") or item.get("attribute") or item.get("ability") or item.get("ability_score") or item.get("stat") or item.get("name") or item.get("key")
-                labels = labels if isinstance(labels, list) else [labels]
-                amount=item.get("bonus", item.get("value", item.get("modifier", item.get("amount"))))
-                for label_value in labels:
-                    label=_extract_named(label_value)
-                    stat=_ability_key(label)
+    # Ability enhancements are meaningful for race/background-style records.
+    # Class primary-ability declarations are not modifiers and must not enter the ledger.
+    if how not in {"Class", "Subclass"}:
+        ability_fields = ["ability_score_increases","ability_score_increase","ability_bonuses","ability_bonus","ability_scores","asi"]
+        for field in ability_fields:
+            value=data.get(field)
+            if isinstance(value, dict) and not any(k in value for k in ("ability","ability_score","attribute","attributes","stat","name","key","bonus","value","modifier","amount")):
+                for label, amount in value.items():
+                    stat=_ability_key(str(label))
                     if stat and amount not in (None, ""):
                         try: mod=f"{int(amount):+d}"
                         except Exception: mod=str(amount)
                         add(mod, stat, f"{entity.name} {how.lower()} enhancement")
-    # Many sources put race bonuses only in prose. Support both compact
-    # "+2 Dexterity" wording and SRD-style "Dexterity score increases by 2".
-    blob=" ".join([_text(data.get(k)) for k in ("desc","description","traits","benefits","features") if data.get(k)])
-    patterns = [
-        r"([+-]\d+)\s+(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma)",
-        r"(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma)(?: score)?\s+(?:increases?|is increased)\s+by\s+(\d+)",
-    ]
-    for pattern_index, pattern in enumerate(patterns):
-        for first, second in re.findall(pattern, blob, re.I):
-            if pattern_index == 0:
-                amount, ability = first, second
-            else:
-                ability, amount = first, f"+{second}"
-            stat=_ability_key(ability)
-            if stat: add(amount,stat,f"{entity.name} {how.lower()} enhancement")
+                value=[]
+            if isinstance(value, dict): value=[value]
+            if isinstance(value, list):
+                for item in value:
+                    if not isinstance(item, dict):
+                        continue
+                    labels = item.get("attributes") or item.get("attribute") or item.get("ability") or item.get("ability_score") or item.get("stat") or item.get("name") or item.get("key")
+                    labels = labels if isinstance(labels, list) else [labels]
+                    amount=item.get("bonus", item.get("value", item.get("modifier", item.get("amount"))))
+                    for label_value in labels:
+                        stat=_ability_key(_extract_named(label_value))
+                        if stat and amount not in (None, ""):
+                            try: mod=f"{int(amount):+d}"
+                            except Exception: mod=str(amount)
+                            add(mod, stat, f"{entity.name} {how.lower()} enhancement")
+
+        blob=" ".join([_text(data.get(k)) for k in ("desc","description","traits","benefits","features") if data.get(k)])
+        patterns = [
+            r"([+-]\d+)\s+(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma)",
+            r"(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma)(?: score)?\s+(?:increases?|is increased)\s+by\s+(\d+)",
+        ]
+        for pattern_index, pattern in enumerate(patterns):
+            for first, second in re.findall(pattern, blob, re.I):
+                if pattern_index == 0:
+                    amount, ability = first, second
+                else:
+                    ability, amount = first, f"+{second}"
+                stat=_ability_key(ability)
+                if stat: add(amount,stat,f"{entity.name} {how.lower()} enhancement")
 
     languages=data.get("languages") or data.get("language")
     values=languages if isinstance(languages,list) else ([languages] if languages else [])
@@ -392,10 +450,12 @@ def _auto_entries(entity: Entity | None, how: str) -> list[dict[str, str]]:
 
     if how in {"Class", "Subclass"}:
         if how == "Class":
-            hit=data.get("hit_die") or data.get("hit_dice")
+            hit = _class_hit_dice_entry(entity)
             if hit:
-                text=str(hit); text = text if text.lower().startswith("d") else f"d{text}"
-                add(text,"HP",f"{entity.name} class Hit Die")
+                add(hit["modifier"], hit["stat"], hit["note"])
+            saves = _class_saving_throw_entry(entity)
+            if saves:
+                add(saves["modifier"], saves["stat"], saves["note"])
         for item in _class_proficiency_entries(entity, how):
             add(item["modifier"], item["stat"], item["note"])
     return entries
@@ -410,12 +470,21 @@ def _sync_auto_blueprint(db: Session, char: ArchitectCharacter, origin_key: str,
     for item in _auto_entries(entity, how):
         db.add(ArchitectBlueprintEntry(
             public_id=_uid("pab"), architect_character_id=char.id, origin_kind="automated", origin_key=origin_key,
-            how=how, modifier=item["modifier"], stat=item["stat"], note=item["note"], is_locked=True,
+            how=how, modifier=item["modifier"], stat=item["stat"], source=item.get("source") or _entity_source(entity), note=item["note"], is_locked=True,
         ))
 
 
 def _blueprint(db: Session, char: ArchitectCharacter) -> list[ArchitectBlueprintEntry]:
-    return list(db.scalars(select(ArchitectBlueprintEntry).where(ArchitectBlueprintEntry.architect_character_id == char.id).order_by(ArchitectBlueprintEntry.id)).all())
+    rows = list(db.scalars(select(ArchitectBlueprintEntry).where(ArchitectBlueprintEntry.architect_character_id == char.id).order_by(ArchitectBlueprintEntry.id)).all())
+    result: list[ArchitectBlueprintEntry] = []
+    seen: set[tuple[str, str, str]] = set()
+    for row in rows:
+        key = ((row.how or "").casefold(), (row.modifier or "").casefold(), (row.stat or "").casefold())
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(row)
+    return result
 
 
 def _numeric_mod(value: str) -> int:
@@ -440,7 +509,9 @@ def _derived(db: Session, char: ArchitectCharacter) -> dict[str, Any]:
     # Conservative live HP preview. Exact class features remain blueprint-driven.
     class_entity=_entity(db,char.class_entity_id); hit_die=8
     if class_entity:
-        raw=(class_entity.data_json or {}).get("hit_die") or 8
+        class_data = class_entity.data_json or {}
+        hp_data = class_data.get("hit_points") if isinstance(class_data.get("hit_points"), dict) else {}
+        raw = hp_data.get("hit_dice") or class_data.get("hit_die") or class_data.get("hit_dice") or 8
         m=re.search(r"\d+",str(raw)); hit_die=int(m.group()) if m else 8
     hp=max(1, hit_die + ability_mods["con"] + (level-1)*(max(1, hit_die//2+1+ability_mods["con"])) + extra["HP"])
     return {"base":base,"score_mods":mods,"scores":scores,"ability_mods":ability_mods,"pb":pb,"ac":ac,"hp":hp}
@@ -551,7 +622,7 @@ async def blueprint_add(request: Request, public_id: str, user: User = Depends(r
     if str(form.get("verified") or "") not in {"1","on","true"}: raise HTTPException(400,"Verify the manual blueprint entry before saving")
     stat=str(form.get("stat") or "").strip(); modifier=str(form.get("modifier") or "").strip(); how=str(form.get("how") or "Manual").strip(); note=str(form.get("note") or "").strip()
     if stat not in STAT_OPTIONS or not modifier: raise HTTPException(400,"Stat and modifier are required")
-    db.add(ArchitectBlueprintEntry(public_id=_uid("pab"),architect_character_id=char.id,origin_kind="manual",origin_key=None,how=how,modifier=modifier,stat=stat,note=note,is_locked=False)); db.commit()
+    db.add(ArchitectBlueprintEntry(public_id=_uid("pab"),architect_character_id=char.id,origin_kind="manual",origin_key=None,how=how,modifier=modifier,stat=stat,source="Manual",note=note,is_locked=False)); db.commit()
     return RedirectResponse(f"/tools/player-architect/{char.public_id}?step={char.current_step}",303)
 
 

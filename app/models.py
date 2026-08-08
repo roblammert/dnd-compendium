@@ -239,6 +239,7 @@ class ArchitectBlueprintEntry(Base):
     how: Mapped[str] = mapped_column(String(80))
     modifier: Mapped[str] = mapped_column(String(80))
     stat: Mapped[str] = mapped_column(String(80))
+    source: Mapped[str | None] = mapped_column(String(255), nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_locked: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

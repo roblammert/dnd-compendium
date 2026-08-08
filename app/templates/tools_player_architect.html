@@ -26,8 +26,9 @@
   <aside class="pa-blueprint-drawer" data-pa-blueprint aria-label="Character Blueprint">
     <header><div><p class="eyebrow">Live Modifier Ledger</p><h2>Character Blueprint</h2></div><button type="button" class="pa-blueprint-collapse" data-pa-blueprint-toggle title="Close Blueprint" aria-label="Close Character Blueprint"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/><path d="M20 5l-7 7 7 7"/></svg></button></header>
     <p class="pa-blueprint-help">Automated entries are locked. Manual entries remain editable and can be removed after confirmation.</p>
-    <div class="pa-blueprint-table-wrap"><table class="pa-blueprint-table"><thead><tr><th></th><th>How</th><th>Mod</th><th>Stat</th><th>Note</th><th></th></tr></thead><tbody>
-      {% for row in blueprint_rows %}<tr class="{% if row.is_locked %}locked{% endif %}" data-pa-blueprint-row data-origin="{{ row.how }}" data-stat="{{ row.stat }}" data-mod="{{ row.modifier }}"><td>{{ '🔒' if row.is_locked else '✎' }}</td><td>{{ row.how }}</td><td>{{ row.modifier }}</td><td>{{ row.stat }}</td><td>{{ row.note or '' }}</td><td>{% if not row.is_locked %}<button type="button" class="pa-row-edit" data-pa-edit-blueprint='{{ {"id":row.public_id,"how":row.how,"modifier":row.modifier,"stat":row.stat,"note":row.note or ""}|tojson|forceescape }}'>Edit</button>{% endif %}</td></tr>{% else %}<tr><td colspan="6" class="pa-empty">No modifiers yet.</td></tr>{% endfor %}
+    <button type="button" class="primary-action pa-add-blueprint" data-pa-open="pa-blueprint-add">+ Manual Blueprint Entry</button>
+    <div class="pa-blueprint-table-wrap"><table class="pa-blueprint-table"><thead><tr><th></th><th>How</th><th>Mod</th><th>Stat</th><th>Source</th><th>Note</th><th></th></tr></thead><tbody>
+      {% for row in blueprint_rows %}<tr class="{% if row.is_locked %}locked{% endif %}" data-pa-blueprint-row data-origin="{{ row.how }}" data-stat="{{ row.stat }}" data-mod="{{ row.modifier }}"><td>{{ '🔒' if row.is_locked else '✎' }}</td><td>{{ row.how }}</td><td>{{ row.modifier }}</td><td>{{ row.stat }}</td><td>{{ row.source or ('Manual' if not row.is_locked else '') }}</td><td>{{ row.note or '' }}</td><td>{% if not row.is_locked %}<button type="button" class="pa-row-edit" data-pa-edit-blueprint='{{ {"id":row.public_id,"how":row.how,"modifier":row.modifier,"stat":row.stat,"note":row.note or ""}|tojson|forceescape }}'>Edit</button>{% endif %}</td></tr>{% else %}<tr><td colspan="7" class="pa-empty">No modifiers yet.</td></tr>{% endfor %}
     </tbody></table></div>
     <section class="pa-blueprint-choice-notes" data-pa-choice-section aria-labelledby="pa-choice-notes-title" {% if not blueprint_choice_notes %}hidden{% endif %}>
       <div class="pa-blueprint-choice-head">
@@ -41,7 +42,6 @@
       {% endfor %}
       </ul>
     </section>
-    <button type="button" class="primary-action pa-add-blueprint" data-pa-open="pa-blueprint-add">+ Manual Blueprint Entry</button>
   </aside>
 
   <footer class="pa-status-bar">

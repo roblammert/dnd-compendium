@@ -61,3 +61,9 @@ Player Architect reads primary classes and subclasses from the cached `classe` e
 ## v0.33.4 class proficiency and choice ledger
 
 Step 03 now parses source-wide class/subclass proficiency structures instead of assuming a single Open5e schema. Older `**Weapons:** ...` / `**Tools:** ...` proficiency prose and newer `CORE_TRAITS_TABLE` Markdown rows are normalized into Blueprint facts. Deterministic rules become locked automated Blueprint entries. Any rule containing a player decision such as `Choose`, `Select`, `Pick`, `one of`, or an either/or equipment choice is surfaced under **Needs Your Choice** rather than being guessed. Selecting a subclass never removes the primary class Blueprint entries; subclass entries are a separate locked origin layered on top.
+
+## v0.33.5 class parser rules
+
+Player Architect now treats structured class JSON as authoritative where it exists. Hit Dice are represented as their own Blueprint stat (for example `1d10 /Fighter Level`) and do not directly modify HP. Saving Throws come only from the class record's `saving_throws` array; save text repeated in proficiency/core-traits descriptions is ignored for automatic ledger generation. Weapon, Armor, Tool, and Skill entries are labeled as proficiencies, no-op values such as `None` or `0` are discarded, and automatic rows are deduplicated by How + Mod + Stat.
+
+Every persisted Blueprint row can carry a Source label. Automated rows inherit the selected compendium entity's source display name/document, while user-entered rows are attributed to `Manual`.
