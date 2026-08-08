@@ -1,1 +1,33 @@
-<section class="pa-stage" data-pa-stage="class"><div class="pa-stage-kicker">03</div><header><h2>Class & Subclass</h2><p>Select the primary class first. The optional subclass list is derived from cached <code>subclass_of</code> relationships and only shows children of the selected class.</p></header><form method="post" action="/tools/player-architect/{{ character.public_id }}/step/class" data-pa-form><h3>Primary Class</h3><div class="pa-card-grid">{% for e in class_rows %}<article class="pa-choice-card {% if character.class_entity_id==e.id %}selected{% endif %}" data-pa-class-card data-class-id="{{ e.id }}" data-class-name="{{ e.name|lower }}" data-class-key="{{ (e.canonical_key or e.slug or '')|lower }}" data-pa-auto-origin="Class" data-pa-auto='{{ auto_entries(e,"Class")|tojson|forceescape }}'><label><input type="radio" name="class_entity_id" value="{{ e.id }}" {% if character.class_entity_id==e.id %}checked{% endif %} required><span><strong>{{ e.name }}</strong><small>{{ e.source_display_name or e.source_document or 'Local Compendium' }}</small></span></label><p>{{ entity_description(e,230) or 'No brief description is available in this cached record.' }}</p><button type="button" class="pa-more-info" data-pa-info-url="/tools/player-architect/entity/{{ e.id }}/info">More Info</button></article>{% endfor %}</div><section class="pa-subclass-panel"><h3>Optional Subclass</h3><p class="pa-subclass-prompt" data-pa-subclass-prompt>{% if class_entity %}Showing subclasses linked to {{ class_entity.name }}.{% else %}Select a primary class to see its available subclasses.{% endif %}</p><div class="pa-card-grid compact" data-pa-subclass-grid>{% for e in all_subclass_rows %}<article class="pa-choice-card pa-subclass-card" data-pa-subclass-parent="{{ (_subclass_parent(e) if false else '') }}" data-parent-text="{{ ((e.data_json or {}).get('subclass_of') or (e.data_json or {}).get('class') or (e.data_json or {}).get('parent_class') or '')|string|lower|e }}" data-pa-auto-origin="Subclass" data-pa-auto='{{ auto_entries(e,"Subclass")|tojson|forceescape }}'><label><input type="radio" name="subclass_entity_id" value="{{ e.id }}" {% if character.subclass_entity_id==e.id %}checked{% endif %}><span><strong>{{ e.name }}</strong><small>{{ e.source_display_name or e.source_document or 'Local Compendium' }}</small></span></label><p>{{ entity_description(e,200) or 'Subclass details are available in More Info.' }}</p><button type="button" class="pa-more-info" data-pa-info-url="/tools/player-architect/entity/{{ e.id }}/info">More Info</button></article>{% endfor %}</div></section><div class="pa-stage-actions"><a class="secondary-action" href="?step=race">Previous</a><button class="primary-action">Save & Continue</button></div></form></section>
+<section class="pa-stage" data-pa-stage="class">
+  <div class="pa-stage-kicker">03</div>
+  <header><h2>Class & Subclass</h2><p>Select the primary class first. The optional subclass list is derived from cached <code>subclass_of</code> relationships and only shows children of the selected class.</p></header>
+  <form method="post" action="/tools/player-architect/{{ character.public_id }}/step/class" data-pa-form>
+    <h3>Primary Class</h3>
+    {% if class_rows %}
+    <div class="pa-choice-list" role="radiogroup" aria-label="Primary class">
+      {% for e in class_rows %}
+      <article class="pa-choice-row {% if character.class_entity_id==e.id %}selected{% endif %}" data-pa-class-card data-class-id="{{ e.id }}" data-class-name="{{ e.name|lower }}" data-class-key="{{ (e.canonical_key or e.slug or '')|lower }}" data-pa-auto-origin="Class" data-pa-auto='{{ auto_entries(e,"Class")|tojson|forceescape }}'>
+        <label class="pa-choice-main"><input type="radio" name="class_entity_id" value="{{ e.id }}" {% if character.class_entity_id==e.id %}checked{% endif %} required><span class="pa-choice-identity"><strong>{{ e.name }}</strong><small>{{ e.source_display_name or e.source_document or 'Local Compendium' }}</small></span><span class="pa-choice-summary">{{ entity_description(e,230) or 'No brief description is available in this cached record.' }}</span></label>
+        <button type="button" class="pa-more-info" data-pa-info-url="/tools/player-architect/entity/{{ e.id }}/info">More Info</button>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="pa-empty-panel"><strong>No primary classes were found.</strong><p>Player Architect found class endpoint records, but none qualified as primary classes. Re-sync the class endpoint if this remains empty.</p></div>
+    {% endif %}
+
+    <section class="pa-subclass-panel">
+      <h3>Optional Subclass</h3>
+      <p class="pa-subclass-prompt" data-pa-subclass-prompt>{% if class_entity %}Showing subclasses linked to {{ class_entity.name }}.{% else %}Select a primary class to see its available subclasses.{% endif %}</p>
+      <div class="pa-choice-list compact" data-pa-subclass-grid>
+        {% for e in all_subclass_rows %}
+        <article class="pa-choice-row pa-subclass-card" data-parent-text="{{ subclass_parent_text(e)|e }}" data-pa-auto-origin="Subclass" data-pa-auto='{{ auto_entries(e,"Subclass")|tojson|forceescape }}' hidden>
+          <label class="pa-choice-main"><input type="radio" name="subclass_entity_id" value="{{ e.id }}" {% if character.subclass_entity_id==e.id %}checked{% endif %}><span class="pa-choice-identity"><strong>{{ e.name }}</strong><small>{{ e.source_display_name or e.source_document or 'Local Compendium' }}</small></span><span class="pa-choice-summary">{{ entity_description(e,200) or 'Subclass details are available in More Info.' }}</span></label>
+          <button type="button" class="pa-more-info" data-pa-info-url="/tools/player-architect/entity/{{ e.id }}/info">More Info</button>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+    <div class="pa-stage-actions"><a class="secondary-action" href="?step=race">Previous</a><button class="primary-action">Save & Continue</button></div>
+  </form>
+</section>

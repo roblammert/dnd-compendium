@@ -1,1 +1,21 @@
-<section class="pa-stage" data-pa-stage="abilities"><div class="pa-stage-kicker">04</div><header><h2>Ability Scores</h2><p>Base scores stay immutable underneath the Blueprint. Blueprint modifiers are layered on top for every live calculation and are never written back into these base values.</p></header><form method="post" action="/tools/player-architect/{{ character.public_id }}/step/abilities" data-pa-form data-pa-ability-form><div class="pa-method-row">{% for value,label in [('standard_array','Standard Array'),('point_buy','Point Buy'),('rolled','Rolled'),('manual','Manual')] %}<label><input type="radio" name="ability_method" value="{{ value }}" {% if character.ability_method==value %}checked{% endif %}><span>{{ label }}</span></label>{% endfor %}<button type="button" class="secondary-action" data-pa-auto-abilities>Auto Fill / Roll</button></div><div class="pa-ability-editor">{% for a in abilities %}<label><span>{{ ability_labels[a] }}</span><input type="number" min="1" max="30" name="{{ a }}" value="{{ derived.base[a] }}" data-pa-base-score="{{ a }}" data-pa-blueprint-mod="{{ derived.score_mods[a] }}"><small>Base {{ derived.base[a] }} · Blueprint {{ '%+d'|format(derived.score_mods[a]) }} · Live {{ derived.scores[a] }}</small></label>{% endfor %}</div><aside class="pa-integrity-note"><strong>Integrity check</strong><p>On save, Player Architect scans the selected Race, Class, and Subclass for detectable minimum ability requirements. Any unmet minimum must be corrected before continuing.</p></aside><div class="pa-stage-actions"><a class="secondary-action" href="?step=class">Previous</a><button class="primary-action">Save & Continue</button></div></form></section>
+<section class="pa-stage" data-pa-stage="abilities">
+  <div class="pa-stage-kicker">04</div>
+  <header><h2>Ability Scores</h2><p>Base scores stay immutable underneath the Blueprint. Blueprint modifiers are layered on top for every live calculation and are never written back into these base values.</p></header>
+  <form method="post" action="/tools/player-architect/{{ character.public_id }}/step/abilities" data-pa-form data-pa-ability-form>
+    <div class="pa-method-row">
+      {% for value,label in [('standard_array','Standard Array'),('point_buy','Point Buy'),('rolled','Rolled'),('manual','Manual')] %}<label><input type="radio" name="ability_method" value="{{ value }}" {% if character.ability_method==value %}checked{% endif %}><span>{{ label }}</span></label>{% endfor %}
+      <button type="button" class="secondary-action pa-auto-roll" data-pa-auto-abilities>Auto Fill / Roll</button>
+    </div>
+    <div class="pa-ability-editor">
+      {% for a in abilities %}
+      <label class="pa-ability-card">
+        <span class="pa-ability-name">{{ ability_labels[a] }}</span>
+        <input type="number" min="1" max="30" name="{{ a }}" value="{{ derived.base[a] }}" data-pa-base-score="{{ a }}" data-pa-blueprint-mod="{{ derived.score_mods[a] }}">
+        <span class="pa-ability-breakdown"><b>Base {{ derived.base[a] }}</b><span>Blueprint {{ '%+d'|format(derived.score_mods[a]) }}</span><strong>Live {{ derived.scores[a] }}</strong></span>
+      </label>
+      {% endfor %}
+    </div>
+    <aside class="pa-integrity-note"><strong>Integrity check</strong><p>On save, Player Architect scans the selected Race, Class, and Subclass for detectable minimum ability requirements. Any unmet minimum must be corrected before continuing.</p></aside>
+    <div class="pa-stage-actions"><a class="secondary-action" href="?step=class">Previous</a><button class="primary-action">Save & Continue</button></div>
+  </form>
+</section>

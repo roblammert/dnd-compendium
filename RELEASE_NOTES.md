@@ -1,9 +1,9 @@
+
 ## v0.30.1 — Loot Generator Layout Hotfix
 
-- Corrects the Content Profile layout shown in the supplied screenshot.
-- Keeps checkbox labels inside their tiles and fieldsets.
-- Uses stable responsive columns for Include and Magic Item Rarity options.
-- Adds wrapping and minimum sizing for multi-word labels.
+- Corrected the Content Profile grid so Include and Magic Item Rarity controls remain inside their fieldsets.
+- Added stable checkbox-tile columns, label wrapping, equal tile sizing, and responsive breakpoints.
+- Prevented long labels such as Magic Items, Very Rare, and Legendary from overflowing or colliding.
 
 # Release Notes
 
@@ -262,7 +262,7 @@ This release refines Alignment, Background, Class, Condition, Creature Type, Dam
 - Added the D&D coin conversion tooltip to the Weapon card Cost value in the structured metadata table.
 - Corrected rendering of formatted Cost metadata objects.
 - Preserved the existing quick-stat Cost tooltip and omitted tooltips for unknown or zero costs.
-## v0.28.0 — Preferred Sources and Tools
+## v0.28.1 — Preferred Sources and Tools
 
 - Added a user-profile preferred source setting used automatically on multi-source entity cards.
 - Added a public Tools section with General, Player, and Dungeon Master navigation groups.
@@ -274,56 +274,61 @@ This release refines Alignment, Background, Class, Condition, Creature Type, Dam
 
 ## v0.28.1 — Loot Generator State and Metadata Fixes
 
-- Disable Magic Item Rarities whenever Magic Items are not included.
-- Preserve every Loot Generator option after generation, including unchecked values.
-- Reuse the Weapon card's source-aware Item fallback for Weapon Cost and Weight.
-- Apply Endpoint Management display labels to the Type column.
-- Add D&D coin-conversion tooltips to populated Cost cells.
-- Add regression coverage for Battleaxe Item fallback and form-state preservation.
-
+- Disabled Magic Item Rarities when Magic Items are excluded.
+- Preserved all generator form settings across repeated generation requests.
+- Reused source-aware Item metadata for Weapon Cost and Weight in generated loot.
+- Applied Endpoint Management labels to generated entity types.
+- Added cost conversion tooltips to populated Loot Generator rows.
 
 ## v0.28.2 — Encounter Console and Loot Value Controls
 
-- Rebuilds Encounter Builder with CR Range and Character XP Threshold modes.
-- Adds mixed-level party entry, Medium/Hard/Deadly budgets, preserved settings, and Keep rows.
-- Moves Lazy DM limiting into the scaling selector and adds high-tech metrics and analysis.
-- Removes coin categories from Loot Generator.
-- Adds 40 GP per-entry and 600 GP total-list value sliders.
+- Rebuilt the Encounter Builder as a professional, mode-aware encounter intelligence console.
+- Removed Manual Search and all mode-irrelevant controls from the active interface.
+- Added exact mixed-level party XP budgeting with Medium, Hard, and Deadly difficulty choices.
+- Added add/remove party-member level controls and per-member XP threshold breakdowns.
+- Moved Lazy DM limiting into the Scaling Strategy selector and applies it only when selected.
+- Added preserved encounter settings and Keep checkboxes that retain selected monsters between generations.
+- Added party-size and average-level inputs when CR mode requires variable or Lazy DM analysis.
+- Added encounter metrics for party composition, XP budget, selected XP, total CR, scaling ratio, and Lazy DM limit.
+- Removed PP, GP, SP, and CP generation controls from the Loot Generator.
+- Added separate Maximum Value per Entry and Maximum Total List Value sliders, defaulting to 40 GP and 600 GP.
+- Kept loot settings and kept rows persistent across repeated generation requests.
+- Added regression coverage for mixed-level budgets, supported encounter modes, keep controls, and loot value controls.
+
+### Mixed-level example clarification
+
+Using the supplied standard Medium thresholds, levels 2, 4, 6, 7, 8, and 10 total 3,800 XP (100 + 250 + 600 + 750 + 900 + 1,200), not 2,900 XP.
 
 ## v0.29.0 — Encounter Design Workbench
 
-- Rebuilds the Encounter Builder as a guided five-stage professional workflow.
-- Adds XP Threshold, 2014 Adjusted XP, Story-First Lazy Benchmark, Composition Template, and CR Band methods.
-- Adds mixed-level party setup, objective, terrain, pace, creature-theme, scaling, safety, and diagnostics controls.
-- Preserves settings and kept monsters across regeneration.
-- Adds a responsive high-tech tactical workbench interface.
+- Rebuilt Encounter Builder as a five-stage professional workflow.
+- Added Classic 2014 Adjusted XP, Story-First Lazy Benchmark, and composition-template build modes.
+- Added party profile, encounter objective, terrain, pace, and creature-theme controls.
+- Added raw/adjusted XP diagnostics, monster-count multipliers, and persistent keep behavior.
+- Added responsive high-tech workbench styling and method reference documentation.
 
 ## v0.29.1
 
-- Polished the Scenario Parameters cards so labels, selectors, and descriptions align without overflowing.
-- Applied Target Monster Count to XP Threshold, 2014 Adjusted XP, Story-First Benchmark, and CR Band generation.
-- Counted kept monsters against the requested target and generated only the remaining slots.
-- Rebuilt Loot Generator with the tactical workbench header, workflow navigation, structured panels, metrics dashboard, sticky generation dock, and matching roster table.
-# D&D Compendium v0.30.0 Patch
+- Polished Scenario Parameters alignment and constrained all controls to their cards.
+- Made Target Monster Count apply to XP Budget, Adjusted XP, Story-First, and CR Randomizer generation; kept monsters count toward the target.
+- Rebuilt Loot Generator with the Encounter Builder tactical workbench styling, workflow navigation, metrics, and roster presentation.
 
-This release adds generated-result list assignment, modernizes My Lists, and introduces the first complete Player tool suite.
+## v0.30.0 — Generated Lists and Player Tools
 
-## Included
-
-- Bulk list assignment endpoint and reusable Add to List modal
-- Encounter and Loot Generator Add to List actions
-- Modal-only list creation and public list discovery sections
-- Loadout Generator
-- Feat Evaluator
-- Weapon & Martial Arts Evaluator
-- Tactical workbench CSS for Player tools
-- Regression tests
+- Added bulk Add to List modals to Encounter Builder, Loot Generator, and Loadout Generator results.
+- Added support for adding generated results to an existing list or creating a new public/private list.
+- Redesigned My Lists with a modal-based creation flow and separate My Lists and Other's Lists sections.
+- Added Loadout Generator with cost/weight constraints, keepable rows, total weight/cost, armor class, stealth disadvantage, and Strength requirement analysis.
+- Added Feat Evaluator with level, ability score, and proficiency-aware prerequisite filtering.
+- Added Weapon & Martial Arts Evaluator with side-by-side damage, properties/mastery, range, source, and source-aware cost comparison.
+- Extended the tactical workbench visual system across all new Player tools.
 
 ## v0.30.2
 
 - Rendered structured Feat Evaluator descriptions as Markdown with emphasis and tables.
 - Fixed Loadout Generator content-card label layout.
 - Standardized accessible cost-conversion tooltips across all Tools cost tables.
+
 
 ## v0.30.3 — Evaluator Filtering
 
@@ -339,12 +344,16 @@ This release adds generated-result list assignment, modernizes My Lists, and int
 
 ## v0.31.0 - Character Builder
 
-- Added persistent user-owned characters and a nine-stage HTMX Character Builder.
-- Added source-aware Species/Race, Class, Background, Equipment, Spell, and Feat choices from local Open5e data.
-- Added character derivation for proficiency, abilities, HP, AC, initiative, saves, skills, attacks, passive Perception, and spellcasting.
-- Added three-page print output and direct PDF generation with WeasyPrint.
-- Added Docker PDF-rendering dependencies and Character Builder architecture documentation.
-- Added v0.31 regression tests.
+- Added a persistent, user-owned Character Builder under Player Tools.
+- Added a nine-stage HTMX character creation and maintenance workflow.
+- Added source-aware Species/Race, Class, Background, Equipment, Spell, and Feat selection from the local Open5e cache.
+- Added Standard Array, Point Buy, Rolled, and Manual ability-score workflows.
+- Added a backend character derivation engine for proficiency bonus, modifiers, HP, AC, initiative, speed, saves, skills, passive Perception, attacks, and spellcasting numbers.
+- Added inventory, currency, known/prepared spells, proficiencies, appearance, backstory, personality, allies, treasure, and notes persistence.
+- Added a three-page printable character sheet and direct PDF download via WeasyPrint.
+- Added Docker dependencies required for PDF generation.
+- Added `CHARACTER_BUILDER.md` architecture and extension documentation.
+- Added v0.31 regression tests; full suite: 129 passed.
 
 ## v0.31.1 - Locked 2024 Character Rules
 
@@ -357,63 +366,58 @@ This release adds generated-result list assignment, modernizes My Lists, and int
 
 ## v0.31.2 - Character Builder Navigation & Asset Reliability
 
-- Makes every Character Builder step form progressively enhanced with both normal POST and HTMX submission paths.
-- Fixes Save & Continue returning to Identity when HTMX is unavailable or fails to initialize.
-- Redirects direct `/step/{step}` browser requests to the full Character Builder page instead of rendering a fragment without site CSS/navigation.
-- Adds application-version cache busting to CSS, HTMX, and JavaScript asset URLs.
-- Adds regression coverage for all Character Builder step forms and fragment routing.
+- Fixed Character Builder step forms so they work with or without HTMX by providing normal POST `method` and `action` attributes in addition to `hx-post`.
+- Fixed Save & Continue on Identity and every subsequent Character Builder step so a valid save advances to the requested next stage even when HTMX fails to initialize.
+- Direct visits to `/step/{step}` fragment URLs now redirect to the full Character Builder shell instead of rendering an unstyled partial document.
+- Added version query strings to application CSS, HTMX, and JavaScript assets to prevent stale browser caches after upgrades.
+- Added regression tests covering progressive-enhancement form wiring, fragment redirects, and asset cache busting.
 
-## v0.31.3 — Character Builder Guided Choice UX
+## v0.31.4 — Character Builder Guided Choice UX
 
-- Removes repeated ruleset/source callouts from builder cards.
-- Adds descriptive Species/Race, Class, Subclass, and Background cards with More Info modals loading the cached Compendium card.
-- Groups subclasses under their primary class and filters them live.
-- Repairs Ability Score method controls and adds Standard Array, exact 27-point Point Buy, and 4d6-drop-lowest auto generation with instant modifier updates.
-- Supports legacy cached backgrounds under the 2024 conversion rules while preferring 2024 variants when duplicates exist.
-- Repairs Alignment availability by using the best cached variant when a dedicated 2024 record is absent.
-- Replaces free-text language/proficiency entry with selectable controls.
-- Adds a persistent Live Abilities rail after the Ability Scores step with green/red five-second change feedback.
+- Removed repeated ruleset/source callouts from the Character Builder stages.
+- Added concise Species/Race, Class, Subclass, and Background descriptions with cached Compendium **More Info** modals.
+- Grouped subclasses beneath their parent class and enabled them only after the matching primary class is selected.
+- Rebuilt Ability Score method controls, added Standard Array / Point Buy / 4d6-drop-lowest auto generation, and added instant modifier updates.
+- Expanded Background selection to support legacy cached backgrounds under 2024 conversion rules while preferring 2024 variants where available.
+- Fixed Alignment options when no dedicated 2024 alignment records exist.
+- Replaced free-text language/proficiency entry with selectable controls.
+- Added the sticky Live Abilities rail from Background through Review with five-second green/red change feedback.
+- Added v0.31.4 regression coverage.
 
-## v0.31.4 — Character Builder class normalization and reference-modal hotfix
-
-- Keeps Character Builder More Info modals read-only by removing raw JSON, list actions, and artwork upload/link controls from embedded Compendium cards.
-- Normalizes the class catalog into the twelve 2024 primary classes and nests recognized 2024 subclasses beneath their correct parent class even when Open5e exposes them through a class-shaped endpoint.
-- Expands subclass-parent aliases for the 48 subclasses in the 2024 Player's Handbook naming scheme, including College of Lore and Circle of the Land.
-- Fixes a Jinja context collision that caused a 500 error immediately after saving Ability Scores and advancing to Background & Proficiencies.
 
 ## v0.31.5 — Character Builder live stats and background workflow refinement
 
-- Reworked the right rail into compact Live Stats (HP, AC, PB) and three-letter Live Abilities rows.
-- Removed HP/AC/PB from Build Status and eliminated duplicate/bottom ability rails by using a live-state HTMX payload instead of out-of-band rail rendering.
-- Added Level/XP synchronization using the bundled 2024 XP thresholds, with backend normalization.
+- Reworked the Character Builder right rail into compact Live Stats (HP, AC, PB) and three-letter Live Abilities rows.
+- Removed HP/AC/PB from the Build Status header and eliminated duplicate/bottom ability rails by replacing HTMX out-of-band rail rendering with a live-state payload.
+- Added bidirectional Level/XP synchronization using the 2024 XP thresholds, with server-side normalization.
 - Rebuilt Background & Proficiencies layout to prevent truncated controls and horizontal overflow.
 - Background descriptions are capped at 220 characters in the workflow while More Info retains the complete cached reference card.
-- Background-granted skills and tool proficiencies are shown checked, locked, and read-only and are included in derived character output.
-- Background selections preserve the exact source variant by public ID while legacy canonical selections continue to resolve.
+- Background-granted skills and tool proficiencies are shown checked, locked, and read-only; derived character output includes them automatically.
+- Background selections now preserve the exact source variant by public ID, while legacy canonical selections continue to resolve.
 - Removed class saving-throw abbreviations from the Other Proficiencies picker.
 
 
-## v0.31.6 — Character Builder live rules and equipment workflow
+## v0.31.6 — Character Builder rules-aware UI and equipment workflow
 
-- Compacts the right-side Live Stats / Live Abilities rail so HP, AC, PB, ability score, and modifier information uses much less horizontal space.
-- Synchronizes Level and XP immediately in both directions while editing Identity.
-- Normalizes the class key used by the subclass filter so only subclasses belonging to the selected primary class are shown.
-- Shows and persists Background Ability Adjustment only for exact `srd-2024` / 5e 2024 Rules backgrounds; legacy backgrounds no longer receive that ASI widget.
-- Locks Common as the universal language and limits the normal origin language picker to two additional languages.
-- Makes skills, languages, and other proficiency rows open read-only reference information inside the Character Builder modal when cached endpoint data exists.
-- Rebuilds Equipment & Attacks with automatic class/background/species starting-equipment grants, locked granted rows, duplicate generic Item suppression when a dedicated Weapon/Armor exists, Endpoint Management display labels as pills, source-aware Weapon→Item cost fallback, live purchased-equipment cost, armor training checks, and one-suit/one-shield enforcement.
-- Adds compact 2024 Basic Rules fallback metadata for class armor/weapon training and Package A starting equipment when Open5e does not expose structured values.
+- Compacts the Live Stats/Abilities rail and keeps score/modifier values on one line.
+- Makes Level and XP synchronize immediately in the Identity step.
+- Restricts subclass choices to the selected primary class.
+- Shows Background Ability Adjustment only for exact 5e 2024 Rules backgrounds.
+- Locks Common and 2024 background-granted proficiencies while adding in-builder reference modals.
+- Rebuilds Equipment & Attacks with automatic starting grants, duplicate item suppression, armor-training/one-suit limits, endpoint display pills, source-aware weapon costs, live Equipment Cost, and More Info modals.
 
 ## v0.31.7 — Character Builder controlled navigation, live search, and spell/feat rules
 
-- Non-clickable step rail with guarded Up/Down controls.
-- Fully visible Background skill/language/proficiency grids.
-- Debounced SQLite wildcard search and live type filters for Equipment.
-- Correct live armor deselection/reselection behavior.
-- Debounced class-specific Spell search with level/selected filters.
-- All-source spell/feat reference choices with source pills and More Info modals.
-- 2024 spell selection/preparation limits and feat prerequisite enforcement.
-- Locked background grants remain persisted server-side.
+- Made the nine Character Builder step indicators non-clickable and added explicit Up/Down movement controls beneath the step list; forward movement is disabled until the active step is complete.
+- Rebuilt Background skill, language, and other-proficiency pickers as fully visible non-scrolling grids.
+- Added server-backed debounced Equipment search using SQLite `LIKE`/`ILIKE` matching against both names and cached JSON/description content, plus All/Armor/Item/Weapon/All Selected filtering.
+- Kept selected armor enabled so it can always be removed; conflicting armor choices unlock immediately without a refresh.
+- Added server-backed debounced Spell search with available-level and All Selected filtering.
+- Expanded Spell selection across cached sources while requiring an explicit class/Available-To designation for the selected primary class.
+- Added source pills and read-only More Info modals to spell choices.
+- Added 2024 class/level spell-selection limits for cantrips, chosen levelled spells, and prepared spells, enforced in both browser behavior and server persistence.
+- Expanded Feats across all cached sources, disabled feats with detectable unmet prerequisites, and added source pills and More Info modals.
+- Preserved background-granted locked skills and tool proficiencies on POST even though locked controls are disabled in HTML.
 
 ## v0.31.8 — Character Builder guarded navigation and reliable filtering
 
@@ -452,12 +456,14 @@ This release adds generated-result list assignment, modernizes My Lists, and int
 - Any actual persisted change saved on Steps 1–8 now automatically clears `is_complete`, returning the character to Draft until explicitly completed again on Step 9.
 - Navigation-only changes do not invalidate completion because `current_step` is excluded from the completion-state fingerprint.
 
+
 ## v0.31.12 - Character Review layout alignment hotfix
 
 - Re-aligned Review ability score rows so ability abbreviation, score, and modifier remain cleanly on one line.
 - Increased Review ability score prominence while preserving the smaller modifier typography.
 - Replaced the oversized completion checkbox presentation with an explicitly sized native checkbox and compact inline label.
 - Constrained the completion control so its label remains inside the Character Status panel.
+
 
 ## v0.31.13 - Character Review ability-tile fit hotfix
 
@@ -467,53 +473,35 @@ This release adds generated-result list assignment, modernizes My Lists, and int
 
 ## v0.31.14 - Printable Character Sheet Layout
 
-This release restructures the printable/PDF character sheet for US Letter output.
-
-- Printable `Armor Class` is shortened to `AC`.
-- Hit Dice and Proficiency Bonus now sit above the HP row.
-- Current HP and Temp HP share a single row and use compact `HP` labels.
-- Personality Traits, Ideals, Bonds, Flaws, and page-two narrative boxes size to their content with a two-line minimum instead of large fixed empty regions.
-- Equipment moved into the third column beneath Flaws, aligned with the top of Attacks & Spellcasting.
-- The old combined Features & Traits region is split into full-width Traits and Features boxes.
-- Traits and Features render Markdown emphasis, lists, blockquotes, and tables.
-- Printable panels are allowed to grow naturally; WeasyPrint retains US Letter page sizing and can paginate longer content instead of clipping it.
-
-## v0.32.0 - Printable Character Sheet Rework
-
-The Character Builder print/PDF subsystem has been redesigned from the ground up after reviewing more than twenty official and community D&D 5e/2024 character-sheet approaches. The new layout prioritizes at-the-table scan speed, complete information, printer efficiency, and safe content pagination.
-
-The first page is a combat-first dashboard with identity, core statistics, grouped ability/skill cards, attacks, defenses, languages, proficiencies, currency, and feature names. Inventory and detailed rules content move to reference sections where Markdown can render without compression. Narrative information uses content-driven sizing, and spellcasting is included only when relevant. Long content continues onto additional US Letter pages instead of overflowing or being clipped.
-
-Every printed page includes `Generated with Rob's D&D Compendium - {version} - {YYYYMMDD}`.
+- Renamed printable Armor Class to AC.
+- Moved Hit Dice and Proficiency Bonus above the HP row.
+- Split the former HP blocks into Current HP and Temp HP boxes on one line.
+- Made narrative boxes content-driven with a two-line minimum instead of fixed empty height.
+- Moved Equipment into the third-column position aligned with Attacks & Spellcasting.
+- Split Traits and Features into separate full-width printable sections.
+- Added print-specific Markdown rendering for emphasis, lists, blockquotes, and tables.
+- Removed fixed-height narrative regions on page 2 so content grows naturally while Letter-size pagination is preserved.
 
 ## v0.32.1 - Printable Sheet Data & Pagination Repair
 
-- Printable Traits extract Species trait blocks and Class core-trait metadata from cached Open5e JSON.
-- Open5e progression-table placeholders such as `[Column data]` are removed from printable Features.
-- Features begin on a fresh US Letter page.
-- Long Equipment lists use paired Item/Type columns with a center gutter.
-- Paged-media footers reserve their own page area to prevent content collisions.
+- Printable Traits now extract species trait blocks and class core-trait metadata from cached Open5e JSON instead of relying only on a top-level description.
+- Class feature normalization discards Open5e progression-table placeholder rows such as `[Column data]`, ordinal table cells, proficiency columns, and class spell-list appendices.
+- Features begin on a fresh US Letter page and use full-width flowing cards.
+- Equipment switches to a four-data-column layout (`Item | Type | gutter | Item | Type`) when more than 10 entries are present.
+- WeasyPrint page-margin footers now reserve their own page area so rules content cannot be printed through the footer.
 - Footer left: `Generated with Rob's D&D Compendium - {version} - {YYYYMMDD}`.
 - Footer right: `{Character Name} - {Player Name} - {Page}/{Total Pages}`.
 
-## v0.32.2
-- Rebuilt print footers as a continuous full-width rule with left generation metadata and right character/player/page numbering.
-- Footer generation timestamp now includes Central time in `YYYYMMDD HH:MM` format.
-- Printable feat descriptions now merge structured benefits/effects/descriptions instead of relying only on top-level summaries.
-- Removed the Traits explanatory subheader.
-- Added character-specific `Hit Dice & How to Use Them` and `How Do I Roll...` play-reference panels beneath the ability scores.
-- Added species-per-level HP adjustments such as 2024 Dwarven Toughness to derived maximum HP and level-up guidance.
-- Removed Electrum from the printable currency panel and leaves zero-value coin boxes blank for handwriting.
-- Increased the reserved print footer margin and tightened trait fragmentation to prevent content/footer collisions.
-
 ## v0.32.3 - Printable play tracking and spell guidance
+
 - Added printable Hit Dice usage pips beside the character's Hit Dice value.
-- Added all 15 D&D 2024 core conditions as a three-column Condition Tracker.
+- Added the 15 D&D 2024 core conditions as a three-column Condition Tracker on the core play page.
 - Added the coin-equivalency reminder to the Currency title bar.
-- Spell-level headings are now unfilled/handwriting-friendly and show non-zero slot totals for the character's class and level.
-- Prepared spell pips print empty for manual tracking during play.
+- Reworked spell-level headers for handwriting-friendly slot tracking and populated class/level slot totals when non-zero.
+- Prepared-spell markers now print empty so players can track them manually at the table.
 - Added a personalized Spell Usage reference covering cantrips, leveled spells, slots, preparation, spellcasting math, Concentration, and components.
-- Strengthened the footer into one continuous full-width rule while preserving Central-time generation stamps and character/player page numbering.
+- Strengthened the print footer into a single full-width rule while preserving Central-time generation stamps and character/player page numbering.
+
 
 # D&D Compendium v0.32.4 Patch
 
@@ -524,73 +512,69 @@ Every printed page includes `Generated with Rob's D&D Compendium - {version} - {
 - Printable Spellcasting page now always provides eight cantrip lines and nine writable spell-level boxes with calculated slot totals.
 - Spell Usage is anchored at the bottom and explains fixed cantrips, prepared-spell changes after Long Rest/level-up, slot use, casting math, concentration, and components.
 
-
 # D&D Compendium v0.32.5 Patch
 
-## Spellcasting Print Layout
+## v0.32.5 — Spell Sheet Workspace Refinement
 
-- Every spell level (1–9) now contains nine writable spell lines.
-- Ability, Save DC, Attack, and Cantrips summary cards are stacked vertically.
-- The summary stack shares the top row with the eight-line Cantrips panel.
-- The layout remains US Letter and keeps Spell Usage above the footer.
-
+- Expanded every level 1–9 spell-writing box from four writable lines to nine.
+- Reworked the Spellcasting header so Ability, Save DC, Attack, and Cantrips cards stack vertically at their existing compact width.
+- Positioned the eight-line Cantrips panel beside the stacked summary cards to use the top of the US Letter page more efficiently.
+- Preserved the bottom-anchored Spell Usage reference and class-aware slot totals.
 
 
 # D&D Compendium v0.32.6 Patch
 
-This patch refines the printable character sheet.
+## v0.32.6 — Printable Inventory and Spell Workspace Refinement
 
-## Changes
+- Moved Skill Proficiencies and Saving Throw Proficiencies beneath At-a-Glance Features on the core play page.
+- Expanded printable Equipment into three balanced Item / Type / Weight groups across the page with gutters and blank write-in rows.
+- Added source-aware Weapon weight fallback using matching Item records, consistent with the Weapon card behavior.
+- Removed the explanatory footer text from the Equipment panel.
+- Expanded each spell-level writing area to ten lines and matched the writable line height to the Cantrips panel while preserving the single-page US Letter spell workspace.
 
-- Skill Proficiencies and Saving Throw Proficiencies now live directly below At-a-Glance Features on the core page.
-- Equipment now prints in three balanced groups spanning the page. Each group contains Item, Type, and Weight columns, separated by gutters.
-- Equipment includes blank rows for additions made during play.
-- Weapon weight uses the same source-aware Item fallback used elsewhere in the application when the Weapon endpoint has no usable weight.
-- Removed the Equipment explanatory note below the table.
-- Every spell level now has ten writable lines.
-- Spell-level line spacing matches the Cantrips writing area and remains contained within one US Letter spellcasting page.
+# D&D Compendium v0.32.7
+
+## v0.32.7 — Printable Core Reference and Inventory Refinement
+
+- Equipment now prints three full Item / Type / Value / Weight groups across the page.
+- Printable Equipment Value uses the same source-aware cost fallback used by Weapon cards.
+- Empty equipment rows retain the same height as populated rows for handwriting during play.
+- Currency moved beneath the How Do I Roll reference on the left side of the core page.
+- Skill Proficiencies and Saving Throw Proficiencies now sit directly beneath Proficiencies.
+- At-a-Glance Features now uses two columns to reduce vertical space while keeping all entries readable.
+
+# D&D Compendium v0.32.8
+
+## v0.32.8 — Version Centralization and Print Layout Repair
+
+- Added `app/version.py` as the single runtime source for the application version and updated all Jinja environments to import it instead of carrying stale hard-coded values.
+- Replaced the Character Builder step mover glyphs with centered SVG arrow icons.
+- Corrected the printable spell-level workspace so all ten writing lines fit inside every Level 1–9 box without overflow.
+- Removed the internal vertical separators around Ability Score modifiers on the printable core page.
+- Moved Currency beneath At-a-Glance Features on the core play page while retaining the coin conversion reminder.
+
+# D&D Compendium v0.33.0
+
+## Player Architect — Stage 1
+
+- Added a completely separate Player Architect subsystem under Tools > Player, clearly marked **IN DEVELOPMENT**.
+- Added persistent `architect_characters` and `architect_blueprint_entries` tables without reusing Player Builder character state.
+- Added a compact character-library landing page with Create, Modify, PDF placeholder, and confirmed Delete actions.
+- Added a responsive application shell with a fixed progress sidebar, scrollable workspace, collapsible Character Blueprint drawer, and fixed live-stat footer.
+- Implemented Identity, Race/Species, Class/Subclass, Ability Scores, and Background/Alignment stages using the complete active compendium catalogs rather than the Player Builder's 2024-source restriction.
+- Added automatic locked Blueprint entries for detectable ability, language, class Hit Die, and proficiency changes.
+- Added verified user-created Blueprint entries that can be edited or deleted while automated entries remain immutable.
+- Base ability scores are stored independently from Blueprint modifiers; live ability totals, AC, PB, and HP are derived without overwriting base values.
+- Added minimum-ability requirement checks where cached race/class/subclass prerequisite data can be detected.
+- Added Proficiencies, Languages, Feats, Cantrips & Spells, Character Details, and Review & Sheet stub stages for subsequent development.
 
 
+## v0.33.1 - Player Architect Stage 1 UI repairs
 
-# D&D Compendium v0.32.7 Patch
-
-This patch refines the printable character sheet's core reference and inventory layout.
-
-## Changes
-
-- Equipment now has three complete Item / Type / Value / Weight groups across the page.
-- Added the Value column between Type and Weight in all three equipment groups.
-- Equipment Value uses the source-aware Item fallback for Weapons when the Weapon endpoint has no usable cost.
-- Blank equipment rows are the same height as populated rows so players can write additions during play.
-- Currency moved beneath the How Do I Roll guide.
-- Skill Proficiencies and Saving Throw Proficiencies moved directly beneath Proficiencies.
-- At-a-Glance Features now renders in two columns for better use of vertical space.
-
-# D&D Compendium v0.32.8 Patch
-
-## Changes
-
-- Centralizes runtime versioning in `app/version.py`; `main.py`, Tools, Character Builder, and user/profile templates all consume the same `APP_VERSION` value.
-- Replaces plain up/down glyphs beneath the Character Builder steps with centered SVG arrow controls.
-- Makes each printable spell-level box a fixed flex layout so all ten write-in rows remain inside the box.
-- Removes the two vertical separator borders between the Ability Score and modifier on printable ability cards.
-- Moves the Currency panel beneath At-a-Glance Features.
-
-
-# D&D Compendium v0.33.0 — Player Architect Stage 1
-
-- Adds the experimental **Player Architect** under Tools > Player with an **IN DEVELOPMENT** pill.
-- Keeps Player Architect code and persistent state separate from the existing Player Builder.
-- Adds the Player Architect character library with icon-driven Modify, PDF placeholder, and confirmed Delete actions plus a modal + Create flow.
-- Adds a responsive application shell with a persistent progress sidebar, scrollable work area, collapsible Character Blueprint drawer, and fixed live-stat footer.
-- Adds independent `architect_characters` and `architect_blueprint_entries` tables.
-- Implements Identity, Race/Species, Class/Subclass, Ability Scores, and Background/Alignment.
-- Reads Race/Species, Class/Subclass, Background, and Alignment options from all active compendium sources with no 2024-only source restriction.
-- Detects subclasses through cached `subclass_of`/parent metadata and filters them live by selected primary class.
-- Adds a Character Blueprint ledger with immutable automated entries and verified editable/deletable manual entries.
-- Stores base ability scores separately from Blueprint modifications and derives live scores, AC, PB, and HP without overwriting base values.
-- Adds best-effort automatic Blueprint extraction for ability modifiers, languages, Hit Die, and saving-throw proficiency metadata.
-- Adds detectable Race/Class/Subclass minimum ability checks before leaving Ability Scores.
-- Adds read-only More Info modals backed by cached Compendium entities.
-- Stubs Proficiencies, Languages, Feats, Cantrips & Spells, Character Details, and Review & Sheet for subsequent Player Architect milestones.
-- Bumps the application to v0.33.0.
+- Rebuilt Race / Species and Class selectors as full-width rows for reliable desktop, tablet, and mobile layout.
+- Fixed primary Class classification so generic class metadata no longer causes every class to be mistaken for a subclass.
+- Added explicit subclass parent metadata for live filtering beneath the selected primary class.
+- Reworked Ability Scores into a compact responsive 3x2 editor with Base / Blueprint / Live values.
+- Rebuilt Background & Alignment into four explicit rows with live description updates and More Info actions.
+- Converted Character Blueprint into a 70%-width overlay drawer with scrim, collapse control, and persistent vertical reopen tab.
+- Player Architect workspace now uses the full content width while the Blueprint is closed.

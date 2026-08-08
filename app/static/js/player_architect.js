@@ -10,7 +10,7 @@
     const del=event.target.closest('[data-pa-delete]');
     if(del){ $('#pa-delete-name').textContent=del.dataset.paName; $('#pa-delete-form').action=`/tools/player-architect/${del.dataset.paDelete}/delete`; openDialog('pa-delete-dialog'); return; }
     const toggle=event.target.closest('[data-pa-blueprint-toggle]');
-    if(toggle){ document.body.classList.toggle('pa-blueprint-collapsed'); return; }
+    if(toggle){ const opening=!document.body.classList.contains('pa-blueprint-open'); document.body.classList.toggle('pa-blueprint-open',opening); document.querySelectorAll('[data-pa-blueprint-toggle]').forEach(b=>b.setAttribute('aria-expanded', opening?'true':'false')); return; }
     const info=event.target.closest('[data-pa-info-url]');
     if(info && !info.disabled){ await showInfo(info.dataset.paInfoUrl); return; }
     const selectInfo=event.target.closest('[data-pa-select-info]');
@@ -104,5 +104,5 @@
   primaryClassInputs.forEach(i=>i.addEventListener('change',filterSubclasses)); filterSubclasses();
 
   // Choice cards gain selected state immediately for touch/tablet feedback.
-  $$('.pa-choice-card input[type=radio]').forEach(input=>input.addEventListener('change',()=>{ const name=input.name; $$(`input[name="${name}"]`).forEach(i=>i.closest('.pa-choice-card')?.classList.toggle('selected',i.checked)); }));
+  $$('.pa-choice-card input[type=radio], .pa-choice-row input[type=radio]').forEach(input=>input.addEventListener('change',()=>{ const name=input.name; $$(`input[name="${name}"]`).forEach(i=>{ const card=i.closest('.pa-choice-card, .pa-choice-row'); card?.classList.toggle('selected',i.checked); }); }));
 })();

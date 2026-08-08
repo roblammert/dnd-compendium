@@ -91,19 +91,45 @@ def _all_entities(db: Session, kinds: list[str]) -> list[Entity]:
     return list(db.scalars(select(Entity).where(Entity.entity_type.in_(kinds), Entity.is_active.is_(True)).order_by(Entity.name, Entity.source_display_name, Entity.id)).all())
 
 
-def _subclass_parent(entity: Entity) -> str:
+def _subclass_parent_parts(entity: Entity) -> tuple[str, str]:
+    """Return normalized (key, name) for a genuine subclass parent.
+
+    Some Open5e class records contain a generic ``class`` field describing
+    themselves. Treating that field as a parent relationship emptied the PA
+    primary-class catalog. Only explicit subclass relationships classify a
+    normal ``class`` record as a subclass. For records from the dedicated
+    ``subclass`` endpoint, the legacy ``class`` field is accepted as a
+    fallback because several third-party sources use that shape.
+    """
     data = entity.data_json or {}
-    parent = data.get("subclass_of") or data.get("class") or data.get("parent_class")
+    parent = data.get("subclass_of") or data.get("parent_class")
+    if not parent and entity.entity_type == "subclass":
+        parent = data.get("class")
     if isinstance(parent, dict):
-        return str(parent.get("key") or parent.get("name") or "").casefold()
-    return str(parent or "").casefold()
+        return (str(parent.get("key") or "").casefold(), str(parent.get("name") or "").casefold())
+    text = str(parent or "").casefold().strip()
+    return (text, text)
+
+
+def _subclass_parent(entity: Entity) -> str:
+    key, name = _subclass_parent_parts(entity)
+    return " ".join(part for part in (key, name) if part).strip()
+
+
+def _subclass_parent_text(entity: Entity) -> str:
+    key, name = _subclass_parent_parts(entity)
+    return " ".join(dict.fromkeys(part for part in (key, name) if part))
 
 
 def _class_catalog(db: Session) -> tuple[list[Entity], list[Entity]]:
     rows = _all_entities(db, ["class", "subclass"])
     primary, subclasses = [], []
     for row in rows:
-        if row.entity_type == "subclass" or _subclass_parent(row):
+        # Dedicated subclass rows are always subclasses. A class-endpoint row
+        # moves under a parent only when it explicitly declares subclass_of or
+        # parent_class; a generic self-referential `class` field is ignored.
+        explicit_parent = bool((row.data_json or {}).get("subclass_of") or (row.data_json or {}).get("parent_class"))
+        if row.entity_type == "subclass" or explicit_parent:
             subclasses.append(row)
         else:
             primary.append(row)
@@ -250,7 +276,7 @@ def _context(db: Session, char: ArchitectCharacter, step: str, **extra):
         "auto_entries":_auto_entries,
         "background_rows":_all_entities(db,["background"]),"alignment_rows":_all_entities(db,["alignment"]),
         "ability_labels":ABILITY_LABELS,"ability_names":ABILITY_NAMES,"abilities":ABILITIES,"level_xp":LEVEL_XP,"stat_options":STAT_OPTIONS,
-        "entity_description":_entity_description, **extra,
+        "entity_description":_entity_description,"subclass_parent_text":_subclass_parent_text, **extra,
     }
 
 

@@ -44,3 +44,8 @@ Every modifier is represented as a ledger row with:
 Automated entries are regenerated when their owning Race, Class, Subclass, or Background changes. Manual entries require explicit verification and remain user-editable/removable.
 
 Base ability scores are never rewritten by Blueprint modifiers. Live values are derived as `base + blueprint`, preserving an auditable history of how a character reached its current numbers.
+
+
+## v0.33.1 Stage 1 UI corrections
+
+The main workspace is full width. Character Blueprint is now an overlay drawer rather than a permanent third column. Race/Species and Class/Subclass use row selectors; Ability Scores uses a responsive 3x2 card layout; Background and Alignment use dedicated selector/description rows. Primary class detection ignores generic self-referential `class` fields and only treats explicit parent relationships as subclass metadata.

@@ -1,1 +1,22 @@
-<section class="pa-stage" data-pa-stage="race"><div class="pa-stage-kicker">02</div><header><h2>Race / Species</h2><p>Choose from every active Race or Species record in the compendium. Source restrictions are intentionally not applied in Player Architect.</p></header><form method="post" action="/tools/player-architect/{{ character.public_id }}/step/race" data-pa-form><div class="pa-card-grid">{% for e in race_rows %}<article class="pa-choice-card {% if character.race_entity_id==e.id %}selected{% endif %}" data-pa-auto-origin="Race" data-pa-auto='{{ auto_entries(e,"Race")|tojson|forceescape }}'><label><input type="radio" name="race_entity_id" value="{{ e.id }}" {% if character.race_entity_id==e.id %}checked{% endif %} required><span><strong>{{ e.name }}</strong><small>{{ e.source_display_name or e.source_document or 'Local Compendium' }}</small></span></label><p>{{ entity_description(e,260) or 'No brief description is available in this cached record.' }}</p><button type="button" class="pa-more-info" data-pa-info-url="/tools/player-architect/entity/{{ e.id }}/info">More Info</button></article>{% endfor %}</div><div class="pa-stage-actions"><a class="secondary-action" href="?step=identity">Previous</a><button class="primary-action">Save & Continue</button></div></form></section>
+<section class="pa-stage" data-pa-stage="race">
+  <div class="pa-stage-kicker">02</div>
+  <header>
+    <h2>Race / Species</h2>
+    <p>Choose from every active Race or Species record in the compendium. Source restrictions are intentionally not applied in Player Architect.</p>
+  </header>
+  <form method="post" action="/tools/player-architect/{{ character.public_id }}/step/race" data-pa-form>
+    <div class="pa-choice-list" role="radiogroup" aria-label="Race or species">
+      {% for e in race_rows %}
+      <article class="pa-choice-row {% if character.race_entity_id==e.id %}selected{% endif %}" data-pa-auto-origin="Race" data-pa-auto='{{ auto_entries(e,"Race")|tojson|forceescape }}'>
+        <label class="pa-choice-main">
+          <input type="radio" name="race_entity_id" value="{{ e.id }}" {% if character.race_entity_id==e.id %}checked{% endif %} required>
+          <span class="pa-choice-identity"><strong>{{ e.name }}</strong><small>{{ e.source_display_name or e.source_document or 'Local Compendium' }}</small></span>
+          <span class="pa-choice-summary">{{ entity_description(e,260) or 'No brief description is available in this cached record.' }}</span>
+        </label>
+        <button type="button" class="pa-more-info" data-pa-info-url="/tools/player-architect/entity/{{ e.id }}/info">More Info</button>
+      </article>
+      {% endfor %}
+    </div>
+    <div class="pa-stage-actions"><a class="secondary-action" href="?step=identity">Previous</a><button class="primary-action">Save & Continue</button></div>
+  </form>
+</section>
