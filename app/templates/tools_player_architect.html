@@ -5,7 +5,7 @@
   <aside class="pa-step-sidebar">
     <div class="pa-sidebar-brand"><span>PA</span><div><strong>Player Architect</strong><small>IN DEVELOPMENT</small></div></div>
     <nav class="pa-step-nav" aria-label="Architect steps">
-      {% for key,label in steps %}<a data-pa-nav href="/tools/player-architect/{{ character.public_id }}?step={{ key }}" class="{% if key==step %}active{% endif %}"><span>{{ '%02d'|format(loop.index) }}</span><b>{{ label }}</b>{% if loop.index > 5 %}<em>STUB</em>{% endif %}</a>{% endfor %}
+      {% for key,label in steps %}<a data-pa-nav href="/tools/player-architect/{{ character.public_id }}?step={{ key }}" class="{% if key==step %}active{% endif %}"><span>{{ '%02d'|format(loop.index) }}</span><b>{{ label }}</b>{% if loop.index > 6 %}<em>STUB</em>{% endif %}</a>{% endfor %}
     </nav>
     <div class="pa-sidebar-actions">
       <a class="pa-shell-action pa-prev-step {% if not prev_step %}disabled{% endif %}" data-pa-nav {% if prev_step %}href="/tools/player-architect/{{ character.public_id }}?step={{ prev_step }}"{% else %}aria-disabled="true"{% endif %} title="Previous Step"><span aria-hidden="true">←</span><b>Previous Step</b></a>

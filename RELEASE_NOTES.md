@@ -635,3 +635,12 @@ Player Architect Ability Score and navigation workflow improvements.
 - 2014 fixed starting equipment becomes Player Attention; language choices become Player Choice.
 - A5E partial ability/skill alternatives are never partially auto-applied.
 - Starting Equipment class decisions are categorized as Equipment.
+
+## v0.33.8 — Player Architect Proficiencies
+
+- Implement Step 06 as a complete Player Architect stage instead of a stub.
+- List every active cached `skill` entity and persist user-selected skill proficiencies.
+- Automatically select, lock, and explain skills granted by Blueprint `Skill Proficiencies` rows.
+- Build Other Proficiencies directly from Blueprint weapon, armor, and tool proficiency facts.
+- Resolve proficiency titles against cached Item, Item Set, Armor, Weapon, and Weapons entities for read-only More Info modals.
+- Keep all Blueprint-granted proficiencies locked and immutable on the proficiency stage.

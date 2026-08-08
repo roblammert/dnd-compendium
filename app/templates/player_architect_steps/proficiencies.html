@@ -1,1 +1,53 @@
-<section class="pa-stage pa-stub-stage"><div class="pa-stage-kicker">06</div><header><h2>Proficiencies</h2><span class="dev-pill large">STUB</span><p>This stage is intentionally stubbed for the first Player Architect milestone. Its workflow, rules, Blueprint effects, and validation will be designed in the next development stages without borrowing state from Player Builder.</p></header><div class="pa-stub-blueprint"><strong>Architecture preserved</strong><p>The shell, persistent Architect character state, live footer, and Character Blueprint remain active while this stage is developed.</p></div><div class="pa-stage-actions"><a class="secondary-action" href="?step=background">Previous</a></div></section>
+<section class="pa-stage pa-proficiency-stage">
+  <div class="pa-stage-kicker">06</div>
+  <header>
+    <h2>Proficiencies</h2>
+    <p>Review every cached skill and the weapon, armor, and tool proficiencies already established by the Character Blueprint. Blueprint-granted proficiencies are locked so their origin remains auditable.</p>
+  </header>
+
+  <form id="pa-step-form" method="post" action="/tools/player-architect/{{ character.public_id }}/step/proficiencies" data-pa-step-form>
+    <input type="hidden" name="pa_navigation_destination" data-pa-navigation-destination value="">
+
+    <section class="pa-proficiency-box">
+      <div class="pa-proficiency-box-head">
+        <div><p class="eyebrow">Skills</p><h3>Skill Proficiencies</h3></div>
+        <span class="pa-proficiency-count">{{ architect_skill_rows|length }} cached skills</span>
+      </div>
+      <p class="pa-proficiency-help">All active <code>skill</code> entities are shown. Any skill granted by a Blueprint <strong>Skill Proficiencies</strong> entry is selected, locked, and cannot be removed here.</p>
+      <div class="pa-skill-proficiency-list">
+        {% for item in architect_skill_rows %}
+        <article class="pa-proficiency-skill-card {% if item.locked %}locked{% endif %}">
+          <label>
+            <input type="checkbox" name="skill_proficiencies" value="{{ item.entity.name }}" {% if item.selected %}checked{% endif %} {% if item.locked %}disabled{% endif %}>
+            <span class="pa-proficiency-title">{{ item.entity.name }}</span>
+            {% if item.locked %}<span class="pa-lock-badge" title="Granted by Character Blueprint">🔒</span>{% endif %}
+          </label>
+          <button type="button" class="pa-more-info" data-pa-info-url="/tools/player-architect/entity/{{ item.entity.id }}/info">More Info</button>
+          {% if item.locked %}<footer><strong>Locked:</strong> {{ item.reason }}</footer>{% endif %}
+        </article>
+        {% else %}
+        <div class="pa-empty-panel">No active skill entities are available in the cached compendium.</div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="pa-proficiency-box">
+      <div class="pa-proficiency-box-head">
+        <div><p class="eyebrow">Blueprint Grants</p><h3>Other Proficiencies</h3></div>
+        <span class="pa-proficiency-count">{{ architect_other_proficiencies|length }} granted</span>
+      </div>
+      <p class="pa-proficiency-help">Weapon, armor, and tool proficiencies come directly from the Blueprint. They are selected and locked. More Info resolves the proficiency title against cached Item, Item Set, Armor, Weapon, and Weapons records when a matching entity exists.</p>
+      <div class="pa-other-proficiency-list">
+        {% for item in architect_other_proficiencies %}
+        <article class="pa-other-proficiency-card locked">
+          <div class="pa-other-proficiency-select"><input type="checkbox" checked disabled aria-label="{{ item.title }} is granted"><span class="pa-lock-badge">🔒</span></div>
+          <div><strong>{{ item.title }}</strong><small>{{ item.stat }}</small></div>
+          {% if item.entity %}<button type="button" class="pa-more-info" data-pa-info-url="/tools/player-architect/entity/{{ item.entity.id }}/info">More Info</button>{% else %}<button type="button" class="pa-more-info" disabled title="No matching cached entity was found">More Info</button>{% endif %}
+        </article>
+        {% else %}
+        <div class="pa-empty-panel">No Weapon, Armor, or Tool Proficiencies have been added to the Character Blueprint yet.</div>
+        {% endfor %}
+      </div>
+    </section>
+  </form>
+</section>

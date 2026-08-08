@@ -12,7 +12,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from markdown_it import MarkdownIt
 from markupsafe import Markup
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.auth import require_user
@@ -608,6 +608,107 @@ def _minimum_requirements(entity: Entity | None) -> dict[str,int]:
     return req
 
 
+
+def _blueprint_values(db: Session, char: ArchitectCharacter, stat: str) -> list[str]:
+    """Return de-duplicated human values from Blueprint rows for a stat.
+
+    Blueprint modifiers for proficiency-like facts are descriptive strings such
+    as ``+Insight,Religion`` or ``+Simple weapons, martial weapons``.  Step 06
+    consumes those facts without mutating the ledger.
+    """
+    values: list[str] = []
+    seen: set[str] = set()
+    for row in _blueprint(db, char):
+        if (row.stat or '').casefold() != stat.casefold():
+            continue
+        raw = str(row.modifier or '').strip()
+        raw = re.sub(r'^\s*\+\s*', '', raw).strip()
+        if not raw or raw.casefold() in {'none', '0', 'n/a', 'na', '-', '—'}:
+            continue
+        # Commas/semicolons are authoritative list separators in the cached
+        # class/background data.  A simple A-and-B phrase is also split, but
+        # longer descriptive phrases remain intact.
+        chunks = [c.strip() for c in re.split(r'\s*[,;]\s*', raw) if c.strip()]
+        if len(chunks) == 1 and re.fullmatch(r'[^,;]+\s+and\s+[^,;]+', raw, re.I):
+            chunks = [c.strip() for c in re.split(r'\s+and\s+', raw, flags=re.I) if c.strip()]
+        for chunk in chunks:
+            chunk = re.sub(r'^(?:and|or)\s+', '', chunk, flags=re.I).strip()
+            if not chunk:
+                continue
+            key = chunk.casefold()
+            if key not in seen:
+                seen.add(key)
+                values.append(chunk)
+    return values
+
+
+def _architect_saved_skills(char: ArchitectCharacter) -> list[str]:
+    notes = char.notes_json or {}
+    prof = notes.get('proficiencies') if isinstance(notes.get('proficiencies'), dict) else {}
+    values = prof.get('skills') if isinstance(prof, dict) else []
+    return [str(v) for v in values] if isinstance(values, list) else []
+
+
+def _proficiency_reference(db: Session, title: str) -> Entity | None:
+    """Resolve a locked proficiency title to a readable Compendium entity."""
+    kinds = ('item', 'itemset', 'armor', 'weapon', 'weapons')
+    exact = db.scalar(
+        select(Entity).where(
+            Entity.is_active.is_(True),
+            Entity.entity_type.in_(kinds),
+            func.lower(Entity.name) == title.casefold(),
+        ).order_by(Entity.source_display_name, Entity.id)
+    )
+    if exact:
+        return exact
+    # Conservative fallback for minor pluralization differences only.
+    variants = {title.casefold()}
+    if title.casefold().endswith('s'):
+        variants.add(title.casefold()[:-1])
+    else:
+        variants.add(title.casefold() + 's')
+    return db.scalar(
+        select(Entity).where(
+            Entity.is_active.is_(True),
+            Entity.entity_type.in_(kinds),
+            func.lower(Entity.name).in_(variants),
+        ).order_by(Entity.source_display_name, Entity.id)
+    )
+
+
+def _proficiency_step_data(db: Session, char: ArchitectCharacter) -> dict[str, Any]:
+    skills = _all_entities(db, ['skill'])
+    locked_skill_names = _blueprint_values(db, char, 'Skill Proficiencies')
+    locked_lookup = {name.casefold(): name for name in locked_skill_names}
+    saved_lookup = {name.casefold() for name in _architect_saved_skills(char)}
+    skill_rows = []
+    for entity in skills:
+        key = entity.name.casefold()
+        lock_rows = [row for row in _blueprint(db, char) if (row.stat or '').casefold() == 'skill proficiencies' and key in re.sub(r'^\s*\+\s*', '', str(row.modifier or '')).casefold()]
+        reason = '; '.join(dict.fromkeys((row.note or f'{row.how} proficiency').strip() for row in lock_rows if (row.note or row.how)))
+        skill_rows.append({
+            'entity': entity,
+            'locked': key in locked_lookup,
+            'selected': key in locked_lookup or key in saved_lookup,
+            'reason': reason or ('Granted by Character Blueprint' if key in locked_lookup else ''),
+        })
+
+    other_rows = []
+    seen: set[tuple[str, str]] = set()
+    for stat in ('Weapon Proficiencies', 'Armor Proficiencies', 'Tool Proficiencies'):
+        for title in _blueprint_values(db, char, stat):
+            key = (stat.casefold(), title.casefold())
+            if key in seen:
+                continue
+            seen.add(key)
+            ref = _proficiency_reference(db, title)
+            other_rows.append({'title': title, 'stat': stat, 'entity': ref})
+    return {
+        'architect_skill_rows': skill_rows,
+        'architect_other_proficiencies': other_rows,
+        'architect_locked_skill_names': locked_skill_names,
+    }
+
 def _context(db: Session, char: ArchitectCharacter, step: str, **extra):
     race=_entity(db,char.race_entity_id); cls=_entity(db,char.class_entity_id); sub=_entity(db,char.subclass_entity_id)
     bg=_entity(db,char.background_entity_id); align=_entity(db,char.alignment_entity_id)
@@ -621,7 +722,8 @@ def _context(db: Session, char: ArchitectCharacter, step: str, **extra):
     step_index = [key for key, _ in STEPS].index(step)
     prev_step = STEPS[step_index - 1][0] if step_index > 0 else None
     next_step = STEPS[step_index + 1][0] if step_index + 1 < len(STEPS) else None
-    implemented_step = step in {"identity", "race", "class", "abilities", "background"}
+    implemented_step = step in {"identity", "race", "class", "abilities", "background", "proficiencies"}
+    proficiency_context = _proficiency_step_data(db, char) if step == "proficiencies" else {}
     return {
         "tools_section":"player-architect","character":char,"step":step,"steps":STEPS,"blueprint_rows":_blueprint(db,char),
         "blueprint_choice_notes":_class_choice_notes(cls, "Class") + _class_choice_notes(sub, "Subclass") + _background_choice_notes(bg),
@@ -632,7 +734,7 @@ def _context(db: Session, char: ArchitectCharacter, step: str, **extra):
         "auto_entries":_auto_entries,"class_choice_notes":_class_choice_notes,"background_choice_notes":_background_choice_notes,"background_attention_notes":_background_attention_notes,
         "background_rows":_all_entities(db,["background"]),"alignment_rows":_all_entities(db,["alignment"]),
         "ability_labels":ABILITY_LABELS,"ability_names":ABILITY_NAMES,"abilities":ABILITIES,"level_xp":LEVEL_XP,"stat_options":STAT_OPTIONS,
-        "entity_description":_entity_description,"subclass_parent_text":_subclass_parent_text, **extra,
+        "entity_description":_entity_description,"subclass_parent_text":_subclass_parent_text, **proficiency_context, **extra,
     }
 
 
@@ -689,6 +791,24 @@ async def architect_save_step(request: Request, public_id: str, step: str, user:
     elif step=="background":
         bg_id=int(form.get("background_entity_id") or 0) or None; al_id=int(form.get("alignment_entity_id") or 0) or None
         row.background_entity_id=bg_id; row.alignment_entity_id=al_id; _sync_auto_blueprint(db,row,"background","Background",_entity(db,bg_id))
+    elif step=="proficiencies":
+        locked = {name.casefold(): name for name in _blueprint_values(db, row, "Skill Proficiencies")}
+        selected = []
+        seen = set()
+        for value in form.getlist("skill_proficiencies"):
+            name = str(value or "").strip()
+            if name and name.casefold() not in seen:
+                seen.add(name.casefold()); selected.append(name)
+        # Disabled locked checkboxes are not submitted by browsers; restore the
+        # Blueprint grants explicitly so persisted state is always complete.
+        for name in locked.values():
+            if name.casefold() not in seen:
+                seen.add(name.casefold()); selected.append(name)
+        notes = dict(row.notes_json or {})
+        prof = dict(notes.get("proficiencies") or {})
+        prof["skills"] = selected
+        notes["proficiencies"] = prof
+        row.notes_json = notes
     row.current_step=step; db.commit(); db.refresh(row)
     if error:
         return templates.TemplateResponse(request,"tools_player_architect.html",_context(db,row,step,error=error),status_code=422)

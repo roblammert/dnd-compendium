@@ -56,7 +56,7 @@ def test_first_five_steps_are_implemented_and_rest_stubbed():
         text=Path(f'app/templates/player_architect_steps/{name}.html').read_text()
         assert 'id="pa-step-form"' in text
     assert 'Next Step' in SHELL and 'Previous Step' in SHELL and 'View Blueprint' in SHELL
-    for name in ['proficiencies','languages','feats','spells','details','review']:
+    for name in ['languages','feats','spells','details','review']:
         text=Path(f'app/templates/player_architect_steps/{name}.html').read_text()
         assert 'STUB' in text
 

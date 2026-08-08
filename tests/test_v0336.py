@@ -36,5 +36,5 @@ def test_pa_route_honors_navigation_destination():
 
 
 def test_release_version_v0336():
-    assert Path('app/version.py').read_text().strip() == 'APP_VERSION = "0.33.7"'
-    assert 'version = "0.33.7"' in Path('pyproject.toml').read_text()
+    assert Path('app/version.py').read_text().strip() == 'APP_VERSION = "0.33.8"'
+    assert 'version = "0.33.8"' in Path('pyproject.toml').read_text()

@@ -75,3 +75,9 @@ Ability Score cards preserve the stored Roll value separately from Blueprint mod
 ## v0.33.7 Background benefit parsing
 
 Background parsing now treats `benefits[]` as the authoritative source for Background Blueprint behavior. Deterministic ability pools, skill proficiencies, and tool proficiencies become locked Background ledger rows. Alternatives such as equipment packages, language counts, partially-defined skill selections, and ability-score choices are surfaced under **Needs Your Choice**. Fixed non-modifier obligations such as a 2014 starting-equipment list or a granted feat are surfaced under **Player Attention** so they can be applied at the appropriate later Architect step without pretending they are numeric modifiers.
+
+## v0.33.8 Step 06 — Proficiencies
+
+Step 06 is now implemented as a Blueprint-driven proficiency review stage. Every active `skill` entity is shown in the Skill Proficiencies box. Skills granted by locked Blueprint rows whose Stat is `Skill Proficiencies` are checked, locked, and annotated with the Blueprint reason; additional skill selections remain user-selectable and are persisted separately in the Architect character's `notes_json` so the Blueprint remains an immutable audit ledger.
+
+The Other Proficiencies box is derived exclusively from Blueprint `Weapon Proficiencies`, `Armor Proficiencies`, and `Tool Proficiencies` facts. These entries are always selected and locked. Player Architect resolves each proficiency title against active `item`, `itemset`, `armor`, `weapon`, and `weapons` entities by name so a read-only More Info modal can expose the matching Compendium card when available.
